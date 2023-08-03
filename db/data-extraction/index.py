@@ -1,5 +1,8 @@
 # import logging
+from typing import List
+import pandas as pd
 from scraper.scraper import Scraper
+from dataframe_builder.dataframe_builder import scrape_and_build_dataframes
 
 def main():
     # logging.basicConfig(
@@ -20,15 +23,14 @@ def main():
         scraper.update_url(season_homepage_link)
 
         season = scraper.url[-4 : ]
-        print(f'Now scraping team schedule links for season {season}')
         team_schedule_links = scraper.get_team_schedule_links(season)
-        print(team_schedule_links[:5])
-        print('')
         
-            
-        # dataframe_constructor = Dataframeconstructor(scraper, team_schedule_links)
-        # team_dfs.append(dataframe_constructor.construct_team_df())
-        # schedule_dfs.append(dataframe_constructor.construct_schedule_df())
+        scrape_and_build_dataframes(
+            season,
+            team_schedule_links,
+            scraper
+        )
+        
 
 if __name__ == '__main__':
     main()
