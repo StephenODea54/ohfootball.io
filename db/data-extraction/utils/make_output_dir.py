@@ -1,5 +1,6 @@
 from pathlib import Path, PurePath
 
+
 def make_output_dir() -> str:
     CURRENT_DIR = Path(__file__).parent
     ROOT_DIR = CURRENT_DIR.parent

@@ -24,13 +24,13 @@ def main():
 
         season = scraper.url[-4 : ]
         team_schedule_links = scraper.get_team_schedule_links(season)
-        
+     
         scrape_and_build_dataframes(
             season,
             team_schedule_links,
             scraper
         )
-        
+
 
 if __name__ == '__main__':
     main()

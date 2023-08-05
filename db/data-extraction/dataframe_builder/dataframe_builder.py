@@ -9,18 +9,53 @@ from utils.convert_roman_numeral import convert_roman_numeral
 from utils.make_output_dir import make_output_dir
 
 
-# Break these up into separate files
-# Both files should share the get_team_id method.. change to template pattern?
+# TODO: Break these up into separate files
 class TeamDataframeBuilder(ABC):
+    """
+    Responsible for scraping team-specific information, which includes:
+        - season (int): The season for which the information is applicable.
+        - id (int): Team ID for internal DB use. This ID is able to keep track
+          of teams from season-to-season, even for things such as 
+          name changes.
+        - primary_color (str): Primary jersey color.
+        - secondary_color (str): Secondary jersey color.
+        - city (str): City of the team's school.
+        - county (str): County of the team's school.
+        - state (str): State of the team's school.
+        - division (str): The division the team is a part of.
+        - region (str): The region the team is a part of.
+        - name (str): Name of the school.
+        - mascot (str): Name of the mascot.
+    """
 
-    @abstractmethod
-    def get_team_id(self) -> None:
-        """Returns the unique identifier for each team. Useful for tracking information across several different seasons."""
-        pass
+    def __init__(
+        self,
+        team_schedule_links: List[str],
+        scraper: type[Scraper],
+        season: str,
+    ) -> None:
+        """
+        Args:
+            team_schedule_links (List[str]): A list of urls that correspond to each team.
+            scraper (Type[Scraper]): A Scraper object that uses BeautifulSoup.
+            season (str): The season for which the information is applicable for.
+        Returns:
+            None
+        """
+
+        self.team_schedule_links = team_schedule_links
+        self.scraper = scraper
+        self.team = Team(season = int(season))
+    
+    def get_team_id(self, url: str) -> None:
+        """Returns the unique identifier for each team."""
+
+        self.team.id = int(get_query_parameter(url, 'teamID'))
+        return self
 
     @abstractmethod    
     def get_team_colors(self) -> None:
-        """Sets the team's colors. Each team consists of a primary and secondary color."""
+        """Sets the team's primary and secondary colors."""
         pass
     
     @abstractmethod
@@ -34,23 +69,43 @@ class TeamDataframeBuilder(ABC):
         pass
 
     # These can probably go into its own class for a more "traditional"
-    # builder pattern.
-    @abstractmethod
+    # builder pattern. But I don't feel like defining a single class with
+    # one method in it.
     def build(self) -> pd.DataFrame:
-        """Builds the object attributes."""
-        pass
+        """
+        Exports a Pandas DataFrame by building each attribute
+        of the class for each of the available team schedule links.
+        """
+
+        teams: List[pd.DataFrame] = []
+
+        for team_schedule_link in self.team_schedule_links:
+            self.scraper.update_url(team_schedule_link)
+            self.get_team_id(team_schedule_link) \
+                .get_team_colors() \
+                .get_team_location_info() \
+                .get_team_name_info()
+            
+            # Put this to_dict into its own helper function!
+            team_attrs = self.team.__dict__.items()
+
+            # TODO: What is the type here?
+            team_dict = {}
+            for k, v in team_attrs:
+                team_dict[k] = v
+            
+            teams.append(pd.DataFrame([team_dict]))
+        
+        teams_df = pd.concat(teams)
+        
+        return teams_df
 
 
 class NonTableTeamDataframeBuilder(TeamDataframeBuilder):
-    # Good for seasons 2000, 2001, 2013 - 2023
-    def __init__(self, team_schedule_links: List[str], scraper: type[Scraper], season: str) -> None:
-        self.team_schedule_links = team_schedule_links
-        self.scraper = scraper
-        self.team = Team(season = int(season))
-    
-    def get_team_id(self, url: str) -> None:
-        self.team.id = int(get_query_parameter(url, 'teamID'))
-        return self
+    """
+    Class that defines the methods for scraping team information
+    for seasons 2000, 2001, and 2013-2023.
+    """
     
     def get_team_colors(self) -> None:
         team_colors_tag = self.scraper.find('div', id = 'header')
@@ -87,48 +142,16 @@ class NonTableTeamDataframeBuilder(TeamDataframeBuilder):
         self.team.name = team_name_only.strip()
         self.team.mascot = full_name.replace(team_name_only, '')
         return self
-    
-    # TODO: This probably belongs in it's own class for a more "traditional"
-    # builder pattern. Also, this is going to be the exact same function
-    # shared across all team builders, so doesn't really make sense to
-    # have it as an abstract method.
-    def build(self) -> pd.DataFrame:
-        teams: List[pd.DataFrame] = []
-
-        for team_schedule_link in self.team_schedule_links:
-            print(f'SCRAPING TEAM INFO FOR URL {team_schedule_link}')
-            self.scraper.update_url(team_schedule_link)
-            self.get_team_id(team_schedule_link) \
-                .get_team_colors() \
-                .get_team_location_info() \
-            
-            # Put this to_dict into its own helper function!
-            team_attrs = self.team.__dict__.items()
-
-            # TODO: What is the type here?
-            team_dict = {}
-            for k, v in team_attrs:
-                team_dict[k] = v
-            
-            teams.append(pd.DataFrame([team_dict]))
-        
-        teams_df = pd.concat(teams)
-        
-        return teams_df
 
 
 class TableTeamDataframeBuilder(TeamDataframeBuilder):
-    # Good for seasons 2002 - 2012
-    def __init__(self, team_schedule_links: List[str], scraper: type[Scraper], season: str) -> None:
-        self.team_schedule_links = team_schedule_links
-        self.scraper = scraper
-        self.team = Team(season = int(season))
-    
-    def get_team_id(self, url: str) -> None:
-        self.team.id = int(get_query_parameter(url, 'teamID'))
-        return self
+    """
+    Class that defines the methods for scraping team information
+    for seasons 2002 - 2012.
+    """
     
     def get_font_tags(self) -> bs4.ResultSet:
+        """Returns all font tags found on the webpage."""
         return self.scraper.find_all('font')
     
     def get_team_colors(self) -> None:
@@ -162,93 +185,124 @@ class TableTeamDataframeBuilder(TeamDataframeBuilder):
         b_tag_text = self.scraper.find('b').text
         self.mascot = b_tag_text.replace(self.team.name, '').strip()
 
+        print('TEAM NAME IS:', self.team.name)
+        print('TEAM MASCOT IS:', self.team.mascot)
+
         return self
-    
-    def build(self) -> pd.DataFrame:
-        teams: List[pd.DataFrame] = []
-
-        for team_schedule_link in self.team_schedule_links:
-            print(f'SCRAPING TEAM INFO FOR URL {team_schedule_link}')
-            self.scraper.update_url(team_schedule_link)
-            self.get_team_id(team_schedule_link) \
-                .get_team_colors() \
-                .get_team_location_info() \
-            
-            # Put this to_dict into its own helper function!
-            team_attrs = self.team.__dict__.items()
-
-            # TODO: What is the type here?
-            team_dict = {}
-            for k, v in team_attrs:
-                team_dict[k] = v
-            
-            teams.append(pd.DataFrame([team_dict]))
-        
-        teams_df = pd.concat(teams)
-        
-        return teams_df
 
 
 class ScheduleDataframeBuilder(ABC):
+    """
+    Responsible for scraping team-specific information. Unlike the
+    team builder, the team builder only holds a single pandas DataFrame
+    output and not each individual one.
 
-    @abstractmethod
-    def read_tables(self, url: str) -> None:
-        """Returns a specific table from a url using pandas."""
-    
-    @abstractmethod
-    def rename_columns(self) -> None:
-        """Renames the columns of a dataframe since the site does not hold column headers."""
-    
-    @abstractmethod
-    def drop_columns(self) -> None:
-        """Drops columns from the dataframe."""
-        pass
-    
-    @abstractmethod
-    def rename_columns(self) -> None:
-        """Renames the columns of a dataframe."""
-        pass
+    This is because the td tags for some of the seasons do not hold
+    any additional attribute information like class names. To add to
+    the complexity, many of the layouts are built using tables, so
+    grabbing a list of all td attributes becomes to large to reasonably
+    parse individually.
+    """
 
-    @abstractmethod
-    def remove_rows(self) -> None:
-        """Removes rows from the dataframe by index."""
-        pass
-    
-    @abstractmethod
-    def add_season(self) -> None:
-        """Adds constant column equal to the value of the current season."""
-        pass
-
-    @abstractmethod
-    def build(self) -> pd.DataFrame:
-        """Builds and exports the schedule dataframe."""
-        pass
-
-
-class ScheduleDataframeBuilderOne(ScheduleDataframeBuilder):
-    # Works for 2000, 2001, 2013 - 2023
     def __init__(
         self,
         team_schedule_links: List[str],
         scraper: Type[Scraper],
         season: str,
     ) -> None:
+        """
+        Args:
+            team_schedule_links (List[str]): A list of urls that correspond to each team.
+            scraper (Type[Scraper]): A Scraper object that uses BeautifulSoup.
+            season (str): The season for which the information is applicable for.
+        
+        Returns:
+            None
+        """
+
         self.team_schedule_links = team_schedule_links
         self.scraper = scraper
         self.season = season
         self.df: pd.DataFrame = pd.DataFrame(data = None)
+
+    @abstractmethod
+    def read_tables(self, url: str) -> pd.DataFrame:
+        """Returns a specific table from a url using pandas."""
     
-    def read_tables(self, url: str) -> None:
+    @abstractmethod
+    def rename_columns(self) -> pd.DataFrame:
+        """Renames the columns of a dataframe since the site does not hold column headers."""
+    
+    @abstractmethod
+    def drop_columns(self) -> pd.DataFrame:
+        """Drops columns from the dataframe."""
+        pass
+    
+    @abstractmethod
+    def rename_columns(self) -> pd.DataFrame:
+        """Renames the columns of a dataframe."""
+        pass
+    
+    @abstractmethod
+    def add_season(self) -> pd.DataFrame:
+        """Adds constant column equal to the value of the current season."""
+        pass
+
+    def drop_info_rows(self) -> pd.DataFrame:
+        """
+        Removes the following rows from the tables:
+            - "* - game does not count in OHSAA rankings"
+            - "# - Ohio playoff game"
+        """
+
+        info_rows_to_drop = [
+            '* - game does not count in OHSAA rankings',
+            '# - Ohio playoff game',
+        ]
+
+        self.df = self.df[~self.df['game_dates'].isin(info_rows_to_drop)]
+
+        return self
+
+    def build(self) -> pd.DataFrame:
+        """
+        Exports a Pandas DataFrame by manipulating the internal
+        dataframe for each of the available team schedule links.
+        """
+
+        schedules: List[pd.DataFrame] = []
+
+        for team_schedule_link in self.team_schedule_links:
+            self.read_tables(self.scraper.BASE_URL + team_schedule_link) \
+                .drop_columns() \
+                .rename_columns() \
+                .drop_info_rows() \
+                .add_season()
+            
+            schedules.append(self.df)
+        
+        schedule_dfs = pd.concat(schedules)
+        
+        return schedule_dfs
+
+
+class ScheduleDataframeBuilderOne(ScheduleDataframeBuilder):
+    """
+    Class that defines the methods for scraping schedule information
+    for seasons 2002 - 2012.
+    """
+    
+    def read_tables(self, url: str) -> pd.DataFrame:
         dfs = pd.read_html(url)
 
         self.df = dfs[0]
         return self
     
-    def drop_columns(self) -> None:
+    def drop_columns(self) -> pd.DataFrame:
         self.df = self.df.drop(columns = [3])
         return self
     
-    def rename_columns(self) -> None:
+    def rename_columns(self) -> pd.DataFrame:
         self.df = self.df.rename(columns = {
             0: 'game_dates',
             1: 'field',
@@ -259,34 +313,9 @@ class ScheduleDataframeBuilderOne(ScheduleDataframeBuilder):
         })
         return self
     
-    def remove_rows(self) -> None:
-        if self.season == 2020:
-            self.df = self.df[:-2]
-        else:
-            self.df = self.df[:-1]
-
-        return self
-    
-    def add_season(self) -> None:
+    def add_season(self) -> pd.DataFrame:
         self.df['season'] = self.season
         return self
-    
-    def build(self) -> pd.DataFrame:
-        schedules: List[pd.DataFrame] = []
-
-        for team_schedule_link in self.team_schedule_links:
-            print(f'SCRAPING SCHEDULE INFO FOR URL {team_schedule_link}')
-            self.read_tables(self.scraper.BASE_URL + team_schedule_link) \
-                .drop_columns() \
-                .rename_columns() \
-                .remove_rows() \
-                .add_season()
-            
-            schedules.append(self.df)
-        
-        schedule_dfs = pd.concat(schedules)
-        
-        return schedule_dfs
 
 
 class ScheduleDataframeBuilderTwo(ScheduleDataframeBuilder):
@@ -302,17 +331,17 @@ class ScheduleDataframeBuilderTwo(ScheduleDataframeBuilder):
         self.season = season
         self.df: pd.DataFrame = pd.DataFrame(data = None)
     
-    def read_tables(self, url: str) -> None:
+    def read_tables(self, url: str) -> pd.DataFrame:
         dfs = pd.read_html(url)
 
         self.df = dfs[4]
         return self
     
-    def drop_columns(self) -> None:
+    def drop_columns(self) -> pd.DataFrame:
         self.df = self.df.drop(columns = [3])
         return self
     
-    def rename_columns(self) -> None:
+    def rename_columns(self) -> pd.DataFrame:
         self.df = self.df.rename(columns = {
             0: 'game_dates',
             1: 'field',
@@ -323,33 +352,15 @@ class ScheduleDataframeBuilderTwo(ScheduleDataframeBuilder):
         })
         return self
     
-    def remove_rows(self) -> None:
-        self.df = self.df[2:-1]
-        return self
-    
-    def add_season(self) -> None:
+    def add_season(self) -> pd.DataFrame:
         self.df['season'] = self.season
         return self
-    
-    def build(self) -> pd.DataFrame:
-        schedules: List[pd.DataFrame] = []
-
-        for team_schedule_link in self.team_schedule_links:
-            print(f'SCRAPING SCHEDULE INFO FOR URL {team_schedule_link}')
-            self.read_tables(self.scraper.BASE_URL + team_schedule_link) \
-                .drop_columns() \
-                .rename_columns() \
-                .remove_rows() \
-                .add_season()
-            
-            schedules.append(self.df)
-        
-        schedule_dfs = pd.concat(schedules)
-        
-        return schedule_dfs
 
 
 class DataframeBuilderFactory(ABC):
+    """
+    Abstract class that returns the appropriate builders for a particular season.
+    """
 
     @abstractmethod
     def get_team_dataframe_builder(self) -> TeamDataframeBuilder:
@@ -361,7 +372,7 @@ class DataframeBuilderFactory(ABC):
 
 
 class DataframeBuilderOne(DataframeBuilderFactory):
-    """Factory that returns the appropriate builders for seasons 2000, 2001 and 2023-2023"""
+    """Factory that returns the appropriate builders for seasons 2000, 2001 and 2013-2023"""
 
     def __init__(
         self,
@@ -369,6 +380,16 @@ class DataframeBuilderOne(DataframeBuilderFactory):
         scraper: Type[Scraper],
         season: str,
     ) -> None:
+        """
+        Args:
+            team_schedule_links (List[str]): A list of urls that correspond to each team.
+            scraper (Type[Scraper]): A Scraper object that uses BeautifulSoup.
+            season (str): The season for which the information is applicable for.
+        
+        Returns:
+            None
+        """
+
         self.team_schedule_links = team_schedule_links
         self.scraper = scraper
         self.season = season
@@ -399,6 +420,16 @@ class DataframeBuilderTwo(DataframeBuilderFactory):
         scraper: Type[Scraper],
         season: str,
     ) -> None:
+        """
+        Args:
+            team_schedule_links (List[str]): A list of urls that correspond to each team.
+            scraper (Type[Scraper]): A Scraper object that uses BeautifulSoup.
+            season (str): The season for which the information is applicable for.
+        
+        Returns:
+            None
+        """
+
         self.team_schedule_links = team_schedule_links
         self.scraper = scraper
         self.season = season
