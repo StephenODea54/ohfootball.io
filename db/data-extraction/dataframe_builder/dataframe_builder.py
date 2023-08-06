@@ -2,28 +2,36 @@ from abc import ABC, abstractmethod
 import bs4
 from typing import List, Type
 import pandas as pd
+import logging
 from scraper.scraper import Scraper
 from .team import Team
 from utils.get_query_parameter import get_query_parameter
 from utils.convert_roman_numeral import convert_roman_numeral
 from utils.make_output_dir import make_output_dir
+from utils.class_dict_mapper import class_dict_mapper
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    filename="scraper_log.log",
+)
 
 # TODO: Break these up into separate files
 class TeamDataframeBuilder(ABC):
     """
-    Responsible for scraping team-specific information, which includes:
+    Responsible for scraping team-specific information:
         - season (int): The season for which the information is applicable.
         - id (int): Team ID for internal DB use. This ID is able to keep track
-          of teams from season-to-season, even for things such as 
-          name changes.
+          of teams from season-to-season, regardless of changes to name, region,
+          division, etc.
         - primary_color (str): Primary jersey color.
         - secondary_color (str): Secondary jersey color.
         - city (str): City of the team's school.
         - county (str): County of the team's school.
         - state (str): State of the team's school.
-        - division (str): The division the team is a part of.
-        - region (str): The region the team is a part of.
+        - division (int): OHSAA division.
+        - region (int): The region the team is a part of.
         - name (str): Name of the school.
         - mascot (str): Name of the mascot.
     """
@@ -39,6 +47,7 @@ class TeamDataframeBuilder(ABC):
             team_schedule_links (List[str]): A list of urls that correspond to each team.
             scraper (Type[Scraper]): A Scraper object that uses BeautifulSoup.
             season (str): The season for which the information is applicable for.
+
         Returns:
             None
         """
@@ -68,9 +77,8 @@ class TeamDataframeBuilder(ABC):
         """Sets the team's name and mascot."""
         pass
 
-    # These can probably go into its own class for a more "traditional"
-    # builder pattern. But I don't feel like defining a single class with
-    # one method in it.
+    # This can probably go into its own class for a more "traditional"
+    # builder pattern.
     def build(self) -> pd.DataFrame:
         """
         Exports a Pandas DataFrame by building each attribute
@@ -80,21 +88,22 @@ class TeamDataframeBuilder(ABC):
         teams: List[pd.DataFrame] = []
 
         for team_schedule_link in self.team_schedule_links:
-            self.scraper.update_url(team_schedule_link)
-            self.get_team_id(team_schedule_link) \
-                .get_team_colors() \
-                .get_team_location_info() \
-                .get_team_name_info()
-            
-            # Put this to_dict into its own helper function!
-            team_attrs = self.team.__dict__.items()
+            try:
+                logging.info(f'Building Team Table for: {team_schedule_link}')
+                self.scraper.update_url(team_schedule_link)
+                self.get_team_id(team_schedule_link) \
+                    .get_team_colors() \
+                    .get_team_location_info() \
+                    .get_team_name_info()
 
-            # TODO: What is the type here?
-            team_dict = {}
-            for k, v in team_attrs:
-                team_dict[k] = v
-            
-            teams.append(pd.DataFrame([team_dict]))
+                team_dict = class_dict_mapper(self)
+                
+                teams.append(pd.DataFrame([team_dict]))
+            except:
+                logging.warning(
+                    f'team_schedule_link and actual URL have mismatching teamID values. Skipping team: {team_schedule_link}'
+                )
+                pass
         
         teams_df = pd.concat(teams)
         
@@ -103,13 +112,12 @@ class TeamDataframeBuilder(ABC):
 
 class NonTableTeamDataframeBuilder(TeamDataframeBuilder):
     """
-    Class that defines the methods for scraping team information
+    Responsible for defining the methods for scraping team information
     for seasons 2000, 2001, and 2013-2023.
     """
     
     def get_team_colors(self) -> None:
         team_colors_tag = self.scraper.find('div', id = 'header')
-
         colors = team_colors_tag['style'].split(';')
 
         base_color_style = colors[0]
@@ -126,21 +134,38 @@ class NonTableTeamDataframeBuilder(TeamDataframeBuilder):
         self.team.city = h3_tag_text_arr[0].split(', ')[0]
         self.team.county = h3_tag_text_arr[1].split(', ')[-1].replace(' County', '').strip()
         self.team.state = h3_tag_text_arr[0].split(', ')[-1].strip()
-        self.team.division = convert_roman_numeral(
-            h3_tag_text_arr[-1].split(' ')[2][ : -1]
-        )
-        self.team.region = int(h3_tag_text_arr[-1].split(' ')[-1])
+        
+        # Some teams do not have region or division information
+        # Some divisions are represented as roman numerals, some represented as numbers
+        # TODO: Clean up, this is pretty janky.
+        try:
+            try:
+                self.team.division = convert_roman_numeral(
+                    h3_tag_text_arr[-1].split(' ')[2][ : -1]
+                )
+            except KeyError:
+                self.team.division = int(h3_tag_text_arr[-1].split(' ')[2][ : -1])
+            
+            self.team.region = int(h3_tag_text_arr[-1].split(' ')[-1])
+        except IndexError:
+            # TODO: Could probably add some logging here.
+            self.team.division = None
+            self.team.region = None
+
         return self
 
     def get_team_name_info(self) -> None:
         full_name = self.scraper.find('h2').text
+
+        # TODO: Have to share this w/ Schedule Builder, so should probably put into own function?
         caption = self.scraper.find('caption').text
 
-        season_idx = caption.find(str(self.team.season))
-        team_name_only = caption[ : season_idx]
+        football_idx = caption.find('Football')
+        team_name_only = caption[ : football_idx].replace(f'{self.team.season} ', '')
         
         self.team.name = team_name_only.strip()
         self.team.mascot = full_name.replace(team_name_only, '')
+
         return self
 
 
@@ -155,38 +180,54 @@ class TableTeamDataframeBuilder(TeamDataframeBuilder):
         return self.scraper.find_all('font')
     
     def get_team_colors(self) -> None:
-        td_tag = self.scraper.find('td', {'valign', 'Top'})
+        td_tag = self.scraper.find('td', {'valign': 'Top'})
         font_tag = self.get_font_tags()[0]
 
         # May not be hexadecimal 🙃
         self.team.primary_color = td_tag['bgcolor']
         self.team.secondary_color = font_tag['color']
+
+        return self
     
+    # TODO: Cleanup b/c this is jank
     def get_team_location_info(self) -> None:
         font_tag = self.get_font_tags()[1]
+        font_tag_str = str(font_tag)
+        font_tag_str_arr = font_tag_str.split('<br/>')
 
-        font_tag_text_arr = font_tag.text.strip().split('\n')
+        self.team.city = font_tag_str_arr[1].split(', ')[0]
+        self.team.state = font_tag_str_arr[1].split(', ')[-1]
 
-        self.team.city = font_tag_text_arr[0].split(', ')[0]
-        self.team.county = font_tag_text_arr[1].split(', ')[-1].replace(' County', '').strip()
-        self.team.state = font_tag_text_arr[0].split(', ')[-1].strip()
-        self.team.division = convert_roman_numeral(
-            font_tag_text_arr[-1].split(' ')[2][ : -1]
-        )
-        self.team.region = int(font_tag_text_arr[-1].split(' ')[-1])
+        # Some teams do not have county information
+        county_temp = font_tag_str_arr[2].replace(' County', '')
+        if county_temp.startswith('OHSAA'):
+            self.team.county = None
+        else:
+            self.team.county = county_temp
+
+        try:
+            try:
+                self.team.division = convert_roman_numeral(
+                    font_tag_str_arr[-1].split(',')[0].replace('OHSAA Division ', '')
+                )
+            except KeyError:
+                self.team.division = font_tag_str_arr[-1].split(',')[0].replace('OHSAA Division ', '')
+            
+            self.team.region = font_tag_str_arr[-1].split(',')[-1].replace('Region ', '').replace('</font>', '').strip()
+        except IndexError:
+            self.team.division = None
+            self.team.region = None
+        
         return self
 
     def get_team_name_info(self) -> None:
         td_tag_text = self.scraper.find('td', {'bgcolor': '#ffffff'}).text
-        season_idx = td_tag_text.find(self.team.season)
+        season_idx = td_tag_text.find(str(self.team.season))
         
-        self.team.name = td_tag_text[ : season_idx - 4]
+        self.team.name = td_tag_text[ : season_idx]
 
         b_tag_text = self.scraper.find('b').text
-        self.mascot = b_tag_text.replace(self.team.name, '').strip()
-
-        print('TEAM NAME IS:', self.team.name)
-        print('TEAM MASCOT IS:', self.team.mascot)
+        self.team.mascot = b_tag_text.replace(self.team.name, '').strip()
 
         return self
 
@@ -247,6 +288,10 @@ class ScheduleDataframeBuilder(ABC):
     def add_season(self) -> pd.DataFrame:
         """Adds constant column equal to the value of the current season."""
         pass
+    
+    @abstractmethod
+    def add_team_name(self) -> pd.DataFrame:
+        """Get the name of the team whose schedule is being scraped."""
 
     def drop_info_rows(self) -> pd.DataFrame:
         """
@@ -269,28 +314,25 @@ class ScheduleDataframeBuilder(ABC):
         Exports a Pandas DataFrame by manipulating the internal
         dataframe for each of the available team schedule links.
         """
-
-        schedules: List[pd.DataFrame] = []
-
-        for team_schedule_link in self.team_schedule_links:
-            self.read_tables(self.scraper.BASE_URL + team_schedule_link) \
-                .drop_columns() \
-                .rename_columns() \
-                .drop_info_rows() \
-                .add_season()
-            
-            schedules.append(self.df)
-        
-        schedule_dfs = pd.concat(schedules)
-        
-        return schedule_dfs
+        pass
 
 
 class ScheduleDataframeBuilderOne(ScheduleDataframeBuilder):
     """
     Class that defines the methods for scraping schedule information
-    for seasons 2002 - 2012.
+    for seasons 2000, 2001, and 2013-2023.
     """
+
+    def __init__(
+        self,
+        team_schedule_links: List[str],
+        scraper: Type[Scraper],
+        season: str,
+    ) -> None:
+        self.team_schedule_links = team_schedule_links
+        self.scraper = scraper
+        self.season = season
+        self.df: pd.DataFrame = pd.DataFrame(data = None)
     
     def read_tables(self, url: str) -> pd.DataFrame:
         dfs = pd.read_html(url)
@@ -316,10 +358,49 @@ class ScheduleDataframeBuilderOne(ScheduleDataframeBuilder):
     def add_season(self) -> pd.DataFrame:
         self.df['season'] = self.season
         return self
+    
+    def add_team_name(self) -> str:
+        caption = self.scraper.find('caption').text
+
+        football_idx = caption.find('Football')
+        team_name_only = caption[ : football_idx].replace(f'{self.season} ', '').strip()
+
+        self.df['team'] = team_name_only
+        return self
+    
+    def build(self) -> pd.DataFrame:
+        schedules: List[pd.DataFrame] = []
+
+        for team_schedule_link in self.team_schedule_links:
+            # Broken links in website. No choice but to pass.
+            try:
+                logging.info(f'Building schedule table for: {team_schedule_link}')
+                self.scraper.update_url(team_schedule_link)
+                self.read_tables(self.scraper.BASE_URL + team_schedule_link) \
+                    .drop_columns() \
+                    .rename_columns() \
+                    .drop_info_rows() \
+                    .add_season() \
+                    .add_team_name()
+                
+                schedules.append(self.df)
+            except:
+                logging.warning(
+                    f'team_schedule_link and actual URL have mismatching teamID values. Skipping team: {team_schedule_link}'
+                )
+                pass
+        
+        schedule_dfs = pd.concat(schedules)
+        
+        return schedule_dfs
 
 
 class ScheduleDataframeBuilderTwo(ScheduleDataframeBuilder):
-    # Works for seasons 2002 - 2012
+    """
+    Class that defines the methods for scraping schedule information
+    for seasons 2002 - 2012.
+    """
+
     def __init__(
         self,
         team_schedule_links: List[str],
@@ -352,9 +433,48 @@ class ScheduleDataframeBuilderTwo(ScheduleDataframeBuilder):
         })
         return self
     
+    def drop_caption_row(self) -> pd.DataFrame:
+        self.df = self.df.tail(-1)
+        return self
+    
     def add_season(self) -> pd.DataFrame:
         self.df['season'] = self.season
         return self
+    
+    def add_team_name(self) -> pd.DataFrame:
+        td_tag_text = self.scraper.find('td', {'bgcolor': '#ffffff'}).text
+        season_idx = td_tag_text.find(str(self.season))
+        
+        team_name_only = td_tag_text[ : season_idx]
+
+        self.df['name'] = team_name_only
+        return self
+    
+    def build(self) -> pd.DataFrame:
+        schedules: List[pd.DataFrame] = []
+
+        for team_schedule_link in self.team_schedule_links:
+            try:
+                logging.info(f'Building schedule table for: {team_schedule_link}')
+                self.scraper.update_url(team_schedule_link)
+                self.read_tables(self.scraper.BASE_URL + team_schedule_link) \
+                    .drop_columns() \
+                    .rename_columns() \
+                    .drop_info_rows() \
+                    .drop_caption_row() \
+                    .add_season() \
+                    .add_team_name()
+                
+                schedules.append(self.df)
+            except:
+                logging.warning(
+                    f'team_schedule_link and actual URL have mismatching teamID values. Skipping team: {team_schedule_link}'
+                )
+                pass
+        
+        schedule_dfs = pd.concat(schedules)
+        
+        return schedule_dfs
 
 
 class DataframeBuilderFactory(ABC):
@@ -372,7 +492,7 @@ class DataframeBuilderFactory(ABC):
 
 
 class DataframeBuilderOne(DataframeBuilderFactory):
-    """Factory that returns the appropriate builders for seasons 2000, 2001 and 2013-2023"""
+    """Factory that returns the appropriate builders for seasons 2000, 2001 and 2012-2023"""
 
     def __init__(
         self,
@@ -412,7 +532,7 @@ class DataframeBuilderOne(DataframeBuilderFactory):
     
 
 class DataframeBuilderTwo(DataframeBuilderFactory):
-    """Factory that returns the appropriate builders for seasons 2002-2012"""
+    """Factory that returns the appropriate builders for seasons 2002-2011"""
 
     def __init__(
         self,
@@ -462,7 +582,6 @@ def read_dataframe_builder_factory(
         '2000',
         '2001',
         '2013',
-        '2013',
         '2014',
         '2015',
         '2016',
@@ -496,7 +615,6 @@ def export_dataframes(dataframe_builder_factory: DataframeBuilderFactory, season
     teams_df = team_dataframe_builder.build()
     schedules_df = schedule_dataframe_builder.build()
 
-    # Put this into it's own function
     data_dir = make_output_dir()
 
     teams_df.to_csv(data_dir + f'/teams_{season}.csv', index = False)
