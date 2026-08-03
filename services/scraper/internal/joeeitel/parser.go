@@ -1,0 +1,355 @@
+package joeeitel
+
+import (
+	"fmt"
+	"io"
+	"net/url"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/html"
+)
+
+var divisionPattern = regexp.MustCompile(`(?i)(?:OHSAA\s+)?Division\s+([IVXLC]+|\d+)(?:\s*,\s*Region\s+(\d+))?`)
+
+func parseLatestSeason(r io.Reader, pageURL string) (int, error) {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return 0, fmt.Errorf("parse season index: %w", err)
+	}
+
+	base, err := url.Parse(pageURL)
+	if err != nil {
+		return 0, fmt.Errorf("parse season index URL: %w", err)
+	}
+
+	latest := 0
+	doc.Find("a[href]").Each(func(_ int, link *goquery.Selection) {
+		href, _ := link.Attr("href")
+		resolved, resolveErr := resolveURL(base, href)
+		if resolveErr != nil {
+			return
+		}
+		year, parseErr := strconv.Atoi(resolved.Query().Get("year"))
+		if parseErr == nil && year > latest {
+			latest = year
+		}
+	})
+
+	if latest == 0 {
+		return 0, fmt.Errorf("season index did not contain a year link")
+	}
+	return latest, nil
+}
+
+func parseRegionURLs(r io.Reader, pageURL string, season int) ([]string, error) {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, fmt.Errorf("parse season page: %w", err)
+	}
+	base, err := url.Parse(pageURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse season page URL: %w", err)
+	}
+
+	prefix := fmt.Sprintf("/hsfoot/rankings/%d/region-", season)
+	seen := make(map[string]struct{})
+	var regions []string
+	doc.Find("a[href]").Each(func(_ int, link *goquery.Selection) {
+		href, _ := link.Attr("href")
+		resolved, resolveErr := resolveURL(base, href)
+		if resolveErr != nil || !sameHost(base, resolved) || !strings.HasPrefix(resolved.Path, prefix) {
+			return
+		}
+		if strings.TrimPrefix(strings.ToLower(resolved.Hostname()), "www.") == "joeeitel.com" {
+			resolved.Scheme = "https"
+			resolved.Host = "joeeitel.com"
+		}
+		resolved.Fragment = ""
+		canonical := resolved.String()
+		if _, ok := seen[canonical]; ok {
+			return
+		}
+		seen[canonical] = struct{}{}
+		regions = append(regions, canonical)
+	})
+
+	slices.Sort(regions)
+	if len(regions) == 0 {
+		return nil, fmt.Errorf("season %d page did not contain region links", season)
+	}
+	return regions, nil
+}
+
+func parseRegionTeams(r io.Reader, pageURL string, season int) ([]TeamRef, error) {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, fmt.Errorf("parse region page: %w", err)
+	}
+	base, err := url.Parse(pageURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse region page URL: %w", err)
+	}
+
+	seen := make(map[string]struct{})
+	var teams []TeamRef
+	doc.Find("a[href]").Each(func(_ int, link *goquery.Selection) {
+		href, _ := link.Attr("href")
+		ref, parseErr := parseTeamRef(base, href, season, cleanText(link.Text()))
+		if parseErr != nil {
+			return
+		}
+		if _, ok := seen[ref.Key()]; ok {
+			return
+		}
+		seen[ref.Key()] = struct{}{}
+		teams = append(teams, ref)
+	})
+
+	if len(teams) == 0 {
+		return nil, fmt.Errorf("region page did not contain team links: %s", pageURL)
+	}
+	return teams, nil
+}
+
+func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, error) {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return Team{}, nil, nil, fmt.Errorf("parse team page: %w", err)
+	}
+
+	header := doc.Find("#header").First()
+	details := linesWithBreaks(header.Find("h3, h4").First())
+	caption := doc.Find("table.schedule caption").First()
+	captionLines := linesWithBreaks(caption)
+	metadata := strings.Join(append(slices.Clone(details), captionLines...), "\n")
+
+	team := Team{
+		Season: ref.Season,
+		TeamID: ref.TeamID,
+		Name:   parseSchoolName(caption, ref),
+	}
+	team.Mascot = parseMascot(team.Name, header.Find("h2").First().Text())
+	team.City, team.State, team.County = parseLocation(details)
+	team.PrimaryColor, team.SecondaryColor = parseColors(header)
+	team.Division, team.Region = parseDivisionRegion(metadata)
+
+	base, err := url.Parse(ref.URL)
+	if err != nil {
+		return Team{}, nil, nil, fmt.Errorf("parse team page URL: %w", err)
+	}
+
+	var games []GameResult
+	opponents := make(map[string]TeamRef)
+	doc.Find("table.schedule tbody tr").Each(func(_ int, row *goquery.Selection) {
+		opponentCell := row.Find("td.opponent").First()
+		if opponentCell.Length() == 0 {
+			return
+		}
+
+		opponentLink := opponentCell.Find("a.teamLink, a[href*='teams.jsp']").First()
+		opponentName := textWithoutClasses(opponentLink, "wltRecord", "playoff")
+		if opponentName == "" {
+			opponentName = cleanText(opponentCell.Text())
+		}
+
+		var opponent TeamRef
+		if href, ok := opponentLink.Attr("href"); ok {
+			opponent, _ = parseTeamRef(base, href, ref.Season, opponentName)
+			if opponent.TeamID != "" {
+				opponents[opponent.Key()] = opponent
+			}
+		}
+
+		playoff := ""
+		if row.Find(".playoff").Length() > 0 {
+			playoff = cleanText(row.Find(".playoff").First().Text())
+		}
+		games = append(games, GameResult{
+			Season:         ref.Season,
+			SourceTeamID:   ref.TeamID,
+			GameDate:       cellText(row, ".gameDate"),
+			HomeAway:       cellText(row, ".homeAway"),
+			OpponentTeamID: opponent.TeamID,
+			Result:         cellText(row, ".result"),
+			Score:          cellText(row, ".score"),
+			Notes:          cellText(row, ".resultNote"),
+			Playoff:        playoff,
+		})
+	})
+
+	opponentRefs := make([]TeamRef, 0, len(opponents))
+	for _, opponent := range opponents {
+		opponentRefs = append(opponentRefs, opponent)
+	}
+	slices.SortFunc(opponentRefs, func(a, b TeamRef) int { return strings.Compare(a.Key(), b.Key()) })
+	return team, games, opponentRefs, nil
+}
+
+func parseTeamRef(base *url.URL, href string, defaultSeason int, name string) (TeamRef, error) {
+	resolved, err := resolveURL(base, href)
+	if err != nil || !sameHost(base, resolved) || !strings.HasSuffix(resolved.Path, "/teams.jsp") {
+		return TeamRef{}, fmt.Errorf("not a team URL")
+	}
+
+	teamID := resolved.Query().Get("teamID")
+	season := defaultSeason
+	if rawYear := resolved.Query().Get("year"); rawYear != "" {
+		season, err = strconv.Atoi(rawYear)
+		if err != nil {
+			return TeamRef{}, fmt.Errorf("invalid team year %q", rawYear)
+		}
+	}
+	if teamID == "" || season == 0 {
+		return TeamRef{}, fmt.Errorf("team URL is missing teamID or year")
+	}
+	if season < 2000 {
+		return TeamRef{}, fmt.Errorf("team season %d is before 2000", season)
+	}
+
+	if host := strings.TrimPrefix(strings.ToLower(resolved.Host), "www."); host == "joeeitel.com" {
+		resolved.Scheme = "https"
+		resolved.Host = host
+	}
+	resolved.Path = "/hsfoot/teams.jsp"
+	resolved.RawQuery = url.Values{"teamID": {teamID}, "year": {strconv.Itoa(season)}}.Encode()
+	resolved.Fragment = ""
+	return TeamRef{Season: season, TeamID: teamID, Name: cleanText(name), URL: resolved.String()}, nil
+}
+
+func resolveURL(base *url.URL, href string) (*url.URL, error) {
+	parsed, err := url.Parse(strings.TrimSpace(href))
+	if err != nil {
+		return nil, err
+	}
+	return base.ResolveReference(parsed), nil
+}
+
+func sameHost(a, b *url.URL) bool {
+	aHost := strings.TrimPrefix(strings.ToLower(a.Hostname()), "www.")
+	bHost := strings.TrimPrefix(strings.ToLower(b.Hostname()), "www.")
+	return aHost != "" && aHost == bHost
+}
+
+func parseSchoolName(caption *goquery.Selection, ref TeamRef) string {
+	text := cleanText(caption.Text())
+	year := strconv.Itoa(ref.Season)
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?i)^` + regexp.QuoteMeta(year) + `\s+(.+?)\s+Football\b`),
+		regexp.MustCompile(`(?i)^(.+?)\s+` + regexp.QuoteMeta(year) + `\s+Football\b`),
+	}
+	for _, pattern := range patterns {
+		if match := pattern.FindStringSubmatch(text); len(match) == 2 {
+			return cleanText(match[1])
+		}
+	}
+	return cleanText(ref.Name)
+}
+
+func parseMascot(name, displayName string) string {
+	nameWords := strings.Fields(name)
+	displayWords := strings.Fields(displayName)
+	if len(nameWords) == 0 || len(displayWords) <= len(nameWords) {
+		return ""
+	}
+	for index, word := range nameWords {
+		if !strings.EqualFold(word, displayWords[index]) {
+			return ""
+		}
+	}
+	return strings.Join(displayWords[len(nameWords):], " ")
+}
+
+func parseLocation(lines []string) (city, state, county string) {
+	for _, line := range lines {
+		if strings.HasSuffix(strings.ToLower(line), " county") {
+			county = strings.TrimSpace(line[:len(line)-len(" County")])
+			continue
+		}
+		parts := strings.Split(line, ",")
+		if len(parts) == 2 && city == "" {
+			city = cleanText(parts[0])
+			state = cleanText(parts[1])
+		}
+	}
+	return city, state, county
+}
+
+func parseColors(header *goquery.Selection) (primary, secondary string) {
+	style, _ := header.Attr("style")
+	for declaration := range strings.SplitSeq(style, ";") {
+		property, value, ok := strings.Cut(declaration, ":")
+		if !ok {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(property)) {
+		case "background-color":
+			primary = strings.TrimSpace(value)
+		case "color":
+			secondary = strings.TrimSpace(value)
+		}
+	}
+	return primary, secondary
+}
+
+func parseDivisionRegion(text string) (division, region string) {
+	match := divisionPattern.FindStringSubmatch(text)
+	if len(match) != 3 {
+		return "", ""
+	}
+	return cleanText(match[1]), cleanText(match[2])
+}
+
+func linesWithBreaks(selection *goquery.Selection) []string {
+	if selection.Length() == 0 {
+		return nil
+	}
+	var builder strings.Builder
+	writeNodeText(&builder, selection.Get(0))
+	rawLines := strings.Split(builder.String(), "\n")
+	lines := make([]string, 0, len(rawLines))
+	for _, line := range rawLines {
+		if line = cleanText(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+func writeNodeText(builder *strings.Builder, node *html.Node) {
+	if node.Type == html.TextNode {
+		builder.WriteString(node.Data)
+	}
+	if node.Type == html.ElementNode && node.Data == "br" {
+		builder.WriteByte('\n')
+	}
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		writeNodeText(builder, child)
+	}
+}
+
+func textWithoutClasses(selection *goquery.Selection, excluded ...string) string {
+	if selection.Length() == 0 {
+		return ""
+	}
+	clone := selection.Clone()
+	for _, class := range excluded {
+		clone.Find("." + class).Remove()
+	}
+	return cleanText(clone.Text())
+}
+
+func cellText(row *goquery.Selection, selector string) string {
+	return cleanText(row.Find(selector).First().Text())
+}
+
+func cleanText(value string) string {
+	return strings.Join(strings.Fields(value), " ")
+}
+
+func teamKey(season int, teamID string) string {
+	return strconv.Itoa(season) + ":" + teamID
+}
