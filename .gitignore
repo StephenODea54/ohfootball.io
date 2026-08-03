@@ -1,0 +1,25 @@
+# Ignore everything
+*
+
+# But descend into directories
+!*/
+
+# but still exclude generated folders
+*bin
+
+# And permit certain files
+!.dockerignore
+!.gitignore
+!Dockerfile
+!go.mod
+!go.sum
+!go.work
+!go.work.sum
+!LICENSE
+!Makefile
+
+# And filetypes
+!*.go
+!*.md
+!*.sql
+!*.yaml
