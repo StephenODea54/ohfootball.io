@@ -9,6 +9,7 @@
 
 # And permit certain files
 !.dockerignore
+!.env.example
 !.gitignore
 !Dockerfile
 !go.mod
@@ -19,11 +20,15 @@
 !Makefile
 
 # And filetypes
+!*.css
 !*.go
+!*.json
 !*.md
 !*.py
 !*.sql
 !*.toml
+!*.ts
+!*.tsx
 !*.yaml
 !*.yml
 
