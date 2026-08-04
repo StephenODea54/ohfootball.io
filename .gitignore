@@ -21,7 +21,9 @@
 # And filetypes
 !*.go
 !*.md
+!*.py
 !*.sql
+!*.toml
 !*.yaml
 !*.yml
 

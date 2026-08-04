@@ -53,6 +53,54 @@ services:
     profiles:
       - tools
 
+  mlflow:
+    build:
+      context: .
+      dockerfile: services/predictor/Dockerfile
+    entrypoint: ["mlflow"]
+    command:
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      - --backend-store-uri=sqlite:////mlflow/mlflow.db
+      - --artifacts-destination=/mlflow/artifacts
+      - --allowed-hosts=localhost:*,127.0.0.1:*,mlflow:*
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:5000/health').read()
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - tools
+
+  predictor:
+    build:
+      context: .
+      dockerfile: services/predictor/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://im_batman:shhhhhhhhh@postgres:5432/ohfootball
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      OHFOOTBALL_MARTS_SCHEMA: ohfootball_marts
+      OHFOOTBALL_TIME_ZONE: America/New_York
+      GIT_PYTHON_REFRESH: quiet
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    profiles:
+      - tools
+
 volumes:
   postgres_data:
   pgadmin_data:
+  mlflow_data:

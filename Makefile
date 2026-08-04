@@ -1,5 +1,6 @@
 .PHONY: build test vet fmt sqlc-generate sqlc-vet db-up db-down db-logs \
-	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve
+	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
+	predictor-build predictor-test mlflow-up mlflow-down elo-run
 
 DBT := docker compose run --rm dbt
 
@@ -9,10 +10,12 @@ build:
 test:
 	$(MAKE) -C services/scraper test
 	go -C pkg/database test ./...
+	$(MAKE) -C services/predictor test
 
 vet:
 	$(MAKE) -C services/scraper vet
 	go -C pkg/database vet ./...
+	$(MAKE) -C services/predictor vet
 
 fmt:
 	$(MAKE) -C services/scraper fmt
@@ -55,3 +58,18 @@ dbt-docs-generate:
 
 dbt-docs-serve:
 	docker compose run --rm --service-ports dbt docs serve --host 0.0.0.0 --port 8081
+
+predictor-build:
+	docker compose build predictor
+
+predictor-test:
+	$(MAKE) -C services/predictor test
+
+mlflow-up:
+	docker compose --profile tools up -d --wait mlflow
+
+mlflow-down:
+	docker compose --profile tools stop mlflow
+
+elo-run:
+	docker compose run --rm predictor run $(ARGS)
