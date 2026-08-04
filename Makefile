@@ -1,4 +1,7 @@
-.PHONY: build test vet fmt sqlc-generate sqlc-vet db-up db-down db-logs
+.PHONY: build test vet fmt sqlc-generate sqlc-vet db-up db-down db-logs \
+	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve
+
+DBT := docker compose run --rm dbt
 
 build:
 	$(MAKE) -C services/scraper build
@@ -26,3 +29,29 @@ db-up:
 
 db-down:
 	docker compose down
+
+# Pass any dbt command or selector with, for example:
+# make dbt ARGS="run --select stg_games"
+dbt:
+	$(DBT) $(ARGS)
+
+dbt-debug:
+	$(DBT) debug
+
+dbt-parse:
+	$(DBT) parse
+
+dbt-run:
+	$(DBT) run
+
+dbt-test:
+	$(DBT) test
+
+dbt-build:
+	$(DBT) build
+
+dbt-docs-generate:
+	$(DBT) docs generate
+
+dbt-docs-serve:
+	docker compose run --rm --service-ports dbt docs serve --host 0.0.0.0 --port 8081

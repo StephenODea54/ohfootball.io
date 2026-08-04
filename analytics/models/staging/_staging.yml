@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: stg_teams
+    description: Clean, typed team records with one row for every raw team row.
+    columns:
+      - name: team_record_id
+        description: Surrogate identifier assigned to the raw record during ingestion.
+        data_tests:
+          - not_null
+          - unique
+      - name: scrape_run_id
+        description: Scrape run that produced this record.
+        data_tests:
+          - not_null
+      - name: season
+        description: Football season year.
+        data_tests:
+          - not_null
+      - name: team_id
+        description: Team identifier assigned by the source site.
+        data_tests:
+          - not_null
+      - name: name
+        description: Team name supplied by the source site.
+        data_tests:
+          - not_null
+      - name: state_code
+        description: Uppercase state abbreviation when supplied by the source.
+      - name: division
+        description: OHSAA division as an integer from 1 through 7.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7]
+      - name: region
+        description: OHSAA region as an integer.
+
+  - name: stg_games
+    description: Clean, typed game records with one row for every raw game row.
+    columns:
+      - name: game_record_id
+        description: Surrogate identifier assigned to the raw record during ingestion.
+        data_tests:
+          - not_null
+          - unique
+      - name: scrape_run_id
+        description: Scrape run that produced this record.
+        data_tests:
+          - not_null
+      - name: season
+        description: Football season year.
+        data_tests:
+          - not_null
+      - name: source_team_id
+        description: Team whose schedule supplied the game.
+        data_tests:
+          - not_null
+      - name: game_date
+        description: Game date derived from the season and source month/day.
+        data_tests:
+          - not_null
+      - name: is_source_team_home
+        description: Whether the source team is home; false for away and neutral-site games.
+        data_tests:
+          - not_null
+      - name: is_opponent_team_home
+        description: Whether the opponent is home; false for source-home and neutral-site games.
+        data_tests:
+          - not_null
+      - name: result
+        description: Normalized W, L, T, C, or unknown result from the source team's perspective.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [W, L, T, C, unknown]
+      - name: source_team_score
+        description: Score for the team whose schedule supplied the game.
+      - name: opponent_score
+        description: Opponent score.
+      - name: is_playoff_game
+        description: Whether the source marked this as a playoff game.
+        data_tests:
+          - not_null

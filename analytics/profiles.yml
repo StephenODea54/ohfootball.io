@@ -1,0 +1,12 @@
+ohfootball:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_PORT', '5432') | int }}"
+      user: "{{ env_var('DBT_USER', 'im_batman') }}"
+      password: "{{ env_var('DBT_PASSWORD', 'shhhhhhhhh') }}"
+      dbname: "{{ env_var('DBT_DATABASE', 'ohfootball') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'ohfootball_stg') }}"
+      threads: 4

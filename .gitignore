@@ -23,3 +23,10 @@
 !*.md
 !*.sql
 !*.yaml
+!*.yml
+
+# dbt-generated artifacts
+analytics/.user.yml
+analytics/dbt_packages/
+analytics/logs/
+analytics/target/

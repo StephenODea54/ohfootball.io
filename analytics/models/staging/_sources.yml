@@ -1,0 +1,55 @@
+version: 2
+
+sources:
+  - name: ohfootball_raw
+    description: Unmodified records loaded by the Joe Eitel scraper.
+    schema: ohfootball_raw
+    tables:
+      - name: teams
+        description: One team record per scrape run, season, and source team.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: scrape_run_id
+            data_tests:
+              - not_null
+          - name: season
+            data_tests:
+              - not_null
+          - name: team_id
+            data_tests:
+              - not_null
+          - name: name
+            data_tests:
+              - not_null
+
+      - name: games
+        description: Games scraped from each source team's schedule.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: scrape_run_id
+            data_tests:
+              - not_null
+          - name: season
+            data_tests:
+              - not_null
+          - name: source_team_id
+            data_tests:
+              - not_null
+          - name: game_date
+            data_tests:
+              - not_null
+          - name: home_away
+            description: Raw location code; N is retained for legitimate neutral-site games.
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: [H, A, N]
+          - name: result
+            data_tests:
+              - not_null
