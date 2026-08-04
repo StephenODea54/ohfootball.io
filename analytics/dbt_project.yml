@@ -19,3 +19,9 @@ models:
   ohfootball:
     staging:
       +materialized: view
+    intermediate:
+      +materialized: view
+      +schema: ohfootball_int
+    marts:
+      +materialized: table
+      +schema: ohfootball_marts

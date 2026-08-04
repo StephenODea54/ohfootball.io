@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: int_team_observations
+    description: One cleaned team observation for every team in each successful scraper run.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "scrape_run_id || '-' || season || '-' || team_id"
+    columns:
+      - name: team_key
+        description: Deterministic UUIDv5 identifying a team within a season.
+        data_tests:
+          - not_null
+      - name: scrape_run_id
+        data_tests:
+          - not_null
+      - name: observed_at
+        data_tests:
+          - not_null
+      - name: state_hash
+        data_tests:
+          - not_null
+
+  - name: int_games_canonicalized
+    description: One actual game per successful scrape run, reconciled from one or two schedule perspectives.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "scrape_run_id || '-' || game_key"
+    columns:
+      - name: game_key
+        description: Deterministic UUIDv5 built from season, date, and sorted team identifiers.
+        data_tests:
+          - not_null
+      - name: scrape_run_id
+        data_tests:
+          - not_null
+      - name: observed_at
+        data_tests:
+          - not_null
+      - name: team_a_id
+        description: Lexicographically first team identifier, used for deterministic orientation.
+        data_tests:
+          - not_null
+      - name: team_b_id
+        description: Lexicographically second team identifier, used for deterministic orientation.
+        data_tests:
+          - not_null
+      - name: team_a_result
+        description: Result from team A's perspective.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [W, L, T, C, unknown]
+      - name: source_perspective_count
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+      - name: source_record_count
+        description: Number of raw schedule rows reconciled into this game observation.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+      - name: has_conflicting_perspectives
+        description: True when the two source schedules disagree on canonical game attributes.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [false]
+      - name: state_hash
+        data_tests:
+          - not_null

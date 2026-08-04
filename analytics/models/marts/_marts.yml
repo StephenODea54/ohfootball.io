@@ -1,0 +1,114 @@
+version: 2
+
+models:
+  - name: dim_teams
+    description: Type II team dimension tracking changes to the complete business row.
+    columns:
+      - name: team_version_key
+        description: Surrogate UUID for this specific Type II version.
+        data_tests:
+          - not_null
+          - unique
+      - name: team_key
+        description: Durable UUID for the team within a season, shared by all versions.
+        data_tests:
+          - not_null
+      - name: season
+        data_tests:
+          - not_null
+      - name: source_id
+        description: Team identifier supplied by the source system.
+        data_tests:
+          - not_null
+      - name: name
+        data_tests:
+          - not_null
+      - name: valid_from
+        description: Inclusive time at which this version was first observed.
+        data_tests:
+          - not_null
+      - name: valid_to
+        description: Exclusive time at which the next changed version was observed; null for current.
+      - name: is_current
+        data_tests:
+          - not_null
+
+  - name: dim_dates
+    description: Calendar dimension spanning every date between the earliest and latest observed games.
+    columns:
+      - name: date_key
+        data_tests:
+          - not_null
+          - unique
+      - name: date_day
+        data_tests:
+          - not_null
+          - unique
+
+  - name: fct_games
+    description: Type II game fact with one canonical matchup per version rather than one row per team schedule.
+    columns:
+      - name: game_version_key
+        description: Surrogate UUID for this specific Type II version.
+        data_tests:
+          - not_null
+          - unique
+      - name: game_key
+        description: Durable deterministic UUID for season, game date, and the two participating teams.
+        data_tests:
+          - not_null
+      - name: game_date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: team_a_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_key
+      - name: team_b_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_key
+      - name: team_a_result
+        description: Result from team A's perspective.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [W, L, T, C, unknown]
+      - name: team_b_result
+        description: Result from team B's perspective.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [W, L, T, C, unknown]
+      - name: is_team_a_home
+        description: Whether team A is the home team; false for away and neutral-site games.
+        data_tests:
+          - not_null
+      - name: is_team_b_home
+        description: Whether team B is the home team; false for away and neutral-site games.
+        data_tests:
+          - not_null
+      - name: is_playoff_game
+        data_tests:
+          - not_null
+      - name: valid_from
+        description: Inclusive time at which this game version was first observed.
+        data_tests:
+          - not_null
+      - name: valid_to
+        description: Exclusive time at which the next changed version was observed; null for current.
+      - name: is_current
+        data_tests:
+          - not_null
