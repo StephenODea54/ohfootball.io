@@ -1,7 +1,14 @@
 from datetime import date
 import unittest
 
-from ohfootball_predictor.elo import EloConfig, Game, backtest, predict, win_probability
+from ohfootball_predictor.elo import (
+    EloConfig,
+    Game,
+    backtest,
+    predict,
+    rating_update_multiplier,
+    win_probability,
+)
 
 
 def game(
@@ -12,6 +19,14 @@ def game(
     result: str,
     *,
     season: int = 2025,
+    team_a_program_id: str | None = None,
+    team_b_program_id: str | None = None,
+    team_a_division: int | None = None,
+    team_b_division: int | None = None,
+    is_team_a_home: bool = False,
+    is_team_b_home: bool = False,
+    team_a_score: int | None = None,
+    team_b_score: int | None = None,
 ) -> Game:
     return Game(
         game_key=game_key,
@@ -22,6 +37,14 @@ def game(
         team_b_key=team_b,
         team_b_name=team_b,
         team_a_result=result,
+        team_a_program_id=team_a_program_id,
+        team_b_program_id=team_b_program_id,
+        team_a_division=team_a_division,
+        team_b_division=team_b_division,
+        is_team_a_home=is_team_a_home,
+        is_team_b_home=is_team_b_home,
+        team_a_score=team_a_score,
+        team_b_score=team_b_score,
     )
 
 
@@ -74,6 +97,110 @@ class BacktestTests(unittest.TestCase):
 
         self.assertEqual(result.predictions[1].team_a_win_probability, 0.5)
 
+    def test_carries_program_rating_into_the_next_season(self) -> None:
+        result = backtest(
+            [
+                game(
+                    "one",
+                    date(2024, 8, 1),
+                    "2024-a",
+                    "2024-b",
+                    "W",
+                    season=2024,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                ),
+                game(
+                    "two",
+                    date(2025, 8, 1),
+                    "2025-a",
+                    "2025-b",
+                    "W",
+                    season=2025,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                ),
+            ],
+            EloConfig(season_carryover=0.5),
+        )
+
+        self.assertEqual(result.predictions[1].team_a_rating, 1508.0)
+        self.assertEqual(result.predictions[1].team_b_rating, 1492.0)
+        self.assertGreater(result.predictions[1].team_a_win_probability, 0.5)
+
+    def test_applies_division_prior_to_a_new_team(self) -> None:
+        result = backtest(
+            [
+                game(
+                    "one",
+                    date(2025, 8, 1),
+                    "a",
+                    "b",
+                    "W",
+                    team_a_division=1,
+                    team_b_division=7,
+                )
+            ],
+            EloConfig(division_rating_step=10),
+        )
+
+        self.assertEqual(result.predictions[0].team_a_rating, 1530.0)
+        self.assertEqual(result.predictions[0].team_b_rating, 1470.0)
+
+    def test_carryover_regresses_toward_division_prior_without_compounding(self) -> None:
+        config = EloConfig(season_carryover=0.5, division_rating_step=10)
+        result = backtest(
+            [
+                game(
+                    "one",
+                    date(2024, 8, 1),
+                    "2024-a",
+                    "2024-b",
+                    "W",
+                    season=2024,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                    team_a_division=1,
+                    team_b_division=7,
+                ),
+                game(
+                    "two",
+                    date(2025, 8, 1),
+                    "2025-a",
+                    "2025-b",
+                    "W",
+                    season=2025,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                    team_a_division=1,
+                    team_b_division=7,
+                ),
+            ],
+            config,
+        )
+
+        prior = 1530.0
+        expected = prior + 0.5 * (result.ratings[(2024, "2024-a")] - prior)
+        self.assertAlmostEqual(result.predictions[1].team_a_rating, expected)
+
+    def test_home_advantage_changes_probability_not_stored_rating(self) -> None:
+        result = backtest(
+            [
+                game(
+                    "one",
+                    date(2025, 8, 1),
+                    "a",
+                    "b",
+                    "W",
+                    is_team_a_home=True,
+                )
+            ],
+            EloConfig(home_advantage=30),
+        )
+
+        self.assertEqual(result.predictions[0].team_a_rating, 1500.0)
+        self.assertGreater(result.predictions[0].team_a_win_probability, 0.5)
+
     def test_unplayed_games_do_not_change_ratings(self) -> None:
         result = backtest(
             [
@@ -92,6 +219,44 @@ class BacktestTests(unittest.TestCase):
         self.assertGreater(predictions[0].team_a_win_probability, 0.5)
         self.assertEqual(result.ratings, ratings_before)
 
+    def test_upcoming_game_uses_prior_season_program_rating(self) -> None:
+        config = EloConfig(season_carryover=0.5)
+        result = backtest(
+            [
+                game(
+                    "played",
+                    date(2024, 8, 1),
+                    "2024-a",
+                    "2024-b",
+                    "W",
+                    season=2024,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                )
+            ],
+            config,
+        )
+        predictions = predict(
+            [
+                game(
+                    "future",
+                    date(2025, 8, 1),
+                    "2025-a",
+                    "2025-b",
+                    "unknown",
+                    season=2025,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                )
+            ],
+            result.ratings,
+            config,
+            result.program_ratings,
+        )
+
+        self.assertEqual(predictions[0].team_a_rating, 1508.0)
+        self.assertEqual(predictions[0].team_b_rating, 1492.0)
+
     def test_rating_points_are_conserved(self) -> None:
         config = EloConfig()
         result = backtest(
@@ -102,6 +267,38 @@ class BacktestTests(unittest.TestCase):
         self.assertEqual(
             result.ratings[(2025, "a")] + result.ratings[(2025, "b")],
             config.initial_rating * 2,
+        )
+
+    def test_margin_multiplier_is_logarithmic_and_capped(self) -> None:
+        close_game = game(
+            "close",
+            date(2025, 8, 1),
+            "a",
+            "b",
+            "W",
+            team_a_score=21,
+            team_b_score=20,
+        )
+        blowout = game(
+            "blowout",
+            date(2025, 8, 2),
+            "a",
+            "b",
+            "W",
+            team_a_score=70,
+            team_b_score=0,
+        )
+        config = EloConfig(margin_weight=0.5, margin_multiplier_cap=2.0)
+
+        self.assertGreater(rating_update_multiplier(close_game, config), 1.0)
+        self.assertEqual(rating_update_multiplier(blowout, config), 2.0)
+
+    def test_missing_score_uses_standard_update(self) -> None:
+        unscored_game = game("forfeit", date(2025, 8, 1), "a", "b", "W")
+
+        self.assertEqual(
+            rating_update_multiplier(unscored_game, EloConfig(margin_weight=0.5)),
+            1.0,
         )
 
 

@@ -9,6 +9,7 @@ class RepositoryContractTests(unittest.TestCase):
 
         self.assertIn("team_a.state_code = 'OH'", query)
         self.assertIn("team_b.state_code = 'OH'", query)
+        self.assertIn("COALESCE(game.notes, '') <> 'double forfeit'", query)
 
     def test_rejects_an_invalid_schema_before_connecting(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid marts schema"):

@@ -4,7 +4,7 @@ This service turns the canonical game history in `ohfootball_marts.fct_games`
 into pregame win probabilities. The first version intentionally implements a
 plain, inspectable Elo baseline before adding football-specific assumptions.
 
-## Version 1 behavior
+## Permanent baseline behavior
 
 - Every team begins each season at 1500.
 - Only final wins and losses update ratings.
@@ -35,6 +35,30 @@ new rating A = old rating A + K * (actual result - predicted probability)
 
 Team B receives the opposite change, so total rating points are conserved.
 
+The baseline defaults remain deliberately unchanged. That gives every future
+strategy a stable control instead of silently moving the goalposts.
+
+## Configurable strategy
+
+The engine also supports a small set of optional, inspectable football
+assumptions:
+
+- `--k-factor` controls how quickly a result changes a rating.
+- `--home-advantage` adds rating points to the home team for the pregame
+  probability. It does not become part of the team's stored strength.
+- `--season-carryover` carries a fraction of the prior season's final program
+  rating into the next season. Program identity uses the stable source team ID.
+- `--division-rating-step` sets a season-opening prior of
+  `1500 + (4 - division) * step`. When carryover exists, the prior season's
+  rating is regressed toward that current-season prior; division effects do not
+  compound across years.
+- `--margin-weight` applies a capped logarithmic margin-of-victory multiplier
+  to rating updates. Missing scores, including ordinary forfeits, use the
+  standard update.
+
+Games marked as double forfeits are excluded because their two losses cannot be
+represented by Elo's complementary, zero-sum result update.
+
 ## Running it
 
 Build the dbt marts, start MLflow, and run the predictor:
@@ -62,6 +86,19 @@ Use `ARGS` to change the cutoff or deliberately run a parameter experiment:
 make elo-run ARGS="--as-of-date 2026-08-20 --k-factor 24 --run-name k-24"
 ```
 
+Run a chronological parameter sweep with comma-separated candidate values:
+
+```bash
+make elo-sweep ARGS="--parameter k_factor --values 96,128,160,192,224 --run-prefix k"
+```
+
+By default, sweeps tune on 2000–2021 and validate on 2022–2023. Games after
+2023 are not processed by a sweep, which protects the 2024–2025 final holdout.
+Override the windows with `--tuning-seasons 2000:2020` and
+`--validation-seasons 2021:2023`. Sweep runs log parameters and window metrics
+to MLflow without duplicating large CSV artifacts; a final `run` logs the full
+artifacts and per-season metrics.
+
 MLflow is only an experiment tracker here. This project does not use its model
 registry or deployment features, and Elo does not need a serialized estimator.
 
@@ -84,7 +121,38 @@ teams predicted near 70% should win about 70% of those games. Metrics should
 also be segmented by season and week so degradation is visible rather than
 hidden in a lifetime average.
 
-## Experiments to try later
+## 2026-08-05 experiment result
+
+The current candidate strategy was selected by log loss on 2022–2023, with
+Brier score as confirmation and favorite accuracy as a guardrail. Parameters
+were tuned on 2000–2021. The untouched 2024–2025 seasons were evaluated only
+after the choices were fixed.
+
+Recommended candidate:
+
+```bash
+make elo-run ARGS="--k-factor 192 --home-advantage 30 --season-carryover 0.85 --division-rating-step 140 --run-name champion-v2-corrected"
+```
+
+| 2024–2025 holdout | Plain baseline | Candidate |
+| --- | ---: | ---: |
+| Games | 7,626 | 7,626 |
+| Favorite coverage | 85.12% | 100.00% |
+| Favorite accuracy | 74.07% | 78.98% |
+| Brier score | 0.2156 | 0.1416 |
+| Log loss | 0.6225 | 0.4323 |
+
+Keep K=192, 30 points of home advantage, 85% season carryover, and a
+140-point division step as the candidate. Keep the plain defaults as the
+permanent control. Do not keep margin of victory yet: a weight of 0.05 improved
+validation log loss by only 0.00029 while worsening it across the longer tuning
+window, so the gain was not stable enough to justify using scores.
+
+The tracked candidate is MLflow run `b1a0eda31de94c4faa7c74487b11c8e2`.
+Earlier division experiments whose prior accidentally compounded across years
+are tagged `validation_status=invalid` in MLflow.
+
+## Experiments to try next
 
 Keep the season-reset, result-only model as the permanent baseline. Add one idea
 at a time and compare it against held-out later seasons with a chronological
@@ -92,11 +160,10 @@ backtest.
 
 ### Rating mechanics
 
-- Tune the K-factor to control how quickly recent results replace prior belief.
 - Tune the rating scale to change how rating differences map to probabilities.
 - Compare a fixed K-factor with one that changes by week or games played.
-- Add offseason regression toward 1500 after durable cross-season program
-  identities exist.
+- Check whether the chosen values remain stable with rolling-origin validation
+  rather than one tuning and validation boundary.
 
 Changing every team's initial rating from 1500 to another shared number cannot
 change predictions; Elo depends on rating differences. Initial rating
@@ -105,11 +172,9 @@ carryover.
 
 ### Football context
 
-- Estimate a home-field rating adjustment.
-- Test division-based starting priors without hard-coding an assumed ordering.
 - Test division or playoff multipliers on K-factor.
-- Add a margin-of-victory multiplier and cap it so one extreme score cannot
-  dominate a season.
+- Revisit margin of victory only with multiple validation windows; keep its
+  multiplier capped so one extreme score cannot dominate a season.
 - Decide how forfeits and ties should affect ratings.
 
 ### Evaluation and monitoring

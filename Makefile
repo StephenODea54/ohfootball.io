@@ -1,6 +1,6 @@
 .PHONY: build test vet fmt sqlc-generate sqlc-vet db-up db-down db-logs \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
-	predictor-build predictor-test mlflow-up mlflow-down elo-run
+	predictor-build predictor-test mlflow-up mlflow-down elo-run elo-sweep
 
 DBT := docker compose run --rm dbt
 
@@ -73,3 +73,6 @@ mlflow-down:
 
 elo-run:
 	docker compose run --rm predictor run $(ARGS)
+
+elo-sweep:
+	docker compose run --rm predictor sweep $(ARGS)

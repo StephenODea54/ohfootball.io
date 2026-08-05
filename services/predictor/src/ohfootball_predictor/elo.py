@@ -1,4 +1,4 @@
-"""A small, deterministic implementation of season-reset Elo."""
+"""A small, deterministic implementation of configurable Elo."""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from itertools import groupby
+from math import log1p
 from typing import Iterable, Literal, Mapping
 
 Result = Literal["W", "L", "unknown"]
 RatingKey = tuple[int, str]
+ProgramRatingKey = tuple[int, str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,12 +19,27 @@ class EloConfig:
     initial_rating: float = 1500.0
     k_factor: float = 32.0
     rating_scale: float = 400.0
+    home_advantage: float = 0.0
+    season_carryover: float = 0.0
+    division_rating_step: float = 0.0
+    margin_weight: float = 0.0
+    margin_multiplier_cap: float = 2.5
 
     def __post_init__(self) -> None:
         if self.k_factor <= 0:
             raise ValueError("k_factor must be greater than zero")
         if self.rating_scale <= 0:
             raise ValueError("rating_scale must be greater than zero")
+        if self.home_advantage < 0:
+            raise ValueError("home_advantage cannot be negative")
+        if not 0.0 <= self.season_carryover <= 1.0:
+            raise ValueError("season_carryover must be between zero and one")
+        if self.division_rating_step < 0:
+            raise ValueError("division_rating_step cannot be negative")
+        if self.margin_weight < 0:
+            raise ValueError("margin_weight cannot be negative")
+        if self.margin_multiplier_cap < 1:
+            raise ValueError("margin_multiplier_cap must be at least one")
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +52,14 @@ class Game:
     team_b_key: str
     team_b_name: str
     team_a_result: Result
+    team_a_program_id: str | None = None
+    team_b_program_id: str | None = None
+    team_a_division: int | None = None
+    team_b_division: int | None = None
+    is_team_a_home: bool = False
+    is_team_b_home: bool = False
+    team_a_score: int | None = None
+    team_b_score: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,12 +75,16 @@ class Prediction:
     team_b_rating: float
     team_a_win_probability: float
     actual_team_a_score: float | None
+    is_team_a_home: bool = False
+    is_team_b_home: bool = False
+    rating_update_multiplier: float = 1.0
 
 
 @dataclass(frozen=True, slots=True)
 class BacktestResult:
     predictions: tuple[Prediction, ...]
     ratings: Mapping[RatingKey, float]
+    program_ratings: Mapping[ProgramRatingKey, float]
 
 
 def win_probability(
@@ -82,6 +111,7 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
         key=lambda game: (game.season, game.game_date, game.game_key),
     )
     ratings: dict[RatingKey, float] = {}
+    program_ratings: dict[ProgramRatingKey, float] = {}
     predictions: list[Prediction] = []
 
     for _, daily_games_iterator in groupby(
@@ -90,19 +120,42 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
     ):
         daily_games = tuple(daily_games_iterator)
         rating_changes: defaultdict[RatingKey, float] = defaultdict(float)
+        daily_start_ratings: dict[RatingKey, float] = {}
+        daily_programs: dict[RatingKey, str] = {}
 
         for game in daily_games:
             team_a = (game.season, game.team_a_key)
             team_b = (game.season, game.team_b_key)
-            rating_a = ratings.get(team_a, config.initial_rating)
-            rating_b = ratings.get(team_b, config.initial_rating)
+            program_a = game.team_a_program_id or game.team_a_key
+            program_b = game.team_b_program_id or game.team_b_key
+            daily_programs[team_a] = program_a
+            daily_programs[team_b] = program_b
+            rating_a = _pregame_rating(
+                team=team_a,
+                program_id=program_a,
+                division=game.team_a_division,
+                ratings=ratings,
+                daily_start_ratings=daily_start_ratings,
+                program_ratings=program_ratings,
+                config=config,
+            )
+            rating_b = _pregame_rating(
+                team=team_b,
+                program_id=program_b,
+                division=game.team_b_division,
+                ratings=ratings,
+                daily_start_ratings=daily_start_ratings,
+                program_ratings=program_ratings,
+                config=config,
+            )
             probability_a = win_probability(
-                rating_a,
-                rating_b,
+                rating_a + config.home_advantage * game.is_team_a_home,
+                rating_b + config.home_advantage * game.is_team_b_home,
                 rating_scale=config.rating_scale,
             )
             actual_a = 1.0 if game.team_a_result == "W" else 0.0
-            change_a = config.k_factor * (actual_a - probability_a)
+            update_multiplier = rating_update_multiplier(game, config)
+            change_a = config.k_factor * update_multiplier * (actual_a - probability_a)
 
             predictions.append(
                 _prediction(
@@ -111,32 +164,61 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
                     rating_b=rating_b,
                     probability_a=probability_a,
                     actual_a=actual_a,
+                    update_multiplier=update_multiplier,
                 )
             )
             rating_changes[team_a] += change_a
             rating_changes[team_b] -= change_a
 
         for team, change in rating_changes.items():
-            ratings[team] = ratings.get(team, config.initial_rating) + change
+            starting_rating = (
+                ratings[team] if team in ratings else daily_start_ratings[team]
+            )
+            ratings[team] = starting_rating + change
+            program_ratings[(team[0], daily_programs[team])] = ratings[team]
 
-    return BacktestResult(predictions=tuple(predictions), ratings=dict(ratings))
+    return BacktestResult(
+        predictions=tuple(predictions),
+        ratings=dict(ratings),
+        program_ratings=dict(program_ratings),
+    )
 
 
 def predict(
     games: Iterable[Game],
     ratings: Mapping[RatingKey, float],
     config: EloConfig,
+    program_ratings: Mapping[ProgramRatingKey, float] | None = None,
 ) -> tuple[Prediction, ...]:
     """Predict unplayed games without changing either team's rating."""
     predictions: list[Prediction] = []
+    prior_program_ratings = program_ratings or {}
     for game in sorted(games, key=lambda item: (item.season, item.game_date, item.game_key)):
         team_a = (game.season, game.team_a_key)
         team_b = (game.season, game.team_b_key)
-        rating_a = ratings.get(team_a, config.initial_rating)
-        rating_b = ratings.get(team_b, config.initial_rating)
+        rating_a = ratings.get(
+            team_a,
+            _initial_team_rating(
+                season=game.season,
+                program_id=game.team_a_program_id or game.team_a_key,
+                division=game.team_a_division,
+                program_ratings=prior_program_ratings,
+                config=config,
+            ),
+        )
+        rating_b = ratings.get(
+            team_b,
+            _initial_team_rating(
+                season=game.season,
+                program_id=game.team_b_program_id or game.team_b_key,
+                division=game.team_b_division,
+                program_ratings=prior_program_ratings,
+                config=config,
+            ),
+        )
         probability_a = win_probability(
-            rating_a,
-            rating_b,
+            rating_a + config.home_advantage * game.is_team_a_home,
+            rating_b + config.home_advantage * game.is_team_b_home,
             rating_scale=config.rating_scale,
         )
         predictions.append(
@@ -146,9 +228,69 @@ def predict(
                 rating_b=rating_b,
                 probability_a=probability_a,
                 actual_a=None,
+                update_multiplier=1.0,
             )
         )
     return tuple(predictions)
+
+
+def rating_update_multiplier(game: Game, config: EloConfig) -> float:
+    if (
+        config.margin_weight == 0
+        or game.team_a_score is None
+        or game.team_b_score is None
+    ):
+        return 1.0
+    margin = abs(game.team_a_score - game.team_b_score)
+    return min(
+        config.margin_multiplier_cap,
+        1.0 + config.margin_weight * log1p(margin),
+    )
+
+
+def _pregame_rating(
+    *,
+    team: RatingKey,
+    program_id: str,
+    division: int | None,
+    ratings: Mapping[RatingKey, float],
+    daily_start_ratings: dict[RatingKey, float],
+    program_ratings: Mapping[ProgramRatingKey, float],
+    config: EloConfig,
+) -> float:
+    if team in ratings:
+        return ratings[team]
+    if team not in daily_start_ratings:
+        daily_start_ratings[team] = _initial_team_rating(
+            season=team[0],
+            program_id=program_id,
+            division=division,
+            program_ratings=program_ratings,
+            config=config,
+        )
+    return daily_start_ratings[team]
+
+
+def _initial_team_rating(
+    *,
+    season: int,
+    program_id: str,
+    division: int | None,
+    program_ratings: Mapping[ProgramRatingKey, float],
+    config: EloConfig,
+) -> float:
+    division_adjustment = (
+        config.division_rating_step * (4 - division)
+        if division is not None
+        else 0.0
+    )
+    prior_rating = config.initial_rating + division_adjustment
+    previous_rating = program_ratings.get((season - 1, program_id))
+    if previous_rating is None:
+        return prior_rating
+    return prior_rating + config.season_carryover * (
+        previous_rating - prior_rating
+    )
 
 
 def _prediction(
@@ -158,6 +300,7 @@ def _prediction(
     rating_b: float,
     probability_a: float,
     actual_a: float | None,
+    update_multiplier: float,
 ) -> Prediction:
     return Prediction(
         game_key=game.game_key,
@@ -171,4 +314,7 @@ def _prediction(
         team_b_rating=rating_b,
         team_a_win_probability=probability_a,
         actual_team_a_score=actual_a,
+        is_team_a_home=game.is_team_a_home,
+        is_team_b_home=game.is_team_b_home,
+        rating_update_multiplier=update_multiplier,
     )

@@ -6,7 +6,7 @@ import csv
 import hashlib
 import json
 from collections import defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -27,6 +27,10 @@ def track_run(
     historical_predictions: tuple[Prediction, ...],
     upcoming_predictions: tuple[Prediction, ...],
     ratings: Mapping[RatingKey, float],
+    evaluation_windows: Mapping[str, Iterable[Prediction]] | None = None,
+    extra_tags: Mapping[str, str] | None = None,
+    log_artifacts: bool = True,
+    log_per_season: bool = True,
 ) -> tuple[str, Evaluation]:
     """Log one reproducible Elo run and return its MLflow ID and evaluation."""
     import mlflow
@@ -37,16 +41,18 @@ def track_run(
     mlflow.set_experiment(experiment_name)
 
     with mlflow.start_run(run_name=run_name) as run:
-        mlflow.set_tags(
-            {
-                "algorithm": "season-reset-elo",
-                "as_of_date": as_of_date.isoformat(),
-                "uses_scores": "false",
-                "uses_home_field": "false",
-                "team_population": "ohsaa-only",
-                "uses_model_registry": "false",
-            }
-        )
+        tags = {
+            "algorithm": "elo",
+            "as_of_date": as_of_date.isoformat(),
+            "uses_scores": str(config.margin_weight > 0).lower(),
+            "uses_home_field": str(config.home_advantage > 0).lower(),
+            "uses_season_carryover": str(config.season_carryover > 0).lower(),
+            "uses_division_prior": str(config.division_rating_step > 0).lower(),
+            "team_population": "ohsaa-only",
+            "uses_model_registry": "false",
+        }
+        tags.update(extra_tags or {})
+        mlflow.set_tags(tags)
         mlflow.log_params(
             {
                 **asdict(config),
@@ -57,39 +63,46 @@ def track_run(
         )
         mlflow.log_metrics(_metrics("overall", overall))
 
-        by_season: defaultdict[int, list[Prediction]] = defaultdict(list)
-        for prediction in historical_predictions:
-            by_season[prediction.season].append(prediction)
-        for season, predictions in sorted(by_season.items()):
-            mlflow.log_metrics(_metrics(f"season_{season}", evaluate(predictions)))
+        for name, predictions in (evaluation_windows or {}).items():
+            window = tuple(predictions)
+            if window:
+                mlflow.log_metrics(_metrics(name, evaluate(window)))
 
-        with TemporaryDirectory(prefix="ohfootball-elo-") as directory:
-            artifact_directory = Path(directory)
-            _write_predictions(
-                artifact_directory / "historical_predictions.csv",
-                historical_predictions,
-            )
-            _write_predictions(
-                artifact_directory / "upcoming_predictions.csv",
-                upcoming_predictions,
-            )
-            _write_ratings(artifact_directory / "current_ratings.csv", ratings)
-            (artifact_directory / "run_summary.json").write_text(
-                json.dumps(
-                    {
-                        "as_of_date": as_of_date.isoformat(),
-                        "config": asdict(config),
-                        "evaluation": asdict(overall),
-                        "training_games": len(games),
-                        "upcoming_games": len(upcoming_predictions),
-                    },
-                    indent=2,
-                    sort_keys=True,
+        if log_per_season:
+            by_season: defaultdict[int, list[Prediction]] = defaultdict(list)
+            for prediction in historical_predictions:
+                by_season[prediction.season].append(prediction)
+            for season, predictions in sorted(by_season.items()):
+                mlflow.log_metrics(_metrics(f"season_{season}", evaluate(predictions)))
+
+        if log_artifacts:
+            with TemporaryDirectory(prefix="ohfootball-elo-") as directory:
+                artifact_directory = Path(directory)
+                _write_predictions(
+                    artifact_directory / "historical_predictions.csv",
+                    historical_predictions,
                 )
-                + "\n",
-                encoding="utf-8",
-            )
-            mlflow.log_artifacts(str(artifact_directory))
+                _write_predictions(
+                    artifact_directory / "upcoming_predictions.csv",
+                    upcoming_predictions,
+                )
+                _write_ratings(artifact_directory / "current_ratings.csv", ratings)
+                (artifact_directory / "run_summary.json").write_text(
+                    json.dumps(
+                        {
+                            "as_of_date": as_of_date.isoformat(),
+                            "config": asdict(config),
+                            "evaluation": asdict(overall),
+                            "training_games": len(games),
+                            "upcoming_games": len(upcoming_predictions),
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                mlflow.log_artifacts(str(artifact_directory))
 
         return run.info.run_id, overall
 
@@ -111,25 +124,19 @@ def _fingerprint(games: Iterable[Game]) -> str:
     digest = hashlib.sha256()
     for game in sorted(games, key=lambda item: (item.season, item.game_date, item.game_key)):
         digest.update(
-            f"{game.game_key}|{game.season}|{game.game_date}|{game.team_a_result}\n".encode()
+            (
+                f"{game.game_key}|{game.season}|{game.game_date}|"
+                f"{game.team_a_program_id}|{game.team_b_program_id}|"
+                f"{game.team_a_division}|{game.team_b_division}|"
+                f"{game.is_team_a_home}|{game.is_team_b_home}|"
+                f"{game.team_a_score}|{game.team_b_score}|{game.team_a_result}\n"
+            ).encode()
         )
     return digest.hexdigest()
 
 
 def _write_predictions(path: Path, predictions: Iterable[Prediction]) -> None:
-    columns = (
-        "game_key",
-        "season",
-        "game_date",
-        "team_a_key",
-        "team_a_name",
-        "team_b_key",
-        "team_b_name",
-        "team_a_rating",
-        "team_b_rating",
-        "team_a_win_probability",
-        "actual_team_a_score",
-    )
+    columns = tuple(field.name for field in fields(Prediction))
     with path.open("w", encoding="utf-8", newline="") as output:
         writer = csv.DictWriter(output, fieldnames=columns)
         writer.writeheader()
