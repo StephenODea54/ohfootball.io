@@ -70,3 +70,12 @@ SET finished_at = NOW(),
     status = $2,
     error_message = $3
 WHERE id = $1;
+
+-- name: ListSuccessfulSeasons :many
+SELECT DISTINCT teams.season
+FROM ohfootball_raw.teams AS teams
+INNER JOIN ohfootball_metadata.scrape_runs AS runs
+    ON runs.id = teams.scrape_run_id
+WHERE runs.status = 'succeeded'
+  AND teams.season BETWEEN sqlc.arg(start_season) AND sqlc.arg(end_season)
+ORDER BY teams.season;

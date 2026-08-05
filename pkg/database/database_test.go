@@ -70,4 +70,15 @@ func TestScrapeQueries(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+
+	seasons, err := queries.ListSuccessfulSeasons(ctx, db.ListSuccessfulSeasonsParams{
+		StartSeason: 2000,
+		EndSeason:   2026,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(seasons) != 1 || seasons[0] != 2025 {
+		t.Fatalf("successful seasons = %v, want [2025]", seasons)
+	}
 }
