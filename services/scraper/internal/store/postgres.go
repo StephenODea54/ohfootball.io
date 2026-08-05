@@ -33,6 +33,22 @@ func (postgres *Postgres) StartRun(ctx context.Context, scraperVersion, rootURL 
 	return runID, nil
 }
 
+func (postgres *Postgres) SuccessfulSeasons(ctx context.Context, startSeason, endSeason int) (map[int]struct{}, error) {
+	seasons, err := postgres.ListSuccessfulSeasons(ctx, db.ListSuccessfulSeasonsParams{
+		StartSeason: int32(startSeason),
+		EndSeason:   int32(endSeason),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list successful seasons: %w", err)
+	}
+
+	loaded := make(map[int]struct{}, len(seasons))
+	for _, season := range seasons {
+		loaded[int(season)] = struct{}{}
+	}
+	return loaded, nil
+}
+
 func (postgres *Postgres) Append(ctx context.Context, runID pgtype.UUID, teams []joeeitel.Team, games []joeeitel.GameResult) error {
 	transaction, err := postgres.Begin(ctx)
 	if err != nil {

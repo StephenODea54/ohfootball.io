@@ -129,6 +129,10 @@ func (s *Scraper) resolveSeason(ctx context.Context) (int, error) {
 	if s.config.Season > 0 {
 		return s.config.Season, nil
 	}
+	return s.LatestSeason(ctx)
+}
+
+func (s *Scraper) LatestSeason(ctx context.Context) (int, error) {
 	indexURL := strings.TrimRight(s.config.BaseURL, "/") + "/hsfoot"
 	body, err := s.fetch(ctx, indexURL)
 	if err != nil {

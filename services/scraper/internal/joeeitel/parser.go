@@ -13,7 +13,10 @@ import (
 	"golang.org/x/net/html"
 )
 
-var divisionPattern = regexp.MustCompile(`(?i)(?:OHSAA\s+)?Division\s+([IVXLC]+|\d+)(?:\s*,\s*Region\s+(\d+))?`)
+var (
+	divisionPattern = regexp.MustCompile(`(?i)(?:OHSAA\s+)?Division\s+([IVXLC]+|\d+)(?:\s*,\s*Region\s+(\d+))?`)
+	gameDatePattern = regexp.MustCompile(`^\d{1,2}/\d{1,2}$`)
+)
 
 func parseLatestSeason(r io.Reader, pageURL string) (int, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
@@ -120,6 +123,13 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, err
 	if err != nil {
 		return Team{}, nil, nil, fmt.Errorf("parse team page: %w", err)
 	}
+	base, err := url.Parse(ref.URL)
+	if err != nil {
+		return Team{}, nil, nil, fmt.Errorf("parse team page URL: %w", err)
+	}
+	if doc.Find("table.schedule").Length() == 0 {
+		return parseLegacyTeamPage(doc, base, ref)
+	}
 
 	header := doc.Find("#header").First()
 	details := linesWithBreaks(header.Find("h3, h4").First())
@@ -136,11 +146,6 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, err
 	team.City, team.State, team.County = parseLocation(details)
 	team.PrimaryColor, team.SecondaryColor = parseColors(header)
 	team.Division, team.Region = parseDivisionRegion(metadata)
-
-	base, err := url.Parse(ref.URL)
-	if err != nil {
-		return Team{}, nil, nil, fmt.Errorf("parse team page URL: %w", err)
-	}
 
 	var games []GameResult
 	opponents := make(map[string]TeamRef)
@@ -187,6 +192,83 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, err
 	}
 	slices.SortFunc(opponentRefs, func(a, b TeamRef) int { return strings.Compare(a.Key(), b.Key()) })
 	return team, games, opponentRefs, nil
+}
+
+func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Team, []GameResult, []TeamRef, error) {
+	header := doc.Find("body > table").First().Find("td").First()
+	details := linesWithBreaks(header)
+	displayName := cleanText(header.Find("font").First().Text())
+
+	team := Team{Season: ref.Season, TeamID: ref.TeamID, Name: cleanText(ref.Name)}
+	team.Mascot = parseMascot(team.Name, displayName)
+	team.City, team.State, team.County = parseLocation(details)
+	team.Division, team.Region = parseDivisionRegion(strings.Join(details, "\n"))
+	team.PrimaryColor, _ = header.Attr("bgcolor")
+	team.SecondaryColor, _ = header.Find("font[color]").First().Attr("color")
+	team.PrimaryColor = strings.TrimSpace(team.PrimaryColor)
+	team.SecondaryColor = strings.TrimSpace(team.SecondaryColor)
+
+	var games []GameResult
+	opponents := make(map[string]TeamRef)
+	doc.Find("tr").Each(func(_ int, row *goquery.Selection) {
+		cells := row.ChildrenFiltered("td")
+		if cells.Length() < 6 || !gameDatePattern.MatchString(cleanText(cells.Eq(0).Text())) {
+			return
+		}
+
+		opponentCell := cells.Eq(2)
+		opponentLink := opponentCell.Find("a[href*='teams.jsp']").First()
+		opponentName := legacyOpponentName(opponentLink)
+		var opponent TeamRef
+		if href, ok := opponentLink.Attr("href"); ok {
+			opponent, _ = parseTeamRef(base, href, ref.Season, opponentName)
+			if opponent.TeamID != "" {
+				opponents[opponent.Key()] = opponent
+			}
+		}
+
+		playoff := ""
+		opponentLink.Find("font[color]").EachWithBreak(func(_ int, font *goquery.Selection) bool {
+			color, _ := font.Attr("color")
+			if strings.EqualFold(strings.TrimSpace(color), "#ff0022") && strings.Contains(font.Text(), "#") {
+				playoff = "#"
+				return false
+			}
+			return true
+		})
+
+		notes := ""
+		if cells.Length() > 6 {
+			notes = cleanText(cells.Eq(6).Text())
+		}
+		games = append(games, GameResult{
+			Season:         ref.Season,
+			SourceTeamID:   ref.TeamID,
+			GameDate:       cleanText(cells.Eq(0).Text()),
+			HomeAway:       cleanText(cells.Eq(1).Text()),
+			OpponentTeamID: opponent.TeamID,
+			Result:         cleanText(cells.Eq(4).Text()),
+			Score:          cleanText(cells.Eq(5).Text()),
+			Notes:          notes,
+			Playoff:        playoff,
+		})
+	})
+
+	opponentRefs := make([]TeamRef, 0, len(opponents))
+	for _, opponent := range opponents {
+		opponentRefs = append(opponentRefs, opponent)
+	}
+	slices.SortFunc(opponentRefs, compareTeamRefs)
+	return team, games, opponentRefs, nil
+}
+
+func legacyOpponentName(link *goquery.Selection) string {
+	if link.Length() == 0 {
+		return ""
+	}
+	clone := link.Clone()
+	clone.Find("font").Remove()
+	return cleanText(clone.Text())
 }
 
 func parseTeamRef(base *url.URL, href string, defaultSeason int, name string) (TeamRef, error) {

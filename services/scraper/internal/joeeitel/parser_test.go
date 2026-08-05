@@ -89,6 +89,39 @@ func TestParseHistoricalTeamPage(t *testing.T) {
 	}
 }
 
+func TestParseLegacyTeamPage(t *testing.T) {
+	html := `<html><body>
+<table><tr><td bgcolor="green"><font size="+2" color="gold"><b>St Edward Eagles</b></font><br><font color="gold"><br>Lakewood, OH<br>Cuyahoga County<br>OHSAA Division 1, Region 1</font></td></tr></table>
+<table><tr><td colspan="6">St Edward 2002</td><td></td></tr>
+<tr><td>8/24</td><td>H</td><td><a href="teams.jsp?teamID=1580&amp;year=2002">Ursuline<font color="#aa0011"> (8-6) </font></a></td><td>[4:13]</td><td>W</td><td>31-12</td><td></td></tr>
+<tr><td>11/2</td><td>N</td><td><a href="teams.jsp?teamID=1588&amp;year=2002"><font color="#ff0022"># </font>Valley Forge<font color="#aa0011"> (8-3) </font></a></td><td>[1:1]</td><td>L</td><td>16-18</td><td>OT</td></tr>
+</table></body></html>`
+	ref := TeamRef{Season: 2002, TeamID: "1346", Name: "St Edward", URL: "https://joeeitel.com/hsfoot/teams.jsp?teamID=1346&year=2002"}
+
+	team, games, opponents, err := parseTeamPage(strings.NewReader(html), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if team.Name != "St Edward" || team.Mascot != "Eagles" || team.City != "Lakewood" || team.State != "OH" || team.County != "Cuyahoga" {
+		t.Fatalf("unexpected legacy team: %+v", team)
+	}
+	if team.PrimaryColor != "green" || team.SecondaryColor != "gold" || team.Division != "1" || team.Region != "1" {
+		t.Fatalf("unexpected legacy metadata: %+v", team)
+	}
+	if len(games) != 2 || len(opponents) != 2 {
+		t.Fatalf("got %d games and %d opponents", len(games), len(opponents))
+	}
+	if games[0].OpponentTeamID != "1580" || games[0].Result != "W" || games[0].Score != "31-12" {
+		t.Fatalf("unexpected legacy game: %+v", games[0])
+	}
+	if games[1].HomeAway != "N" || games[1].Playoff != "#" || games[1].Notes != "OT" {
+		t.Fatalf("unexpected legacy playoff game: %+v", games[1])
+	}
+	if opponents[1].Name != "Valley Forge" {
+		t.Fatalf("unexpected legacy opponent: %+v", opponents[1])
+	}
+}
+
 func TestParseMascot(t *testing.T) {
 	tests := []struct {
 		name        string

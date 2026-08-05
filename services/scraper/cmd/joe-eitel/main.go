@@ -38,11 +38,13 @@ func main() {
 
 func run() error {
 	config := joeeitel.DefaultConfig()
+	startSeason := 0
 	if userAgent := os.Getenv("SCRAPER_USER_AGENT"); userAgent != "" {
 		config.UserAgent = userAgent
 	}
 
 	flag.IntVar(&config.Season, "season", 0, "season to scrape; 0 discovers the latest available season")
+	flag.IntVar(&startSeason, "from-season", 0, "backfill from this season through -season; 0 scrapes one season")
 	flag.IntVar(&config.Workers, "workers", config.Workers, "maximum concurrent HTTP workers")
 	flag.Float64Var(&config.RequestsPerSecond, "rate", config.RequestsPerSecond, "maximum requests per second across all workers")
 	flag.DurationVar(&config.RequestTimeout, "timeout", config.RequestTimeout, "timeout for one HTTP request")
@@ -50,10 +52,8 @@ func run() error {
 	flag.StringVar(&config.BaseURL, "base-url", config.BaseURL, "Joe Eitel site base URL")
 	flag.StringVar(&config.UserAgent, "user-agent", config.UserAgent, "HTTP user agent")
 	flag.Parse()
-
-	scraper, err := joeeitel.New(config)
-	if err != nil {
-		return err
+	if startSeason != 0 && startSeason < 2000 {
+		return fmt.Errorf("from-season must be 0 or at least 2000")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -68,6 +68,56 @@ func run() error {
 		return err
 	}
 	defer database.Close()
+	if startSeason > 0 {
+		return backfill(ctx, database, config, startSeason)
+	}
+	return scrapeSeason(ctx, database, config)
+}
+
+func backfill(ctx context.Context, database *store.Postgres, config joeeitel.Config, startSeason int) error {
+	endSeason := config.Season
+	if endSeason == 0 {
+		scraper, err := joeeitel.New(config)
+		if err != nil {
+			return err
+		}
+		endSeason, err = scraper.LatestSeason(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	if startSeason > endSeason {
+		return fmt.Errorf("from-season %d is after season %d", startSeason, endSeason)
+	}
+
+	loaded, err := database.SuccessfulSeasons(ctx, startSeason, endSeason)
+	if err != nil {
+		return err
+	}
+	slog.Info("backfill started", "from_season", startSeason, "through_season", endSeason, "already_loaded", len(loaded))
+
+	var backfillErrors []error
+	for season := startSeason; season <= endSeason; season++ {
+		if _, exists := loaded[season]; exists {
+			slog.Info("season already loaded", "season", season)
+			continue
+		}
+		config.Season = season
+		if err := scrapeSeason(ctx, database, config); err != nil {
+			backfillErrors = append(backfillErrors, fmt.Errorf("season %d: %w", season, err))
+			if ctx.Err() != nil {
+				break
+			}
+		}
+	}
+	return errors.Join(backfillErrors...)
+}
+
+func scrapeSeason(ctx context.Context, database *store.Postgres, config joeeitel.Config) error {
+	scraper, err := joeeitel.New(config)
+	if err != nil {
+		return err
+	}
 
 	runID, err := database.StartRun(ctx, scraperVersion, config.BaseURL)
 	if err != nil {
