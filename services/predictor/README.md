@@ -55,6 +55,10 @@ assumptions:
 - `--margin-weight` applies a capped logarithmic margin-of-victory multiplier
   to rating updates. Missing scores, including ordinary forfeits, use the
   standard update.
+- `--provisional-games` and `--provisional-k-multiplier` apply a shared,
+  linearly decaying K-factor boost while either team is early in its season.
+  The same boost applies to both rating changes, preserving the zero-sum rating
+  pool.
 
 Games marked as double forfeits are excluded because their two losses cannot be
 represented by Elo's complementary, zero-sum result update.
@@ -131,24 +135,30 @@ after the choices were fixed.
 Recommended candidate:
 
 ```bash
-make elo-run ARGS="--k-factor 192 --home-advantage 30 --season-carryover 0.85 --division-rating-step 140 --run-name champion-v2-corrected"
+make elo-run ARGS="--k-factor 148 --home-advantage 30 --season-carryover 0.85 --division-rating-step 140 --provisional-games 3 --provisional-k-multiplier 1.6 --run-name champion-v3-provisional"
 ```
 
 | 2024–2025 holdout | Plain baseline | Candidate |
 | --- | ---: | ---: |
 | Games | 7,626 | 7,626 |
 | Favorite coverage | 85.12% | 100.00% |
-| Favorite accuracy | 74.07% | 78.98% |
-| Brier score | 0.2156 | 0.1416 |
-| Log loss | 0.6225 | 0.4323 |
+| Favorite accuracy | 74.07% | 79.43% |
+| Brier score | 0.2156 | 0.1398 |
+| Log loss | 0.6225 | 0.4276 |
 
-Keep K=192, 30 points of home advantage, 85% season carryover, and a
-140-point division step as the candidate. Keep the plain defaults as the
-permanent control. Do not keep margin of victory yet: a weight of 0.05 improved
-validation log loss by only 0.00029 while worsening it across the longer tuning
-window, so the gain was not stable enough to justify using scores.
+Keep K=148, 30 points of home advantage, 85% season carryover, a 140-point
+division step, and a 1.6x K boost that decays over each team's first three games
+as the candidate. The provisional strategy improved the 2024–2025 holdout over
+v2 on accuracy (78.98% to 79.43%), Brier score (0.1416 to 0.1398), and log loss
+(0.4323 to 0.4276). Across all 95,818 historical games, it scores 77.70%
+accuracy, 0.1512 Brier, and 0.4598 log loss.
 
-The tracked candidate is MLflow run `b1a0eda31de94c4faa7c74487b11c8e2`.
+Keep the plain defaults as the permanent control. Do not keep margin of victory
+yet: a weight of 0.05 improved validation log loss by only 0.00029 while
+worsening it across the longer tuning window, so the gain was not stable enough
+to justify using scores.
+
+The tracked candidate is MLflow run `1054e7e69a9d49c89bdf3bb6e86d6b31`.
 Earlier division experiments whose prior accidentally compounded across years
 are tagged `validation_status=invalid` in MLflow.
 
@@ -161,7 +171,8 @@ backtest.
 ### Rating mechanics
 
 - Tune the rating scale to change how rating differences map to probabilities.
-- Compare a fixed K-factor with one that changes by week or games played.
+- Compare the linear provisional decay with an uncertainty-based or
+  games-played curve, without tuning directly for an 80% accuracy threshold.
 - Check whether the chosen values remain stable with rolling-origin validation
   rather than one tuning and validation boundary.
 

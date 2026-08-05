@@ -23,6 +23,20 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(arguments.tuning_seasons, (2000, 2021))
         self.assertEqual(arguments.validation_seasons, (2022, 2023))
 
+    def test_parses_provisional_strategy(self) -> None:
+        arguments = build_parser().parse_args(
+            [
+                "run",
+                "--provisional-games",
+                "4",
+                "--provisional-k-multiplier",
+                "1.5",
+            ]
+        )
+
+        self.assertEqual(arguments.provisional_games, 4)
+        self.assertEqual(arguments.provisional_k_multiplier, 1.5)
+
 
 if __name__ == "__main__":
     unittest.main()

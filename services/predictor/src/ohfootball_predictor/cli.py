@@ -23,6 +23,8 @@ SWEEP_PARAMETERS = (
     "season_carryover",
     "division_rating_step",
     "margin_weight",
+    "provisional_games",
+    "provisional_k_multiplier",
 )
 
 
@@ -85,6 +87,8 @@ def _add_config_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--division-rating-step", type=float, default=0.0)
     parser.add_argument("--margin-weight", type=float, default=0.0)
     parser.add_argument("--margin-multiplier-cap", type=float, default=2.5)
+    parser.add_argument("--provisional-games", type=int, default=0)
+    parser.add_argument("--provisional-k-multiplier", type=float, default=1.0)
 
 
 def _today_in_project_time_zone() -> date:
@@ -141,6 +145,7 @@ def _run(arguments: argparse.Namespace) -> None:
         result.ratings,
         config,
         result.program_ratings,
+        result.games_played,
     )
     run_id, evaluation = track_run(
         tracking_uri=arguments.tracking_uri,
@@ -181,7 +186,12 @@ def _sweep(arguments: argparse.Namespace) -> None:
     )
     summaries = []
     for value in arguments.values:
-        config = replace(base_config, **{arguments.parameter: value})
+        parameter_value: float | int = value
+        if arguments.parameter == "provisional_games":
+            if not value.is_integer():
+                raise SystemExit("provisional_games sweep values must be integers")
+            parameter_value = int(value)
+        config = replace(base_config, **{arguments.parameter: parameter_value})
         result = backtest(experiment_games, config)
         tuning_predictions = _prediction_window(
             result.predictions,
@@ -247,6 +257,8 @@ def _config(arguments: argparse.Namespace) -> EloConfig:
         division_rating_step=arguments.division_rating_step,
         margin_weight=arguments.margin_weight,
         margin_multiplier_cap=arguments.margin_multiplier_cap,
+        provisional_games=arguments.provisional_games,
+        provisional_k_multiplier=arguments.provisional_k_multiplier,
     )
 
 

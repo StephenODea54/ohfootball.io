@@ -6,6 +6,7 @@ from ohfootball_predictor.elo import (
     Game,
     backtest,
     predict,
+    provisional_update_multiplier,
     rating_update_multiplier,
     win_probability,
 )
@@ -219,6 +220,23 @@ class BacktestTests(unittest.TestCase):
         self.assertGreater(predictions[0].team_a_win_probability, 0.5)
         self.assertEqual(result.ratings, ratings_before)
 
+    def test_upcoming_prediction_reports_games_already_played(self) -> None:
+        config = EloConfig(provisional_games=4, provisional_k_multiplier=1.5)
+        result = backtest(
+            [game("played", date(2025, 8, 1), "a", "b", "W")],
+            config,
+        )
+        predictions = predict(
+            [game("future", date(2025, 8, 8), "a", "b", "unknown")],
+            result.ratings,
+            config,
+            result.program_ratings,
+            result.games_played,
+        )
+
+        self.assertEqual(predictions[0].team_a_games_played, 1)
+        self.assertEqual(predictions[0].team_b_games_played, 1)
+
     def test_upcoming_game_uses_prior_season_program_rating(self) -> None:
         config = EloConfig(season_carryover=0.5)
         result = backtest(
@@ -264,6 +282,30 @@ class BacktestTests(unittest.TestCase):
             config,
         )
 
+        self.assertEqual(
+            result.ratings[(2025, "a")] + result.ratings[(2025, "b")],
+            config.initial_rating * 2,
+        )
+
+    def test_provisional_k_boost_decays_with_games_played(self) -> None:
+        config = EloConfig(provisional_games=4, provisional_k_multiplier=2.0)
+
+        self.assertEqual(provisional_update_multiplier(0, 0, config), 2.0)
+        self.assertEqual(provisional_update_multiplier(2, 4, config), 1.5)
+        self.assertEqual(provisional_update_multiplier(4, 8, config), 1.0)
+
+    def test_provisional_games_use_one_zero_sum_multiplier(self) -> None:
+        config = EloConfig(provisional_games=1, provisional_k_multiplier=2.0)
+        result = backtest(
+            [
+                game("one", date(2025, 8, 1), "a", "b", "W"),
+                game("two", date(2025, 8, 8), "a", "b", "W"),
+            ],
+            config,
+        )
+
+        self.assertEqual(result.predictions[0].rating_update_multiplier, 2.0)
+        self.assertEqual(result.predictions[1].rating_update_multiplier, 1.0)
         self.assertEqual(
             result.ratings[(2025, "a")] + result.ratings[(2025, "b")],
             config.initial_rating * 2,
