@@ -12,6 +12,9 @@ plain, inspectable Elo baseline before adding football-specific assumptions.
 - Scores, margin of victory, home field, divisions, playoffs, and prior seasons
   do not affect a rating.
 - Canceled, tied, and unknown results do not update ratings.
+- Both participants must have `state_code = 'OH'`; games involving an
+  out-of-state, non-OHSAA team are excluded from ratings, predictions, and
+  evaluation.
 - Ratings reset completely between seasons.
 - Games on the same date use start-of-day ratings because kickoff times are not
   available.

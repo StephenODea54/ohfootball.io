@@ -43,6 +43,7 @@ def track_run(
                 "as_of_date": as_of_date.isoformat(),
                 "uses_scores": "false",
                 "uses_home_field": "false",
+                "team_population": "ohsaa-only",
                 "uses_model_registry": "false",
             }
         )

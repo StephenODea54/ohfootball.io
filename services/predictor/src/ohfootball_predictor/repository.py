@@ -12,13 +12,34 @@ _IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 def load_games(database_url: str, *, marts_schema: str = "ohfootball_marts") -> tuple[Game, ...]:
     """Load current canonical games and their current team names."""
-    if not _IDENTIFIER.fullmatch(marts_schema):
-        raise ValueError(f"invalid marts schema: {marts_schema!r}")
+    query = _build_query(marts_schema)
 
     import psycopg
     from psycopg.rows import dict_row
 
-    query = f"""
+    with psycopg.connect(database_url, row_factory=dict_row) as connection:
+        rows: list[dict[str, Any]] = connection.execute(query).fetchall()
+
+    return tuple(
+        Game(
+            game_key=row["game_key"],
+            season=row["season"],
+            game_date=row["game_date"],
+            team_a_key=row["team_a_key"],
+            team_a_name=row["team_a_name"],
+            team_b_key=row["team_b_key"],
+            team_b_name=row["team_b_name"],
+            team_a_result=row["team_a_result"],
+        )
+        for row in rows
+    )
+
+
+def _build_query(marts_schema: str) -> str:
+    if not _IDENTIFIER.fullmatch(marts_schema):
+        raise ValueError(f"invalid marts schema: {marts_schema!r}")
+
+    return f"""
         SELECT
             game.game_key::text AS game_key,
             game.season,
@@ -39,22 +60,7 @@ def load_games(database_url: str, *, marts_schema: str = "ohfootball_marts") -> 
            AND team_b.is_current
         WHERE game.is_current
           AND game.team_a_result IN ('W', 'L', 'unknown')
+          AND team_a.state_code = 'OH'
+          AND team_b.state_code = 'OH'
         ORDER BY game.season, dates.date_day, game.game_key
     """
-
-    with psycopg.connect(database_url, row_factory=dict_row) as connection:
-        rows: list[dict[str, Any]] = connection.execute(query).fetchall()
-
-    return tuple(
-        Game(
-            game_key=row["game_key"],
-            season=row["season"],
-            game_date=row["game_date"],
-            team_a_key=row["team_a_key"],
-            team_a_name=row["team_a_name"],
-            team_b_key=row["team_b_key"],
-            team_b_name=row["team_b_name"],
-            team_a_result=row["team_a_result"],
-        )
-        for row in rows
-    )
