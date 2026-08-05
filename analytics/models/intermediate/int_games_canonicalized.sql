@@ -34,6 +34,7 @@ perspectives AS (
             ELSE opponent_score
         END AS team_b_score,
         CASE
+            WHEN notes = 'double forfeit' THEN 'L'
             WHEN source_team_id = team_a_id THEN result
             WHEN result = 'W' THEN 'L'
             WHEN result = 'L' THEN 'W'

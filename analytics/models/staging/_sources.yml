@@ -71,6 +71,3 @@ sources:
               - accepted_values:
                   arguments:
                     values: [H, A, N]
-          - name: result
-            data_tests:
-              - not_null

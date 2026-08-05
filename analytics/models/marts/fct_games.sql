@@ -45,9 +45,10 @@ SELECT
     team_a_score,
     team_b_score,
     team_a_result,
-    CASE team_a_result
-        WHEN 'W' THEN 'L'
-        WHEN 'L' THEN 'W'
+    CASE
+        WHEN notes = 'double forfeit' THEN 'L'
+        WHEN team_a_result = 'W' THEN 'L'
+        WHEN team_a_result = 'L' THEN 'W'
         ELSE team_a_result
     END AS team_b_result,
     is_team_a_home,
