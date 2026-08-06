@@ -10,6 +10,7 @@ import {
   NavbarSpacer,
   NavbarStart,
 } from "@/components/ui/navbar"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 const navItems = [
   { label: "teams", href: "/" },
@@ -51,12 +52,14 @@ export function AppNavbar() {
         </NavbarStart>
         <NavbarSpacer />
         {navigation}
+        <ThemeSwitcher />
       </Navbar>
 
       <NavbarMobile>
         <span className="font-semibold">ohfootball.io</span>
         <NavbarSpacer />
         {navigation}
+        <ThemeSwitcher />
       </NavbarMobile>
     </NavbarProvider>
   )

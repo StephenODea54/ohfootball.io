@@ -7,6 +7,7 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query
 import TanstackQueryProvider, {
   getContext,
 } from './integrations/tanstack-query/root-provider'
+import { RouterError } from './app/router-error'
 
 export function getRouter() {
   const context = getContext()
@@ -17,6 +18,7 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    defaultErrorComponent: RouterError,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient: context.queryClient })
