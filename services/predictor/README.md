@@ -73,6 +73,16 @@ make mlflow-up
 make elo-run
 ```
 
+Publish the production rating snapshot after the marts are refreshed:
+
+```bash
+ohfootball-elo publish --season 2026
+```
+
+The production command writes one rating per current Ohio team to
+`ohfootball_marts.fct_team_elo_ratings`. Ratings are the values available at
+the start of `--as-of-date`; games on that date are not incorporated yet.
+
 MLflow is available at <http://localhost:5000>. Each run records the Elo
 parameters, data fingerprint, cutoff date, overall and per-season metrics, and
 these CSV artifacts:

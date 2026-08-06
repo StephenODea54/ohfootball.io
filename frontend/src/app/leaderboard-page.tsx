@@ -1,4 +1,3 @@
-import { teams } from "@/app/team-data"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
@@ -6,11 +5,12 @@ import { Link } from "@/components/ui/link"
 import { ProgressBar, ProgressBarTrack } from "@/components/ui/progress-bar"
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
 import { Text } from "@/components/ui/text"
+import { formatDivision, formatRecord, type Team } from "@/lib/graphql"
 
-const highestRating = Math.max(...teams.map((team) => team.rating))
-const ratingFloor = 1500
-
-export function LeaderboardPage() {
+export function LeaderboardPage({ teams }: { teams: Team[] }) {
+  const ratedTeams = teams.filter((team) => team.elo)
+  const highestRating = Math.max(...ratedTeams.map((team) => team.elo!.rating))
+  const ratingFloor = Math.min(...ratedTeams.map((team) => team.elo!.rating))
   return (
     <main>
       <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
@@ -32,37 +32,39 @@ export function LeaderboardPage() {
                 <TableColumn className="w-32 text-end">Elo</TableColumn>
               </TableHeader>
               <TableBody>
-                {teams.map((team) => {
-                  const progress = ((team.rating - ratingFloor) / (highestRating - ratingFloor)) * 100
+                {ratedTeams.map((team) => {
+                  const rating = team.elo!.rating
+                  const range = highestRating - ratingFloor
+                  const progress = range === 0 ? 100 : ((rating - ratingFloor) / range) * 100
 
                   return (
-                    <TableRow id={team.slug} key={team.slug}>
+                    <TableRow id={team.id} key={team.id}>
                       <TableCell className="text-lg/6 font-semibold text-muted-fg">
-                        {team.rank}
+                        {team.elo!.rank}
                       </TableCell>
                       <TableCell>
                         <div className="py-1">
                           <Link
-                            href={`/teams/${team.slug}`}
+                            href={`/teams/${team.id}`}
                             className="font-semibold text-base/6 text-fg hover:text-primary-subtle-fg"
                           >
                             {team.name}
                           </Link>
                           <p className="text-sm/5 text-muted-fg">
-                            {team.city} · {team.division}
+                            {[team.city, formatDivision(team.division)].filter(Boolean).join(" · ")}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell className="text-end font-medium text-fg">
-                        {team.record}
+                        {formatRecord(team.record)}
                       </TableCell>
                       <TableCell>
                         <div className="ms-auto w-24 py-1">
                           <p className="text-end font-semibold text-base/6 text-success-subtle-fg">
-                            {team.rating}
+                            {Math.round(rating)}
                           </p>
                           <ProgressBar
-                            aria-label={`${team.name} Elo rating ${team.rating}`}
+                            aria-label={`${team.name} Elo rating ${Math.round(rating)}`}
                             value={progress}
                             className="mt-1"
                           >

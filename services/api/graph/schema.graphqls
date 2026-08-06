@@ -1,0 +1,77 @@
+enum TeamSort {
+  ELO
+  NAME
+}
+
+enum GameLocation {
+  HOME
+  AWAY
+  NEUTRAL
+}
+
+enum GameResult {
+  WIN
+  LOSS
+  TIE
+  CANCELED
+  UNKNOWN
+}
+
+type Record {
+  wins: Int!
+  losses: Int!
+  ties: Int!
+}
+
+type EloRating {
+  rating: Float!
+  rank: Int!
+  asOf: String!
+}
+
+type GamePrediction {
+  winProbability: Float!
+  predictedResult: GameResult!
+  teamRating: Float!
+  opponentRating: Float!
+  asOf: String!
+}
+
+type Game {
+  id: ID!
+  week: Int!
+  date: String!
+  opponentId: ID!
+  opponentName: String!
+  location: GameLocation!
+  result: GameResult!
+  teamScore: Int
+  opponentScore: Int
+  playoff: Boolean!
+  notes: String
+  prediction: GamePrediction
+}
+
+type Team {
+  id: ID!
+  season: Int!
+  name: String!
+  mascot: String
+  city: String
+  division: Int
+  record: Record!
+  elo: EloRating
+  eloHistory: [EloRating!]!
+  schedule: [Game!]!
+}
+
+type Query {
+  currentSeason: Int!
+  teams(
+    season: Int
+    search: String
+    sort: TeamSort = ELO
+    limit: Int = 1000
+  ): [Team!]!
+  team(id: ID!): Team
+}

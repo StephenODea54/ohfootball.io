@@ -2,5 +2,6 @@ go 1.25.0
 
 use (
 	./pkg/database
+	./services/api
 	./services/scraper
 )

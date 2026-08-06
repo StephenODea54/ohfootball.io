@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { teams } from "@/app/team-data"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
@@ -10,8 +9,9 @@ import { Link } from "@/components/ui/link"
 import { SearchField, SearchInput } from "@/components/ui/search-field"
 import { Separator } from "@/components/ui/separator"
 import { Text, TextLink } from "@/components/ui/text"
+import { formatDivision, formatRecord, type Team } from "@/lib/graphql"
 
-export function TeamsPage() {
+export function TeamsPage({ teams }: { teams: Team[] }) {
   const [query, setQuery] = useState("")
 
   const filteredTeams = useMemo(() => {
@@ -19,8 +19,8 @@ export function TeamsPage() {
     if (!normalizedQuery) return teams
 
     return teams.filter((team) =>
-      [team.name, team.mascot, team.city, team.division].some((value) =>
-        value.toLowerCase().includes(normalizedQuery),
+      [team.name, team.mascot, team.city, formatDivision(team.division)].some((value) =>
+        value?.toLowerCase().includes(normalizedQuery),
       ),
     )
   }, [query])
@@ -64,7 +64,7 @@ export function TeamsPage() {
                   <div key={team.name}>
                     {index > 0 && <Separator />}
                     <Link
-                      href={`/teams/${team.slug}`}
+                      href={`/teams/${team.id}`}
                       className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-4 py-4 text-fg hover:bg-muted/50 sm:px-5"
                     >
                       <div className="min-w-0">
@@ -72,12 +72,12 @@ export function TeamsPage() {
                           {team.name}
                         </p>
                         <p className="mt-0.5 truncate text-sm/5 text-muted-fg">
-                          {team.mascot} · {team.city} · {team.division}
+                          {[team.mascot, team.city, formatDivision(team.division)].filter(Boolean).join(" · ")}
                         </p>
                       </div>
-                      <span className="hidden text-sm/5 text-muted-fg sm:block">{team.record}</span>
+                      <span className="hidden text-sm/5 text-muted-fg sm:block">{formatRecord(team.record)}</span>
                       <Badge intent="success" className="min-w-14 justify-center font-semibold">
-                        {team.rating}
+                        {team.elo ? Math.round(team.elo.rating) : "—"}
                       </Badge>
                     </Link>
                   </div>
@@ -107,7 +107,9 @@ export function TeamsPage() {
                     <li key={team.name} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-baseline gap-2 text-sm/5">
                       <span className="font-medium text-muted-fg">{index + 1}</span>
                       <span className="truncate font-medium text-fg">{team.name}</span>
-                      <span className="font-semibold text-success-subtle-fg">{team.rating}</span>
+                      <span className="font-semibold text-success-subtle-fg">
+                        {team.elo ? Math.round(team.elo.rating) : "—"}
+                      </span>
                     </li>
                   ))}
                 </ol>

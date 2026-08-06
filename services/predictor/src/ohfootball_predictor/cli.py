@@ -10,8 +10,9 @@ from datetime import date, datetime
 from typing import Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .elo import EloConfig, Game, Prediction, backtest, predict
+from .elo import EloConfig, Game, Prediction, backtest, initial_team_rating, predict
 from .metrics import evaluate
+from .publisher import RatingSnapshot, load_team_seasons, publish_ratings
 from .repository import load_games
 from .tracking import track_run
 
@@ -39,6 +40,22 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common_arguments(run)
     _add_config_arguments(run)
     run.add_argument("--run-name")
+
+    publish = subparsers.add_parser(
+        "publish",
+        help="calculate and publish the production rating snapshot",
+    )
+    _add_common_arguments(publish)
+    _add_config_arguments(publish)
+    publish.add_argument("--season", type=int)
+    publish.set_defaults(
+        k_factor=148.0,
+        home_advantage=30.0,
+        season_carryover=0.85,
+        division_rating_step=140.0,
+        provisional_games=3,
+        provisional_k_multiplier=1.6,
+    )
 
     sweep = subparsers.add_parser(
         "sweep",
@@ -125,6 +142,8 @@ def main() -> None:
         _run(arguments)
     elif arguments.command == "sweep":
         _sweep(arguments)
+    elif arguments.command == "publish":
+        _publish(arguments)
 
 
 def _run(arguments: argparse.Namespace) -> None:
@@ -245,6 +264,56 @@ def _sweep(arguments: argparse.Namespace) -> None:
         )
     )
     print(json.dumps(summaries, indent=2, sort_keys=True))
+
+
+def _publish(arguments: argparse.Namespace) -> None:
+    config = _config(arguments)
+    season = arguments.season or arguments.as_of_date.year
+    games = load_games(arguments.database_url, marts_schema=arguments.marts_schema)
+    training_games = _completed_games(games, arguments.as_of_date)
+    result = backtest(training_games, config)
+    teams = load_team_seasons(
+        arguments.database_url,
+        season=season,
+        marts_schema=arguments.marts_schema,
+    )
+    if not teams:
+        raise SystemExit(f"no Ohio teams exist for season {season}")
+
+    snapshots = tuple(
+        RatingSnapshot(
+            team_key=team.team_key,
+            season=season,
+            as_of_date=arguments.as_of_date,
+            rating=result.ratings.get(
+                (season, team.team_key),
+                initial_team_rating(
+                    season=season,
+                    program_id=team.program_id,
+                    division=team.division,
+                    program_ratings=result.program_ratings,
+                    config=config,
+                ),
+            ),
+        )
+        for team in teams
+    )
+    published = publish_ratings(
+        arguments.database_url,
+        snapshots,
+        marts_schema=arguments.marts_schema,
+    )
+    print(
+        json.dumps(
+            {
+                "as_of_date": arguments.as_of_date.isoformat(),
+                "published_ratings": published,
+                "season": season,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 def _config(arguments: argparse.Namespace) -> EloConfig:

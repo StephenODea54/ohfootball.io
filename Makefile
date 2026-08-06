@@ -6,19 +6,23 @@ DBT := docker compose run --rm dbt
 
 build:
 	$(MAKE) -C services/scraper build
+	$(MAKE) -C services/api build
 
 test:
 	$(MAKE) -C services/scraper test
 	go -C pkg/database test ./...
+	$(MAKE) -C services/api test
 	$(MAKE) -C services/predictor test
 
 vet:
 	$(MAKE) -C services/scraper vet
 	go -C pkg/database vet ./...
+	$(MAKE) -C services/api vet
 	$(MAKE) -C services/predictor vet
 
 fmt:
 	$(MAKE) -C services/scraper fmt
+	$(MAKE) -C services/api fmt
 	gofmt -w pkg/database/*.go pkg/database/db/*.go
 
 sqlc-generate:

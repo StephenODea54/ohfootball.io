@@ -225,7 +225,7 @@ def predict(
         team_b = (game.season, game.team_b_key)
         rating_a = ratings.get(
             team_a,
-            _initial_team_rating(
+            initial_team_rating(
                 season=game.season,
                 program_id=game.team_a_program_id or game.team_a_key,
                 division=game.team_a_division,
@@ -235,7 +235,7 @@ def predict(
         )
         rating_b = ratings.get(
             team_b,
-            _initial_team_rating(
+            initial_team_rating(
                 season=game.season,
                 program_id=game.team_b_program_id or game.team_b_key,
                 division=game.team_b_division,
@@ -327,7 +327,7 @@ def _pregame_rating(
     if team in ratings:
         return ratings[team]
     if team not in daily_start_ratings:
-        daily_start_ratings[team] = _initial_team_rating(
+        daily_start_ratings[team] = initial_team_rating(
             season=team[0],
             program_id=program_id,
             division=division,
@@ -337,7 +337,7 @@ def _pregame_rating(
     return daily_start_ratings[team]
 
 
-def _initial_team_rating(
+def initial_team_rating(
     *,
     season: int,
     program_id: str,
