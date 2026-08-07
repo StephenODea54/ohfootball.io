@@ -8,7 +8,7 @@ import (
 
 type FootballStore interface {
 	CurrentSeason(context.Context) (int, error)
-	ListTeams(context.Context, *int, *string, *model.TeamSort, *int) ([]*model.Team, error)
+	ListTeams(context.Context, *int, *string, *int, *int, *model.TeamSort, *int) ([]*model.Team, error)
 	Team(context.Context, string) (*model.Team, error)
 }
 

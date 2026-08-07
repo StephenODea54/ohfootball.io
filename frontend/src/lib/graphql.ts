@@ -45,6 +45,7 @@ export interface Team {
   mascot: string | null
   city: string | null
   division: number | null
+  region: number | null
   record: TeamRecord
   elo: EloRating | null
   eloHistory: EloRating[]
@@ -63,18 +64,33 @@ const teamFields = `
   mascot
   city
   division
+  region
   record { wins losses ties }
   elo { rating rank asOf }
 `
 
-export async function fetchTeams(): Promise<Team[]> {
+export interface FetchTeamsOptions {
+  season?: number
+  search?: string
+  region?: number
+  division?: number
+}
+
+export async function fetchTeams(options: FetchTeamsOptions = {}): Promise<Team[]> {
   const data = await graphql<{ teams: Team[] }>(`
-    query Teams {
-      teams(sort: ELO, limit: 1000) {
+    query Teams($season: Int, $search: String, $region: Int, $division: Int) {
+      teams(
+        season: $season
+        search: $search
+        region: $region
+        division: $division
+        sort: ELO
+        limit: 1000
+      ) {
         ${teamFields}
       }
     }
-  `)
+  `, options)
   return data.teams.map((team) => ({ ...team, eloHistory: [], schedule: [] }))
 }
 

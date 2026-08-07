@@ -1,31 +1,38 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import {
+  filterTeams,
+  TeamFilterControls,
+  type TeamFilterState,
+} from "@/app/team-filter-controls"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Link } from "@/components/ui/link"
-import { SearchField, SearchInput } from "@/components/ui/search-field"
 import { Separator } from "@/components/ui/separator"
 import { Text, TextLink } from "@/components/ui/text"
 import { formatDivision, formatRecord, type Team } from "@/lib/graphql"
 
-export function TeamsPage({ teams }: { teams: Team[] }) {
-  const [query, setQuery] = useState("")
+export function TeamsPage({
+  onSeasonChange,
+  season,
+  teams,
+}: {
+  onSeasonChange: (season: number) => void
+  season: number
+  teams: Team[]
+}) {
+  const [filters, setFilters] = useState<TeamFilterState>({
+    query: "",
+    region: "",
+    division: "",
+  })
 
-  const filteredTeams = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    if (!normalizedQuery) return teams
+  const filteredTeams = useMemo(() => filterTeams(teams, filters), [teams, filters])
 
-    return teams.filter((team) =>
-      [team.name, team.mascot, team.city, formatDivision(team.division)].some((value) =>
-        value?.toLowerCase().includes(normalizedQuery),
-      ),
-    )
-  }, [query])
-
-  const leaders = teams.slice(0, 5)
+  const leaders = filteredTeams.slice(0, 5)
 
   return (
     <main>
@@ -35,18 +42,19 @@ export function TeamsPage({ teams }: { teams: Team[] }) {
             Ohio high school football, <span className="text-primary">predicted.</span>
           </Heading>
           <Text className="mt-4 max-w-2xl text-base/7 sm:text-base/7">
-            Search any team to see its season at a glance, with Elo ratings and results as the
-            season unfolds.
+            Explore any season by school, region, or division, with Elo ratings and results as
+            the season unfolds.
           </Text>
 
-          <SearchField
-            aria-label="Search teams"
-            className="mt-8 max-w-xl"
-            value={query}
-            onChange={setQuery}
-          >
-            <SearchInput placeholder="Search by school, city, or mascot…" />
-          </SearchField>
+          <div className="mt-8 max-w-4xl">
+            <TeamFilterControls
+              filters={filters}
+              onChange={setFilters}
+              onSeasonChange={onSeasonChange}
+              season={season}
+              teams={teams}
+            />
+          </div>
         </section>
 
         <div className="mt-12 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_17rem]">
@@ -55,13 +63,15 @@ export function TeamsPage({ teams }: { teams: Team[] }) {
               <Heading id="all-teams-heading" level={2} className="text-base/6 sm:text-base/6">
                 All teams
               </Heading>
-              <Text className="m-0 text-xs/5">Sorted by Elo</Text>
+              <Text className="m-0 text-xs/5">
+                {filteredTeams.length.toLocaleString()} teams · {season} · Sorted by Elo
+              </Text>
             </div>
 
             <Card className="gap-0 overflow-hidden py-0 shadow-none">
               {filteredTeams.length > 0 ? (
                 filteredTeams.map((team, index) => (
-                  <div key={team.name}>
+                  <div key={team.id}>
                     {index > 0 && <Separator />}
                     <Link
                       href={`/teams/${team.id}`}
@@ -72,7 +82,12 @@ export function TeamsPage({ teams }: { teams: Team[] }) {
                           {team.name}
                         </p>
                         <p className="mt-0.5 truncate text-sm/5 text-muted-fg">
-                          {[team.mascot, team.city, formatDivision(team.division)].filter(Boolean).join(" · ")}
+                          {[
+                            team.mascot,
+                            team.city,
+                            team.region ? `Region ${team.region}` : null,
+                            formatDivision(team.division),
+                          ].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                       <span className="hidden text-sm/5 text-muted-fg sm:block">{formatRecord(team.record)}</span>
@@ -85,7 +100,7 @@ export function TeamsPage({ teams }: { teams: Team[] }) {
               ) : (
                 <div className="px-5 py-10 text-center">
                   <p className="font-medium text-sm/6 text-fg">No teams found</p>
-                  <Text className="mt-1">Try another school, city, or mascot.</Text>
+                  <Text className="mt-1">Try another name, region, division, or season.</Text>
                 </div>
               )}
             </Card>
@@ -94,7 +109,7 @@ export function TeamsPage({ teams }: { teams: Team[] }) {
           <aside aria-label="Top five teams by Elo">
             <Card className="gap-4 py-5 shadow-none [--gutter:--spacing(4)]">
               <CardHeader>
-                <CardTitle>Top 5 by Elo</CardTitle>
+                <CardTitle>Top 5 in view</CardTitle>
                 <CardAction>
                   <TextLink href="/leaderboard" className="text-xs/5">
                     Full leaderboard →
@@ -102,9 +117,9 @@ export function TeamsPage({ teams }: { teams: Team[] }) {
                 </CardAction>
               </CardHeader>
               <CardContent>
-                <ol className="space-y-4">
+                {leaders.length > 0 ? <ol className="space-y-4">
                   {leaders.map((team, index) => (
-                    <li key={team.name} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-baseline gap-2 text-sm/5">
+                    <li key={team.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-baseline gap-2 text-sm/5">
                       <span className="font-medium text-muted-fg">{index + 1}</span>
                       <span className="truncate font-medium text-fg">{team.name}</span>
                       <span className="font-semibold text-success-subtle-fg">
@@ -112,7 +127,7 @@ export function TeamsPage({ teams }: { teams: Team[] }) {
                       </span>
                     </li>
                   ))}
-                </ol>
+                </ol> : <Text className="m-0 text-sm/6">No teams match these filters.</Text>}
               </CardContent>
             </Card>
           </aside>

@@ -59,6 +59,7 @@ type Team {
   mascot: String
   city: String
   division: Int
+  region: Int
   record: Record!
   elo: EloRating
   eloHistory: [EloRating!]!
@@ -70,6 +71,8 @@ type Query {
   teams(
     season: Int
     search: String
+    region: Int
+    division: Int
     sort: TeamSort = ELO
     limit: Int = 1000
   ): [Team!]!

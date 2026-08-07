@@ -70,6 +70,8 @@ func (store *Postgres) ListTeams(
 	ctx context.Context,
 	seasonArgument *int,
 	searchArgument *string,
+	regionArgument *int,
+	divisionArgument *int,
 	sortArgument *model.TeamSort,
 	limitArgument *int,
 ) ([]*model.Team, error) {
@@ -90,7 +92,16 @@ func (store *Postgres) ListTeams(
 		limit = max(1, min(*limitArgument, maxLimit))
 	}
 
-	rows, err := store.pool.Query(ctx, listTeamsSQL, season, search, string(sort), limit)
+	rows, err := store.pool.Query(
+		ctx,
+		listTeamsSQL,
+		season,
+		search,
+		regionArgument,
+		divisionArgument,
+		string(sort),
+		limit,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("list teams: %w", err)
 	}
@@ -158,7 +169,7 @@ type rowScanner interface {
 func scanTeam(row rowScanner) (*model.Team, error) {
 	var team model.Team
 	var mascot, city pgtype.Text
-	var division pgtype.Int2
+	var division, region pgtype.Int2
 	var rating pgtype.Float8
 	var ratingRank pgtype.Int8
 	var asOf pgtype.Date
@@ -170,6 +181,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 		&mascot,
 		&city,
 		&division,
+		&region,
 		&wins,
 		&losses,
 		&ties,
@@ -188,6 +200,10 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	if division.Valid {
 		value := int(division.Int16)
 		team.Division = &value
+	}
+	if region.Valid {
+		value := int(region.Int16)
+		team.Region = &value
 	}
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
 	team.EloHistory = []*model.EloRating{}
@@ -363,6 +379,7 @@ const teamColumns = `
 	team.mascot,
 	team.city,
 	team.division,
+	team.region,
 	COALESCE(records.wins, 0),
 	COALESCE(records.losses, 0),
 	COALESCE(records.ties, 0),
@@ -385,11 +402,13 @@ var listTeamsSQL = teamFacts + `
 		OR COALESCE(team.mascot, '') ILIKE '%' || $2 || '%'
 		OR COALESCE(team.city, '') ILIKE '%' || $2 || '%'
 	  )
+	  AND ($3::smallint IS NULL OR team.region = $3::smallint)
+	  AND ($4::smallint IS NULL OR team.division = $4::smallint)
 	ORDER BY
-		CASE WHEN $3 = 'ELO' THEN ratings.elo_rating END DESC NULLS LAST,
+		CASE WHEN $5 = 'ELO' THEN ratings.elo_rating END DESC NULLS LAST,
 		team.name,
 		team.team_key
-	LIMIT $4
+	LIMIT $6
 `
 
 var teamSQL = teamFacts + `

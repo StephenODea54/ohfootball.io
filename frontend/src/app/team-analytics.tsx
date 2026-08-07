@@ -1,0 +1,128 @@
+"use client"
+
+import { Bar, BarChart } from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CartesianGrid, Chart, ChartTooltip, ChartTooltipContent, XAxis, YAxis } from "@/components/ui/chart"
+import { Heading } from "@/components/ui/heading"
+import { Text } from "@/components/ui/text"
+import { formatDivision, type Team } from "@/lib/graphql"
+
+const countChartConfig = {
+  teams: { label: "Teams", color: "var(--color-primary)" },
+}
+
+const ratingChartConfig = {
+  rating: { label: "Average Elo", color: "var(--color-success)" },
+}
+
+export function TeamAnalytics({ season, teams }: { season: number; teams: Team[] }) {
+  const ratedTeams = teams.filter((team) => team.elo)
+  const ratings = ratedTeams.map((team) => team.elo!.rating).sort((a, b) => a - b)
+  const midpoint = Math.floor(ratings.length / 2)
+  const median = ratings.length === 0
+    ? null
+    : ratings.length % 2
+      ? ratings[midpoint]!
+      : (ratings[midpoint - 1]! + ratings[midpoint]!) / 2
+
+  const divisionCounts = new Map<string, number>()
+  for (const team of teams) {
+    const division = formatDivision(team.division)
+    divisionCounts.set(division, (divisionCounts.get(division) ?? 0) + 1)
+  }
+  const divisionData = [...divisionCounts].map(([division, count]) => ({ division, teams: count }))
+
+  const regionRatings = new Map<string, number[]>()
+  for (const team of ratedTeams) {
+    const region = team.region ? `R${team.region}` : "Unassigned"
+    const values = regionRatings.get(region) ?? []
+    values.push(team.elo!.rating)
+    regionRatings.set(region, values)
+  }
+  const regionData = [...regionRatings]
+    .map(([region, values]) => ({
+      region,
+      rating: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length),
+    }))
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 8)
+
+  return (
+    <section className="mt-10" aria-labelledby="field-snapshot-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Heading id="field-snapshot-heading" level={2} className="text-lg/7 sm:text-lg/7">
+            Field snapshot
+          </Heading>
+          <Text className="mt-1 text-sm/6">Analytics update with the filters above.</Text>
+        </div>
+        <Text className="m-0 text-xs/5">{season} rating snapshot</Text>
+      </div>
+
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <AnalyticsStat label="Teams in view" value={teams.length.toLocaleString()} />
+        <AnalyticsStat label="Rated teams" value={ratedTeams.length.toLocaleString()} />
+        <AnalyticsStat label="Median Elo" value={median === null ? "—" : Math.round(median).toLocaleString()} />
+        <AnalyticsStat
+          label="Highest Elo"
+          value={ratings.length ? Math.round(ratings.at(-1)!).toLocaleString() : "—"}
+        />
+      </dl>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <Card className="gap-3 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(5)]">
+          <CardHeader>
+            <CardTitle>Teams by division</CardTitle>
+            <Text className="m-0 text-xs/5">Field size for the current view</Text>
+          </CardHeader>
+          <CardContent>
+            {divisionData.length ? (
+              <Chart data={divisionData} dataKey="division" config={countChartConfig} containerHeight={220}>
+                <BarChart data={divisionData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis />
+                  <YAxis width={36} domain={[0, "auto"]} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="teams" fill="var(--color-teams)" radius={[5, 5, 0, 0]} />
+                </BarChart>
+              </Chart>
+            ) : <EmptyChart />}
+          </CardContent>
+        </Card>
+
+        <Card className="gap-3 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(5)]">
+          <CardHeader>
+            <CardTitle>Strongest regions</CardTitle>
+            <Text className="m-0 text-xs/5">Top eight by average Elo</Text>
+          </CardHeader>
+          <CardContent>
+            {regionData.length ? (
+              <Chart data={regionData} dataKey="region" config={ratingChartConfig} containerHeight={220}>
+                <BarChart data={regionData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis />
+                  <YAxis width={44} domain={["dataMin - 50", "dataMax + 25"]} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="rating" fill="var(--color-rating)" radius={[5, 5, 0, 0]} />
+                </BarChart>
+              </Chart>
+            ) : <EmptyChart />}
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  )
+}
+
+function AnalyticsStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-card px-4 py-4">
+      <dt className="text-xs/5 font-semibold uppercase tracking-wide text-muted-fg">{label}</dt>
+      <dd className="mt-1 font-display text-2xl/8 font-semibold text-fg">{value}</dd>
+    </div>
+  )
+}
+
+function EmptyChart() {
+  return <div className="grid h-[220px] place-items-center text-sm/6 text-muted-fg">No rated teams in this view.</div>
+}

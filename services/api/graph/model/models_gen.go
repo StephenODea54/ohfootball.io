@@ -53,6 +53,7 @@ type Team struct {
 	Mascot     *string      `json:"mascot,omitempty"`
 	City       *string      `json:"city,omitempty"`
 	Division   *int         `json:"division,omitempty"`
+	Region     *int         `json:"region,omitempty"`
 	Record     *Record      `json:"record"`
 	Elo        *EloRating   `json:"elo,omitempty"`
 	EloHistory []*EloRating `json:"eloHistory"`

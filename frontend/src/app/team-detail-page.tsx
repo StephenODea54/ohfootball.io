@@ -39,14 +39,19 @@ export function TeamDetailPage({ team }: { team: Team }) {
   return (
     <main>
       <Container className="max-w-6xl py-10 sm:py-14 lg:py-16">
-        <Link href="/" className="inline-flex text-sm/6 text-muted-fg hover:text-fg">
-          ← All teams
+        <Link href={`/?season=${team.season}`} className="inline-flex text-sm/6 text-muted-fg hover:text-fg">
+          ← {team.season} teams
         </Link>
 
         <header className="mt-6 grid gap-8 border-b pb-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div>
             <Text className="font-medium">
-              {[team.city, formatDivision(team.division), team.season].filter(Boolean).join(" · ")}
+              {[
+                team.city,
+                team.region ? `Region ${team.region}` : null,
+                formatDivision(team.division),
+                team.season,
+              ].filter(Boolean).join(" · ")}
             </Text>
             <Heading className="mt-1 text-4xl/none sm:text-5xl/none">
               {team.name}{team.mascot && <span className="text-muted-fg"> {team.mascot}</span>}

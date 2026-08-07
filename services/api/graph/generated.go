@@ -78,7 +78,7 @@ type ComplexityRoot struct {
 	Query struct {
 		CurrentSeason func(childComplexity int) int
 		Team          func(childComplexity int, id string) int
-		Teams         func(childComplexity int, season *int, search *string, sort *model.TeamSort, limit *int) int
+		Teams         func(childComplexity int, season *int, search *string, region *int, division *int, sort *model.TeamSort, limit *int) int
 	}
 
 	Record struct {
@@ -96,6 +96,7 @@ type ComplexityRoot struct {
 		Mascot     func(childComplexity int) int
 		Name       func(childComplexity int) int
 		Record     func(childComplexity int) int
+		Region     func(childComplexity int) int
 		Schedule   func(childComplexity int) int
 		Season     func(childComplexity int) int
 	}
@@ -103,7 +104,7 @@ type ComplexityRoot struct {
 
 type QueryResolver interface {
 	CurrentSeason(ctx context.Context) (int, error)
-	Teams(ctx context.Context, season *int, search *string, sort *model.TeamSort, limit *int) ([]*model.Team, error)
+	Teams(ctx context.Context, season *int, search *string, region *int, division *int, sort *model.TeamSort, limit *int) ([]*model.Team, error)
 	Team(ctx context.Context, id string) (*model.Team, error)
 }
 
@@ -295,7 +296,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Teams(childComplexity, args["season"].(*int), args["search"].(*string), args["sort"].(*model.TeamSort), args["limit"].(*int)), true
+		return e.complexity.Query.Teams(childComplexity, args["season"].(*int), args["search"].(*string), args["region"].(*int), args["division"].(*int), args["sort"].(*model.TeamSort), args["limit"].(*int)), true
 
 	case "Record.losses":
 		if e.complexity.Record.Losses == nil {
@@ -373,6 +374,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Team.Record(childComplexity), true
+
+	case "Team.region":
+		if e.complexity.Team.Region == nil {
+			break
+		}
+
+		return e.complexity.Team.Region(childComplexity), true
 
 	case "Team.schedule":
 		if e.complexity.Team.Schedule == nil {
@@ -565,16 +573,26 @@ func (ec *executionContext) field_Query_teams_args(ctx context.Context, rawArgs 
 		return nil, err
 	}
 	args["search"] = arg1
-	arg2, err := ec.field_Query_teams_argsSort(ctx, rawArgs)
+	arg2, err := ec.field_Query_teams_argsRegion(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["sort"] = arg2
-	arg3, err := ec.field_Query_teams_argsLimit(ctx, rawArgs)
+	args["region"] = arg2
+	arg3, err := ec.field_Query_teams_argsDivision(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg3
+	args["division"] = arg3
+	arg4, err := ec.field_Query_teams_argsSort(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["sort"] = arg4
+	arg5, err := ec.field_Query_teams_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg5
 	return args, nil
 }
 func (ec *executionContext) field_Query_teams_argsSeason(
@@ -610,6 +628,42 @@ func (ec *executionContext) field_Query_teams_argsSearch(
 	}
 
 	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_teams_argsRegion(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["region"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
+	if tmp, ok := rawArgs["region"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_teams_argsDivision(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["division"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("division"))
+	if tmp, ok := rawArgs["division"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
 	return zeroVal, nil
 }
 
@@ -1707,7 +1761,7 @@ func (ec *executionContext) _Query_teams(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Teams(rctx, fc.Args["season"].(*int), fc.Args["search"].(*string), fc.Args["sort"].(*model.TeamSort), fc.Args["limit"].(*int))
+		return ec.resolvers.Query().Teams(rctx, fc.Args["season"].(*int), fc.Args["search"].(*string), fc.Args["region"].(*int), fc.Args["division"].(*int), fc.Args["sort"].(*model.TeamSort), fc.Args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1744,6 +1798,8 @@ func (ec *executionContext) fieldContext_Query_teams(ctx context.Context, field 
 				return ec.fieldContext_Team_city(ctx, field)
 			case "division":
 				return ec.fieldContext_Team_division(ctx, field)
+			case "region":
+				return ec.fieldContext_Team_region(ctx, field)
 			case "record":
 				return ec.fieldContext_Team_record(ctx, field)
 			case "elo":
@@ -1818,6 +1874,8 @@ func (ec *executionContext) fieldContext_Query_team(ctx context.Context, field g
 				return ec.fieldContext_Team_city(ctx, field)
 			case "division":
 				return ec.fieldContext_Team_division(ctx, field)
+			case "region":
+				return ec.fieldContext_Team_region(ctx, field)
 			case "record":
 				return ec.fieldContext_Team_record(ctx, field)
 			case "elo":
@@ -2350,6 +2408,47 @@ func (ec *executionContext) _Team_division(ctx context.Context, field graphql.Co
 }
 
 func (ec *executionContext) fieldContext_Team_division(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Team_region(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Team_region(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Region, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Team_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Team",
 		Field:      field,
@@ -4928,6 +5027,8 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Team_city(ctx, field, obj)
 		case "division":
 			out.Values[i] = ec._Team_division(ctx, field, obj)
+		case "region":
+			out.Values[i] = ec._Team_region(ctx, field, obj)
 		case "record":
 			out.Values[i] = ec._Team_record(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

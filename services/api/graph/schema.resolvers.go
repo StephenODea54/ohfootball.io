@@ -16,8 +16,8 @@ func (r *queryResolver) CurrentSeason(ctx context.Context) (int, error) {
 }
 
 // Teams is the resolver for the teams field.
-func (r *queryResolver) Teams(ctx context.Context, season *int, search *string, sort *model.TeamSort, limit *int) ([]*model.Team, error) {
-	return r.Store.ListTeams(ctx, season, search, sort, limit)
+func (r *queryResolver) Teams(ctx context.Context, season *int, search *string, region *int, division *int, sort *model.TeamSort, limit *int) ([]*model.Team, error) {
+	return r.Store.ListTeams(ctx, season, search, region, division, sort, limit)
 }
 
 // Team is the resolver for the team field.

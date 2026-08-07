@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -31,30 +37,34 @@ const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/leaderboard': typeof LeaderboardRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/leaderboard': typeof LeaderboardRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/leaderboard': typeof LeaderboardRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/leaderboard' | '/teams/$teamId'
+  fullPaths: '/' | '/about' | '/leaderboard' | '/teams/$teamId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/leaderboard' | '/teams/$teamId'
-  id: '__root__' | '/' | '/leaderboard' | '/teams/$teamId'
+  to: '/' | '/about' | '/leaderboard' | '/teams/$teamId'
+  id: '__root__' | '/' | '/about' | '/leaderboard' | '/teams/$teamId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   LeaderboardRoute: typeof LeaderboardRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard': {
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   LeaderboardRoute: LeaderboardRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
 }

@@ -29,7 +29,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        title: 'ohfootball.io — Ohio high school football, predicted',
+      },
+      {
+        name: 'description',
+        content: 'Explore Ohio high school football teams, Elo ratings, and game predictions.',
       },
     ],
     links: [
