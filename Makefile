@@ -1,4 +1,4 @@
-.PHONY: build test vet fmt sqlc-generate sqlc-vet db-up db-down db-logs \
+.PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	predictor-build predictor-test mlflow-up mlflow-down elo-run elo-sweep
 
@@ -24,6 +24,9 @@ fmt:
 	$(MAKE) -C services/scraper fmt
 	$(MAKE) -C services/api fmt
 	gofmt -w pkg/database/*.go pkg/database/db/*.go
+
+hooks:
+	git config core.hooksPath .githooks
 
 sqlc-generate:
 	go -C pkg/database run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 generate

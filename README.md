@@ -1,3 +1,16 @@
+# ohfootball.io
+
+## Setup
+
+Run this command one time after you clone the repository:
+
+```sh
+make hooks
+```
+
+It points Git at `.githooks`. The pre-commit hook then checks the format of the Go files,
+runs `make vet`, and runs `make test` before each commit.
+
 # TODO
 
 Need to have check in repo root that checks for installation of required technologies

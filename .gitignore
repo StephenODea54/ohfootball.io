@@ -8,6 +8,7 @@
 *bin
 
 # And permit certain files
+!.githooks/*
 !.dockerignore
 !.env.example
 !.gitignore
