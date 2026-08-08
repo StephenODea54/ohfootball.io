@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { TeamAnalytics } from "@/app/team-analytics"
 import {
+  EMPTY_TEAM_FILTERS,
   filterTeams,
   TeamFilterControls,
   type TeamFilterState,
@@ -15,28 +16,17 @@ import { ProgressBar, ProgressBarTrack } from "@/components/ui/progress-bar"
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
 import { Text } from "@/components/ui/text"
 import { formatDivision, formatRecord, type Team } from "@/lib/graphql"
+import { withSeason } from "@/lib/season"
 
-export function LeaderboardPage({
-  onSeasonChange,
-  season,
-  teams,
-}: {
-  onSeasonChange: (season: number) => void
-  season: number
-  teams: Team[]
-}) {
-  const [filters, setFilters] = useState<TeamFilterState>({
-    query: "",
-    region: "",
-    division: "",
-  })
+export function LeaderboardPage({ season, teams }: { season: number; teams: Team[] }) {
+  const [filters, setFilters] = useState<TeamFilterState>(EMPTY_TEAM_FILTERS)
   const filteredTeams = useMemo(() => filterTeams(teams, filters), [teams, filters])
-  const ratedTeams = filteredTeams.filter((team) => team.elo)
+  const ratedTeams = filteredTeams.filter((team) => team.rating)
   const highestRating = ratedTeams.length
-    ? Math.max(...ratedTeams.map((team) => team.elo!.rating))
+    ? Math.max(...ratedTeams.map((team) => team.rating!.value))
     : 0
   const ratingFloor = ratedTeams.length
-    ? Math.min(...ratedTeams.map((team) => team.elo!.rating))
+    ? Math.min(...ratedTeams.map((team) => team.rating!.value))
     : 0
 
   return (
@@ -45,19 +35,13 @@ export function LeaderboardPage({
         <header className="max-w-4xl">
           <Heading className="text-4xl/none sm:text-5xl/none">Leaderboard</Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
-            Ohio high school football teams ranked by Elo rating. Choose a season, then narrow the
-            field by team, region, or division.
+            Every Ohio high school football team in {season}, ranked by rating. Search by school
+            name, then narrow the field by region or division.
           </Text>
         </header>
 
         <div className="mt-8 sm:mt-10">
-          <TeamFilterControls
-            filters={filters}
-            onChange={setFilters}
-            onSeasonChange={onSeasonChange}
-            season={season}
-            teams={teams}
-          />
+          <TeamFilterControls filters={filters} onChange={setFilters} teams={teams} />
         </div>
 
         <TeamAnalytics season={season} teams={filteredTeams} />
@@ -65,28 +49,28 @@ export function LeaderboardPage({
         {ratedTeams.length > 0 ? (
           <Card className="mt-8 gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
             <CardContent>
-              <Table aria-label={`${season} Ohio high school football Elo leaderboard`} bleed>
+              <Table aria-label={`${season} Ohio high school football rating leaderboard`} bleed>
                 <TableHeader className="bg-muted/70 uppercase text-xs/5 tracking-wide">
                   <TableColumn isRowHeader className="w-16">Rank</TableColumn>
                   <TableColumn>Team</TableColumn>
                   <TableColumn className="text-end">Record</TableColumn>
-                  <TableColumn className="w-32 text-end">Elo</TableColumn>
+                  <TableColumn className="w-32 text-end">Rating</TableColumn>
                 </TableHeader>
                 <TableBody>
                   {ratedTeams.map((team) => {
-                    const rating = team.elo!.rating
+                    const rating = team.rating!.value
                     const range = highestRating - ratingFloor
                     const progress = range === 0 ? 100 : ((rating - ratingFloor) / range) * 100
 
                     return (
                       <TableRow id={team.id} key={team.id}>
                         <TableCell className="text-lg/6 font-semibold text-muted-fg">
-                          {team.elo!.rank}
+                          {team.rating!.rank}
                         </TableCell>
                         <TableCell>
                           <div className="py-1">
                             <Link
-                              href={`/teams/${team.id}`}
+                              href={withSeason(`/teams/${team.id}`, season)}
                               className="font-semibold text-base/6 text-fg hover:text-primary-subtle-fg"
                             >
                               {team.name}
@@ -109,7 +93,7 @@ export function LeaderboardPage({
                               {Math.round(rating)}
                             </p>
                             <ProgressBar
-                              aria-label={`${team.name} Elo rating ${Math.round(rating)}`}
+                              aria-label={`${team.name} rating ${Math.round(rating)}`}
                               value={progress}
                               className="mt-1"
                             >
@@ -127,12 +111,12 @@ export function LeaderboardPage({
         ) : (
           <Card className="mt-8 px-5 py-10 text-center shadow-none">
             <p className="font-medium text-sm/6 text-fg">No rated teams found</p>
-            <Text className="mt-1">Try another name, region, division, or season.</Text>
+            <Text className="mt-1">Try another school name, region, division, or season.</Text>
           </Card>
         )}
 
         <Text className="mt-3 text-xs/5">
-          Elo ratings are relative performance estimates and update after completed games.
+          Ratings are relative strength estimates. They update after completed games.
         </Text>
       </Container>
     </main>

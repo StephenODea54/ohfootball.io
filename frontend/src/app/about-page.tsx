@@ -1,64 +1,98 @@
-import { ArrowRightIcon, ChartBarIcon, CircleStackIcon, SparklesIcon } from "@heroicons/react/20/solid"
+import {
+  ArrowRightIcon,
+  ArrowTrendingUpIcon,
+  CalendarDaysIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/20/solid"
 import { buttonStyles } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Link } from "@/components/ui/link"
-import { Text } from "@/components/ui/text"
+import { Text, TextLink } from "@/components/ui/text"
+import { withSeason } from "@/lib/season"
 
-const guideposts = [
+const basics = [
   {
-    icon: ChartBarIcon,
-    title: "Read the rating",
-    body: "Elo is a relative measure of team strength. Beating a strong opponent moves a rating more than beating a weaker one; the leaderboard is the clearest way to compare the field.",
+    icon: ArrowTrendingUpIcon,
+    title: "What a rating is",
+    body: "Every team gets one number. An average team sits near 1500. A stronger team sits higher, a weaker team sits lower. The number is a way to compare teams that never play each other.",
   },
   {
-    icon: SparklesIcon,
-    title: "Read the forecast",
-    body: "Pregame probabilities compare each team’s current Elo and account for the game location. They describe uncertainty—not destiny—and will sharpen as the season produces evidence.",
+    icon: MagnifyingGlassIcon,
+    title: "How to find your team",
+    body: "Type your school name in the search box on the home page. You can also open the leaderboard and scroll, or filter it down to your region or division.",
   },
   {
-    icon: CircleStackIcon,
-    title: "Follow the data",
-    body: "Results are collected, modeled into analytics-ready marts, passed through the cumulative Elo process, and served to this site through a small GraphQL API.",
+    icon: CalendarDaysIcon,
+    title: "When it changes",
+    body: "Ratings move after a game is played and the final score is recorded. Every rating on the site is stamped with the date it was calculated, so you always know how fresh it is.",
   },
 ]
 
-export function AboutPage() {
+const questions = [
+  {
+    question: "My team won. Why did the rating barely move?",
+    answer:
+      "The size of the move depends on who you beat. Beating a team the model already expected you to beat is worth very little. Beating a team the model rated above you is worth a lot.",
+  },
+  {
+    question: "What does a win probability of 68% mean?",
+    answer:
+      "It means that in a matchup like this one, the favorite wins about 68 times out of 100. The other 32 games are real. An upset does not mean the number was wrong.",
+  },
+  {
+    question: "Does this decide playoff seeding?",
+    answer:
+      "No. Playoff qualification and seeding are set by the OHSAA, using its own system. Nothing on this site affects any of that.",
+  },
+  {
+    question: "Why is a team missing or unrated?",
+    answer:
+      "A team needs recorded games in the selected season before it can be rated. Teams from other states show up as opponents on a schedule, but they are not ranked here.",
+  },
+  {
+    question: "How early in the season can I trust this?",
+    answer:
+      "Week one ratings lean heavily on last season and on the team's division. They sharpen quickly once real games are played. Give it a few weeks before reading too much into a rank.",
+  },
+]
+
+export function AboutPage({ season }: { season: number }) {
   return (
     <main>
-      <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
-        <section className="relative overflow-hidden rounded-2xl border bg-card px-6 py-10 sm:px-10 sm:py-14">
-          <div className="absolute -right-24 -top-24 size-72 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
-          <div className="relative max-w-3xl">
-            <p className="font-semibold text-sm/6 uppercase tracking-[0.18em] text-primary-subtle-fg">
-              For the weary traveler
-            </p>
-            <Heading className="mt-3 text-4xl/none sm:text-5xl/none">
-              A field guide to <span className="text-primary">ohfootball.io.</span>
-            </Heading>
-            <Text className="mt-5 max-w-2xl text-base/7 sm:text-lg/8">
-              Ohio high school football has hundreds of teams, ten weeks of regular-season
-              intrigue, and no shortage of opinions. This is a calm place to explore the season,
-              compare teams, and see what the numbers expect next.
-            </Text>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/" className={buttonStyles({ intent: "primary", size: "lg" })}>
-                Explore teams <ArrowRightIcon />
-              </Link>
-              <Link href="/leaderboard" className={buttonStyles({ intent: "outline", size: "lg" })}>
-                View leaderboard
-              </Link>
-            </div>
+      <Container className="max-w-5xl py-12 sm:py-16 lg:py-20">
+        <section className="max-w-3xl">
+          <p className="font-semibold text-sm/6 uppercase tracking-[0.18em] text-primary-subtle-fg">
+            Start here
+          </p>
+          <Heading className="mt-3 text-4xl/none sm:text-5xl/none">
+            Ohio high school football, <span className="text-primary">by the numbers.</span>
+          </Heading>
+          <Text className="mt-5 text-base/7 sm:text-lg/8">
+            This site rates every Ohio high school football team, ranks them against each other, and
+            estimates who is likely to win the games that have not been played yet. You do not need
+            to know any math to use it.
+          </Text>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href={withSeason("/", season)} className={buttonStyles({ intent: "primary", size: "lg" })}>
+              Find your team <ArrowRightIcon />
+            </Link>
+            <Link
+              href={withSeason("/leaderboard", season)}
+              className={buttonStyles({ intent: "outline", size: "lg" })}
+            >
+              See the rankings
+            </Link>
           </div>
         </section>
 
-        <section className="mt-12" aria-labelledby="how-it-works-heading">
-          <Heading id="how-it-works-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Three guideposts
+        <section className="mt-14" aria-labelledby="basics-heading">
+          <Heading id="basics-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+            The three things worth knowing
           </Heading>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {guideposts.map(({ body, icon: Icon, title }) => (
+            {basics.map(({ body, icon: Icon, title }) => (
               <Card key={title} className="gap-4 shadow-none [--gutter:--spacing(5)]">
                 <CardHeader>
                   <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary-subtle-fg">
@@ -74,17 +108,55 @@ export function AboutPage() {
           </div>
         </section>
 
-        <section className="mt-12 grid gap-8 rounded-2xl bg-muted/60 px-6 py-8 sm:grid-cols-[0.75fr_1.25fr] sm:px-8 sm:py-10">
-          <div>
-            <p className="font-semibold text-sm/6 uppercase tracking-[0.16em] text-muted-fg">Trail notes</p>
-            <Heading level={2} className="mt-2 text-2xl/8 sm:text-3xl/9">A few honest caveats</Heading>
-          </div>
-          <ul className="space-y-4 text-sm/6 text-muted-fg">
-            <li><strong className="text-fg">Predictions are probabilities.</strong> A favorite can lose, and that uncertainty is part of the fun.</li>
-            <li><strong className="text-fg">Ratings carry context forward.</strong> A returning program begins with history, then the current season steadily earns more influence.</li>
-            <li><strong className="text-fg">Only completed games move Elo.</strong> Cancellations and games without a final score do not change ratings.</li>
-            <li><strong className="text-fg">This is an independent project.</strong> It is not affiliated with the OHSAA or Joe Eitel.</li>
+        <section className="mt-14" aria-labelledby="reading-heading">
+          <Heading id="reading-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+            Reading a team page
+          </Heading>
+          <Text className="mt-3 max-w-3xl text-base/7 sm:text-base/7">
+            Open any team to see its rating, its rank among every rated Ohio team, and its record.
+            Below that is a chart of how the rating has moved across the season, then the full
+            schedule. Games that have not been played yet show a predicted winner and a win
+            probability. Games already played show the final score.
+          </Text>
+        </section>
+
+        <section className="mt-14" aria-labelledby="questions-heading">
+          <Heading id="questions-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+            Questions people ask
+          </Heading>
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+            {questions.map(({ answer, question }) => (
+              <div key={question} className="rounded-xl border bg-card px-5 py-5">
+                <dt className="font-semibold text-base/6 text-fg">{question}</dt>
+                <dd className="mt-2 text-sm/6 text-muted-fg">{answer}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <section className="mt-14 rounded-2xl bg-muted/60 px-6 py-8 sm:px-8 sm:py-10">
+          <Heading level={2} className="text-2xl/8 sm:text-3xl/9">
+            Fine print
+          </Heading>
+          <ul className="mt-4 space-y-3 text-sm/6 text-muted-fg">
+            <li>
+              <strong className="text-fg">This is an independent project.</strong> It is not
+              affiliated with the OHSAA, with any school, or with Joe Eitel.
+            </li>
+            <li>
+              <strong className="text-fg">Predictions are not promises.</strong> The whole point of
+              a probability is that the other outcome happens sometimes.
+            </li>
+            <li>
+              <strong className="text-fg">Scores come from public results.</strong> If a result is
+              missing or wrong at the source, it will be missing or wrong here too.
+            </li>
           </ul>
+          <Text className="mt-6 text-sm/6">
+            Want the technical version, including how the ratings are calculated and where they fall
+            short? Read the{" "}
+            <TextLink href={withSeason("/methodology", season)}>methodology</TextLink>.
+          </Text>
         </section>
       </Container>
     </main>

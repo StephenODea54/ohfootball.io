@@ -7,9 +7,16 @@ export const Route = createFileRoute('/about')({
       { title: 'About — ohfootball.io' },
       {
         name: 'description',
-        content: 'A field guide to the ratings, predictions, and data behind ohfootball.io.',
+        content:
+          'What the ratings mean, how to find your school, and when the numbers change.',
       },
     ],
   }),
-  component: AboutPage,
+  component: AboutRoute,
 })
+
+function AboutRoute() {
+  const { season } = Route.useSearch()
+
+  return <AboutPage season={season} />
+}

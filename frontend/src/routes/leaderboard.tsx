@@ -1,10 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { LeaderboardPage } from '@/app/leaderboard-page'
 import { fetchTeams } from '@/lib/graphql'
-import { validateSeasonSearch } from '@/lib/season'
 
 export const Route = createFileRoute('/leaderboard')({
-  validateSearch: validateSeasonSearch,
+  head: () => ({
+    meta: [
+      { title: 'Leaderboard — ohfootball.io' },
+      {
+        name: 'description',
+        content: 'Ohio high school football teams ranked by rating, filtered by region or division.',
+      },
+    ],
+  }),
   loaderDeps: ({ search }) => ({ season: search.season }),
   loader: ({ deps }) => fetchTeams({ season: deps.season }),
   component: LeaderboardRoute,
@@ -13,13 +20,6 @@ export const Route = createFileRoute('/leaderboard')({
 function LeaderboardRoute() {
   const teams = Route.useLoaderData()
   const { season } = Route.useSearch()
-  const navigate = Route.useNavigate()
 
-  return (
-    <LeaderboardPage
-      teams={teams}
-      season={season}
-      onSeasonChange={(nextSeason) => navigate({ search: { season: nextSeason } })}
-    />
-  )
+  return <LeaderboardPage teams={teams} season={season} />
 }

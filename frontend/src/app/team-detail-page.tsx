@@ -2,7 +2,7 @@
 
 import { Area, AreaChart } from "recharts"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card"
 import { CartesianGrid, Chart, ChartTooltip, ChartTooltipContent, XAxis, YAxis } from "@/components/ui/chart"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
@@ -16,19 +16,20 @@ import {
   type Game,
   type Team,
 } from "@/lib/graphql"
+import { withSeason } from "@/lib/season"
 
 const chartConfig = {
   rating: {
-    label: "Elo",
+    label: "Rating",
     color: "var(--color-success)",
   },
 }
 
-export function TeamDetailPage({ team }: { team: Team }) {
-  const rating = team.elo ? Math.round(team.elo.rating) : null
-  const history = team.eloHistory.map((point) => ({
+export function TeamDetailPage({ season, team }: { season: number; team: Team }) {
+  const rating = team.rating ? Math.round(team.rating.value) : null
+  const history = team.ratingHistory.map((point) => ({
     period: formatDate(point.asOf),
-    rating: Math.round(point.rating),
+    rating: Math.round(point.value),
   }))
   const firstRating = history.at(0)?.rating
   const ratingDelta = rating !== null && firstRating !== undefined ? rating - firstRating : null
@@ -39,8 +40,11 @@ export function TeamDetailPage({ team }: { team: Team }) {
   return (
     <main>
       <Container className="max-w-6xl py-10 sm:py-14 lg:py-16">
-        <Link href={`/?season=${team.season}`} className="inline-flex text-sm/6 text-muted-fg hover:text-fg">
-          ← {team.season} teams
+        <Link
+          href={withSeason("/leaderboard", season)}
+          className="inline-flex text-sm/6 text-muted-fg hover:text-fg"
+        >
+          ← {season} leaderboard
         </Link>
 
         <header className="mt-6 grid gap-8 border-b pb-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -59,8 +63,8 @@ export function TeamDetailPage({ team }: { team: Team }) {
           </div>
 
           <dl className="grid grid-cols-3 gap-7 sm:text-right">
-            <TeamStat label="Elo" value={rating?.toString() ?? "—"} accent />
-            <TeamStat label="Rank" value={team.elo ? `#${team.elo.rank}` : "—"} />
+            <TeamStat label="Rating" value={rating?.toString() ?? "—"} accent />
+            <TeamStat label="Rank" value={team.rating ? `#${team.rating.rank}` : "—"} />
             <TeamStat label="Record" value={formatRecord(team.record)} />
           </dl>
         </header>
@@ -68,7 +72,7 @@ export function TeamDetailPage({ team }: { team: Team }) {
         <Card className="mt-6 gap-0 py-4 shadow-none [--gutter:--spacing(4)]">
           <CardContent className="flex flex-col items-start gap-x-3 gap-y-1 text-sm/6 sm:flex-row sm:items-center">
             <span>
-              <strong className="font-semibold text-fg">{team.elo ? formatDate(team.elo.asOf) : "Not published"}</strong>{" "}
+              <strong className="font-semibold text-fg">{team.rating ? formatDate(team.rating.asOf) : "Not published"}</strong>{" "}
               <span className="text-muted-fg">rating snapshot</span>
             </span>
             <span aria-hidden className="hidden text-muted-fg sm:inline">·</span>
@@ -76,9 +80,9 @@ export function TeamDetailPage({ team }: { team: Team }) {
           </CardContent>
         </Card>
 
-        <section className="mt-10" aria-labelledby="elo-history-heading">
-          <Heading id="elo-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
-            Elo history
+        <section className="mt-10" aria-labelledby="rating-history-heading">
+          <Heading id="rating-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
+            Rating history
           </Heading>
           <Card className="gap-4 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(6)]">
             <CardHeader>
@@ -103,7 +107,7 @@ export function TeamDetailPage({ team }: { team: Team }) {
                 <Chart data={history} dataKey="period" config={chartConfig} containerHeight={250}>
                   <AreaChart data={history} margin={{ top: 10, right: 10, left: 4, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="elo-fill" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="rating-fill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--color-rating)" stopOpacity={0.22} />
                         <stop offset="95%" stopColor="var(--color-rating)" stopOpacity={0.03} />
                       </linearGradient>
@@ -118,7 +122,7 @@ export function TeamDetailPage({ team }: { team: Team }) {
                       isAnimationActive={false}
                       stroke="var(--color-rating)"
                       strokeWidth={2}
-                      fill="url(#elo-fill)"
+                      fill="url(#rating-fill)"
                       dot={{ r: 3, fill: "var(--color-rating)", strokeWidth: 0 }}
                       activeDot={{ r: 5, fill: "var(--color-rating)" }}
                     />
@@ -185,7 +189,7 @@ export function TeamDetailPage({ team }: { team: Team }) {
             </CardContent>
           </Card>
           <Text className="mt-3 text-xs/5">
-            Upcoming probabilities use the latest published Elo ratings. Opponents outside the rated Ohio population show as not rated.
+            Upcoming probabilities use the latest published ratings. Opponents outside the rated Ohio population show as not rated.
           </Text>
         </section>
       </Container>

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams/$teamId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
   path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MethodologyRoute = MethodologyRouteImport.update({
+  id: '/methodology',
+  path: '/methodology',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
   id: '/teams/$teamId',
   path: '/teams/$teamId',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/methodology': typeof MethodologyRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/methodology': typeof MethodologyRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/methodology': typeof MethodologyRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/leaderboard' | '/teams/$teamId'
+  fullPaths: '/' | '/about' | '/leaderboard' | '/methodology' | '/teams/$teamId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/leaderboard' | '/teams/$teamId'
-  id: '__root__' | '/' | '/about' | '/leaderboard' | '/teams/$teamId'
+  to: '/' | '/about' | '/leaderboard' | '/methodology' | '/teams/$teamId'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/leaderboard'
+    | '/methodology'
+    | '/teams/$teamId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  MethodologyRoute: typeof MethodologyRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
 }
 
@@ -92,6 +108,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/methodology': {
+      id: '/methodology'
+      path: '/methodology'
+      fullPath: '/methodology'
+      preLoaderRoute: typeof MethodologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/teams/$teamId': {
       id: '/teams/$teamId'
       path: '/teams/$teamId'
@@ -106,6 +129,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   LeaderboardRoute: LeaderboardRoute,
+  MethodologyRoute: MethodologyRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
 }
 export const routeTree = rootRouteImport

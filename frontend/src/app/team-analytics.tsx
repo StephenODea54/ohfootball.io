@@ -7,17 +7,17 @@ import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
 import { formatDivision, type Team } from "@/lib/graphql"
 
-const countChartConfig = {
-  teams: { label: "Teams", color: "var(--color-primary)" },
+const divisionChartConfig = {
+  rating: { label: "Average rating", color: "var(--color-primary)" },
 }
 
-const ratingChartConfig = {
-  rating: { label: "Average Elo", color: "var(--color-success)" },
+const regionChartConfig = {
+  rating: { label: "Average rating", color: "var(--color-success)" },
 }
 
 export function TeamAnalytics({ season, teams }: { season: number; teams: Team[] }) {
-  const ratedTeams = teams.filter((team) => team.elo)
-  const ratings = ratedTeams.map((team) => team.elo!.rating).sort((a, b) => a - b)
+  const ratedTeams = teams.filter((team) => team.rating)
+  const ratings = ratedTeams.map((team) => team.rating!.value).sort((a, b) => a - b)
   const midpoint = Math.floor(ratings.length / 2)
   const median = ratings.length === 0
     ? null
@@ -25,25 +25,30 @@ export function TeamAnalytics({ season, teams }: { season: number; teams: Team[]
       ? ratings[midpoint]!
       : (ratings[midpoint - 1]! + ratings[midpoint]!) / 2
 
-  const divisionCounts = new Map<string, number>()
-  for (const team of teams) {
-    const division = formatDivision(team.division)
-    divisionCounts.set(division, (divisionCounts.get(division) ?? 0) + 1)
+  // Independent teams have no division number. They are sorted last, after every numbered division.
+  const divisionRatings = new Map<number, number[]>()
+  for (const team of ratedTeams) {
+    const division = team.division ?? Number.MAX_SAFE_INTEGER
+    const values = divisionRatings.get(division) ?? []
+    values.push(team.rating!.value)
+    divisionRatings.set(division, values)
   }
-  const divisionData = [...divisionCounts].map(([division, count]) => ({ division, teams: count }))
+  const divisionData = [...divisionRatings]
+    .sort(([a], [b]) => a - b)
+    .map(([division, values]) => ({
+      division: formatDivision(division === Number.MAX_SAFE_INTEGER ? null : division),
+      rating: average(values),
+    }))
 
   const regionRatings = new Map<string, number[]>()
   for (const team of ratedTeams) {
     const region = team.region ? `R${team.region}` : "Unassigned"
     const values = regionRatings.get(region) ?? []
-    values.push(team.elo!.rating)
+    values.push(team.rating!.value)
     regionRatings.set(region, values)
   }
   const regionData = [...regionRatings]
-    .map(([region, values]) => ({
-      region,
-      rating: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length),
-    }))
+    .map(([region, values]) => ({ region, rating: average(values) }))
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 8)
 
@@ -62,9 +67,12 @@ export function TeamAnalytics({ season, teams }: { season: number; teams: Team[]
       <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <AnalyticsStat label="Teams in view" value={teams.length.toLocaleString()} />
         <AnalyticsStat label="Rated teams" value={ratedTeams.length.toLocaleString()} />
-        <AnalyticsStat label="Median Elo" value={median === null ? "—" : Math.round(median).toLocaleString()} />
         <AnalyticsStat
-          label="Highest Elo"
+          label="Median rating"
+          value={median === null ? "—" : Math.round(median).toLocaleString()}
+        />
+        <AnalyticsStat
+          label="Highest rating"
           value={ratings.length ? Math.round(ratings.at(-1)!).toLocaleString() : "—"}
         />
       </dl>
@@ -72,18 +80,18 @@ export function TeamAnalytics({ season, teams }: { season: number; teams: Team[]
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <Card className="gap-3 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(5)]">
           <CardHeader>
-            <CardTitle>Teams by division</CardTitle>
-            <Text className="m-0 text-xs/5">Field size for the current view</Text>
+            <CardTitle>Rating by division</CardTitle>
+            <Text className="m-0 text-xs/5">Average rating for the current view</Text>
           </CardHeader>
           <CardContent>
             {divisionData.length ? (
-              <Chart data={divisionData} dataKey="division" config={countChartConfig} containerHeight={220}>
+              <Chart data={divisionData} dataKey="division" config={divisionChartConfig} containerHeight={220}>
                 <BarChart data={divisionData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} />
                   <XAxis />
-                  <YAxis width={36} domain={[0, "auto"]} />
+                  <YAxis width={44} domain={["dataMin - 50", "dataMax + 25"]} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="teams" fill="var(--color-teams)" radius={[5, 5, 0, 0]} />
+                  <Bar dataKey="rating" fill="var(--color-rating)" radius={[5, 5, 0, 0]} />
                 </BarChart>
               </Chart>
             ) : <EmptyChart />}
@@ -93,11 +101,11 @@ export function TeamAnalytics({ season, teams }: { season: number; teams: Team[]
         <Card className="gap-3 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(5)]">
           <CardHeader>
             <CardTitle>Strongest regions</CardTitle>
-            <Text className="m-0 text-xs/5">Top eight by average Elo</Text>
+            <Text className="m-0 text-xs/5">Top eight by average rating</Text>
           </CardHeader>
           <CardContent>
             {regionData.length ? (
-              <Chart data={regionData} dataKey="region" config={ratingChartConfig} containerHeight={220}>
+              <Chart data={regionData} dataKey="region" config={regionChartConfig} containerHeight={220}>
                 <BarChart data={regionData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} />
                   <XAxis />
@@ -112,6 +120,10 @@ export function TeamAnalytics({ season, teams }: { season: number; teams: Team[]
       </div>
     </section>
   )
+}
+
+function average(values: number[]) {
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
 }
 
 function AnalyticsStat({ label, value }: { label: string; value: string }) {

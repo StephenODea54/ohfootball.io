@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouterState } from "@tanstack/react-router"
+import { useNavigate, useRouterState } from "@tanstack/react-router"
 import {
   Navbar,
   NavbarItem,
@@ -10,17 +10,24 @@ import {
   NavbarSpacer,
   NavbarStart,
 } from "@/components/ui/navbar"
+import { SeasonSelect } from "@/components/season-select"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { CURRENT_SEASON, withSeason } from "@/lib/season"
 
 const navItems = [
-  { label: "teams", href: "/" },
-  { label: "leaderboard", href: "/leaderboard" },
-  { label: "about", href: "/about" },
+  { label: "Home", href: "/" },
+  { label: "Leaderboard", href: "/leaderboard" },
+  { label: "Methodology", href: "/methodology" },
+  { label: "About", href: "/about" },
 ]
 
 export function AppNavbar() {
+  const navigate = useNavigate()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
+  })
+  const season = useRouterState({
+    select: (state) => (state.location.search as { season?: number }).season ?? CURRENT_SEASON,
   })
 
   const navigation = (
@@ -31,12 +38,22 @@ export function AppNavbar() {
             item.href === "/" ? pathname === "/" || pathname.startsWith("/teams/") : pathname === item.href
           }
           key={item.href}
-          href={item.href}
+          href={withSeason(item.href, season)}
         >
           {item.label}
         </NavbarItem>
       ))}
     </NavbarSection>
+  )
+
+  const seasonSelect = (
+    <SeasonSelect
+      className="w-24"
+      onSeasonChange={(nextSeason) =>
+        navigate({ to: ".", search: (previous) => ({ ...previous, season: nextSeason }) })
+      }
+      season={season}
+    />
   )
 
   return (
@@ -53,6 +70,7 @@ export function AppNavbar() {
         </NavbarStart>
         <NavbarSpacer />
         {navigation}
+        {seasonSelect}
         <ThemeSwitcher />
       </Navbar>
 
@@ -60,6 +78,7 @@ export function AppNavbar() {
         <span className="font-semibold text-sm">ohfootball</span>
         <NavbarSpacer />
         {navigation}
+        {seasonSelect}
         <ThemeSwitcher />
       </NavbarMobile>
     </NavbarProvider>

@@ -9,5 +9,7 @@ export const Route = createFileRoute('/teams/$teamId')({
 
 function TeamRoute() {
   const team = Route.useLoaderData()
-  return <TeamDetailPage team={team} />
+  const { season } = Route.useSearch()
+
+  return <TeamDetailPage season={season} team={team} />
 }

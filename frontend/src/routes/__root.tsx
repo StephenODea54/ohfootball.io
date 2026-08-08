@@ -9,6 +9,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { AppNavbar } from '@/app/navbar-01/app-navbar'
 import { ThemeProvider } from '@/components/theme-provider'
+import { validateSeasonSearch } from '@/lib/season'
 
 import appCss from '../styles.css?url'
 
@@ -19,6 +20,7 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  validateSearch: validateSeasonSearch,
   head: () => ({
     meta: [
       {
@@ -33,7 +35,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: 'description',
-        content: 'Explore Ohio high school football teams, Elo ratings, and game predictions.',
+        content: 'Explore Ohio high school football teams, ratings, and game predictions.',
       },
     ],
     links: [

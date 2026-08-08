@@ -1,10 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { TeamsPage } from '@/app/teams-page'
+import { HomePage } from '@/app/home-page'
 import { fetchTeams } from '@/lib/graphql'
-import { validateSeasonSearch } from '@/lib/season'
 
 export const Route = createFileRoute('/')({
-  validateSearch: validateSeasonSearch,
+  head: () => ({
+    meta: [
+      { title: 'ohfootball.io — Ohio high school football, predicted' },
+      {
+        name: 'description',
+        content: 'Search any Ohio high school football program to see its rating and schedule.',
+      },
+    ],
+  }),
   loaderDeps: ({ search }) => ({ season: search.season }),
   loader: ({ deps }) => fetchTeams({ season: deps.season }),
   component: Home,
@@ -16,10 +23,12 @@ function Home() {
   const navigate = Route.useNavigate()
 
   return (
-    <TeamsPage
-      teams={teams}
+    <HomePage
+      onSelectTeam={(teamId) =>
+        navigate({ to: '/teams/$teamId', params: { teamId }, search: { season } })
+      }
       season={season}
-      onSeasonChange={(nextSeason) => navigate({ search: { season: nextSeason } })}
+      teams={teams}
     />
   )
 }
