@@ -486,6 +486,9 @@ const TableCell = ({ className, ref, ...props }: TableCellProps) => {
       className={cx(
         twJoin(
           'group px-4 py-(--gutter-y) align-middle outline-hidden first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2)) group-has-data-focus-visible-within:text-fg',
+          // Cell content sits in a flex wrapper, which ignores text-align. Carry the alignment
+          // through to the wrapper so a cell lines up with its column header.
+          '[&.text-center>div]:justify-center [&.text-end>div]:justify-end',
           !striped && 'border-b',
           grid && 'border-l first:border-l-0',
           !bleed && 'sm:last:pe-1 sm:first:ps-1',
