@@ -50,6 +50,7 @@ type ComplexityRoot struct {
 		AsOf   func(childComplexity int) int
 		Rank   func(childComplexity int) int
 		Rating func(childComplexity int) int
+		Season func(childComplexity int) int
 	}
 
 	Game struct {
@@ -77,7 +78,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		CurrentSeason func(childComplexity int) int
-		Team          func(childComplexity int, id string) int
+		Team          func(childComplexity int, id string, season *int) int
 		Teams         func(childComplexity int, season *int, search *string, region *int, division *int, sort *model.TeamSort, limit *int) int
 	}
 
@@ -105,7 +106,7 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	CurrentSeason(ctx context.Context) (int, error)
 	Teams(ctx context.Context, season *int, search *string, region *int, division *int, sort *model.TeamSort, limit *int) ([]*model.Team, error)
-	Team(ctx context.Context, id string) (*model.Team, error)
+	Team(ctx context.Context, id string, season *int) (*model.Team, error)
 }
 
 type executableSchema struct {
@@ -147,6 +148,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.EloRating.Rating(childComplexity), true
+
+	case "EloRating.season":
+		if e.complexity.EloRating.Season == nil {
+			break
+		}
+
+		return e.complexity.EloRating.Season(childComplexity), true
 
 	case "Game.date":
 		if e.complexity.Game.Date == nil {
@@ -284,7 +292,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Team(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Team(childComplexity, args["id"].(string), args["season"].(*int)), true
 
 	case "Query.teams":
 		if e.complexity.Query.Teams == nil {
@@ -540,6 +548,11 @@ func (ec *executionContext) field_Query_team_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["id"] = arg0
+	arg1, err := ec.field_Query_team_argsSeason(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["season"] = arg1
 	return args, nil
 }
 func (ec *executionContext) field_Query_team_argsID(
@@ -557,6 +570,24 @@ func (ec *executionContext) field_Query_team_argsID(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_team_argsSeason(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["season"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("season"))
+	if tmp, ok := rawArgs["season"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
 	return zeroVal, nil
 }
 
@@ -822,6 +853,50 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _EloRating_season(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EloRating_season(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Season, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EloRating_season(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EloRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _EloRating_rating(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_EloRating_rating(ctx, field)
@@ -1840,7 +1915,7 @@ func (ec *executionContext) _Query_team(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Team(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().Team(rctx, fc.Args["id"].(string), fc.Args["season"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2549,6 +2624,8 @@ func (ec *executionContext) fieldContext_Team_elo(_ context.Context, field graph
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "season":
+				return ec.fieldContext_EloRating_season(ctx, field)
 			case "rating":
 				return ec.fieldContext_EloRating_rating(ctx, field)
 			case "rank":
@@ -2601,6 +2678,8 @@ func (ec *executionContext) fieldContext_Team_eloHistory(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "season":
+				return ec.fieldContext_EloRating_season(ctx, field)
 			case "rating":
 				return ec.fieldContext_EloRating_rating(ctx, field)
 			case "rank":
@@ -4654,6 +4733,11 @@ func (ec *executionContext) _EloRating(ctx context.Context, sel ast.SelectionSet
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("EloRating")
+		case "season":
+			out.Values[i] = ec._EloRating_season(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "rating":
 			out.Values[i] = ec._EloRating_rating(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

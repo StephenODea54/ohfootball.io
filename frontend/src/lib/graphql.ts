@@ -7,6 +7,7 @@ export interface TeamRecord {
 }
 
 export interface TeamRating {
+  season: number
   value: number
   rank: number
   asOf: string
@@ -68,7 +69,7 @@ const teamFields = `
   division
   region
   record { wins losses ties }
-  rating: elo { value: rating rank asOf }
+  rating: elo { season value: rating rank asOf }
 `
 
 export interface FetchTeamsOptions {
@@ -96,13 +97,13 @@ export async function fetchTeams(options: FetchTeamsOptions = {}): Promise<Team[
   return data.teams.map((team) => ({ ...team, ratingHistory: [], schedule: [] }))
 }
 
-export async function fetchTeam(id: string): Promise<Team> {
+export async function fetchTeam(id: string, season?: number): Promise<Team> {
   const data = await graphql<{ team: Team | null }>(
     `
-      query Team($id: ID!) {
-        team(id: $id) {
+      query Team($id: ID!, $season: Int) {
+        team(id: $id, season: $season) {
           ${teamFields}
-          ratingHistory: eloHistory { value: rating rank asOf }
+          ratingHistory: eloHistory { season value: rating rank asOf }
           schedule {
             id
             week
@@ -126,7 +127,7 @@ export async function fetchTeam(id: string): Promise<Team> {
         }
       }
     `,
-    { id },
+    { id, season },
   )
   if (!data.team) throw new Error("Team not found")
   return data.team

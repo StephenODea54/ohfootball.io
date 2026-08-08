@@ -21,8 +21,8 @@ func (r *queryResolver) Teams(ctx context.Context, season *int, search *string, 
 }
 
 // Team is the resolver for the team field.
-func (r *queryResolver) Team(ctx context.Context, id string) (*model.Team, error) {
-	return r.Store.Team(ctx, id)
+func (r *queryResolver) Team(ctx context.Context, id string, season *int) (*model.Team, error) {
+	return r.Store.Team(ctx, id, season)
 }
 
 // Query returns QueryResolver implementation.

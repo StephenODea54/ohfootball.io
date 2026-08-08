@@ -9,6 +9,7 @@ import (
 )
 
 type EloRating struct {
+	Season int     `json:"season"`
 	Rating float64 `json:"rating"`
 	Rank   int     `json:"rank"`
 	AsOf   string  `json:"asOf"`

@@ -25,14 +25,22 @@ const chartConfig = {
   },
 }
 
-export function TeamDetailPage({ season, team }: { season: number; team: Team }) {
+export function TeamDetailPage({ team }: { team: Team }) {
   const rating = team.rating ? Math.round(team.rating.value) : null
-  const history = team.ratingHistory.map((point) => ({
-    period: formatDate(point.asOf),
+  // Ratings are published once per season, so the history is a season by season line rather than a
+  // week by week one. Seasons after the one being viewed are dropped.
+  const past = team.ratingHistory.filter((point) => point.season <= team.season)
+  const history = past.map((point) => ({
+    period: point.season.toString(),
     rating: Math.round(point.value),
   }))
-  const firstRating = history.at(0)?.rating
-  const ratingDelta = rating !== null && firstRating !== undefined ? rating - firstRating : null
+  const firstSeason = past.at(0)?.season
+  const lastSeason = past.at(-1)?.season
+  const seasonIndex = past.findIndex((point) => point.season === team.season)
+  const previousPoint = seasonIndex > 0 ? past[seasonIndex - 1] : undefined
+  const ratingDelta = rating !== null && previousPoint
+    ? rating - Math.round(previousPoint.value)
+    : null
   const ratings = history.map((point) => point.rating)
   const minimumRating = ratings.length ? Math.min(...ratings) - 25 : 1400
   const maximumRating = ratings.length ? Math.max(...ratings) + 25 : 1600
@@ -41,10 +49,10 @@ export function TeamDetailPage({ season, team }: { season: number; team: Team })
     <main>
       <Container className="max-w-6xl py-10 sm:py-14 lg:py-16">
         <Link
-          href={withSeason("/leaderboard", season)}
+          href={withSeason("/leaderboard", team.season)}
           className="inline-flex text-sm/6 text-muted-fg hover:text-fg"
         >
-          ← {season} leaderboard
+          ← {team.season} leaderboard
         </Link>
 
         <header className="mt-6 grid gap-8 border-b pb-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -69,35 +77,26 @@ export function TeamDetailPage({ season, team }: { season: number; team: Team })
           </dl>
         </header>
 
-        <Card className="mt-6 gap-0 py-4 shadow-none [--gutter:--spacing(4)]">
-          <CardContent className="flex flex-col items-start gap-x-3 gap-y-1 text-sm/6 sm:flex-row sm:items-center">
-            <span>
-              <strong className="font-semibold text-fg">{team.rating ? formatDate(team.rating.asOf) : "Not published"}</strong>{" "}
-              <span className="text-muted-fg">rating snapshot</span>
-            </span>
-            <span aria-hidden className="hidden text-muted-fg sm:inline">·</span>
-            <span className="text-muted-fg">Upcoming probabilities update with every published snapshot.</span>
-          </CardContent>
-        </Card>
-
         <section className="mt-10" aria-labelledby="rating-history-heading">
           <Heading id="rating-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
-            Rating history
+            Rating by season
           </Heading>
           <Card className="gap-4 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(6)]">
             <CardHeader>
               <div>
-                <p className="text-xs/5 font-semibold uppercase tracking-wide text-muted-fg">Published snapshots</p>
+                <p className="text-xs/5 font-semibold uppercase tracking-wide text-muted-fg">
+                  End of season rating
+                </p>
                 <p className="mt-1 text-sm/6 text-fg">
-                  {firstRating !== undefined && rating !== null ? (
-                    <>First <strong>{firstRating}</strong> <span className="mx-1 text-muted-fg">→</span> Current <strong>{rating}</strong></>
-                  ) : "No ratings have been published yet."}
+                  {firstSeason !== undefined && lastSeason !== undefined
+                    ? `${firstSeason} through ${lastSeason}`
+                    : "No ratings have been published yet."}
                 </p>
               </div>
-              {ratingDelta !== null && (
+              {ratingDelta !== null && previousPoint && (
                 <CardAction>
                   <Badge intent={ratingDelta >= 0 ? "success" : "danger"} className="font-semibold">
-                    {ratingDelta >= 0 ? "+" : ""}{ratingDelta}
+                    {ratingDelta >= 0 ? "+" : ""}{ratingDelta} vs {previousPoint.season}
                   </Badge>
                 </CardAction>
               )}

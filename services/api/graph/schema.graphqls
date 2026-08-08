@@ -24,6 +24,7 @@ type Record {
 }
 
 type EloRating {
+  season: Int!
   rating: Float!
   rank: Int!
   asOf: String!
@@ -76,5 +77,5 @@ type Query {
     sort: TeamSort = ELO
     limit: Int = 1000
   ): [Team!]!
-  team(id: ID!): Team
+  team(id: ID!, season: Int): Team
 }

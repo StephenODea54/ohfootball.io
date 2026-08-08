@@ -121,19 +121,28 @@ func (store *Postgres) ListTeams(
 	return teams, nil
 }
 
-func (store *Postgres) Team(ctx context.Context, id string) (*model.Team, error) {
-	var season int
+// Team returns one team season. A team key belongs to a single season, so the source id is used to
+// follow the same program into the requested season. Without a season, the key's own season is
+// used.
+func (store *Postgres) Team(ctx context.Context, id string, season *int) (*model.Team, error) {
+	var sourceID string
+	var keySeason int
 	if err := store.pool.QueryRow(ctx, `
-		SELECT season
+		SELECT source_id, season
 		FROM ohfootball_marts.dim_teams
 		WHERE is_current AND team_key = $1::uuid
-	`, id).Scan(&season); errors.Is(err, pgx.ErrNoRows) {
+	`, id).Scan(&sourceID, &keySeason); errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	} else if err != nil {
-		return nil, fmt.Errorf("select team season: %w", err)
+		return nil, fmt.Errorf("select team program: %w", err)
 	}
 
-	row := store.pool.QueryRow(ctx, teamSQL, season, id)
+	requestedSeason := keySeason
+	if season != nil {
+		requestedSeason = *season
+	}
+
+	row := store.pool.QueryRow(ctx, teamSQL, requestedSeason, sourceID)
 	team, err := scanTeam(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -142,11 +151,11 @@ func (store *Postgres) Team(ctx context.Context, id string) (*model.Team, error)
 		return nil, fmt.Errorf("select team: %w", err)
 	}
 
-	history, err := store.ratingHistory(ctx, id)
+	history, err := store.ratingHistory(ctx, sourceID)
 	if err != nil {
 		return nil, err
 	}
-	schedule, err := store.schedule(ctx, id, team.Season)
+	schedule, err := store.schedule(ctx, team.ID, team.Season)
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +219,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	team.Schedule = []*model.Game{}
 	if rating.Valid && ratingRank.Valid && asOf.Valid {
 		team.Elo = &model.EloRating{
+			Season: team.Season,
 			Rating: rating.Float64,
 			Rank:   int(ratingRank.Int64),
 			AsOf:   asOf.Time.Format(time.DateOnly),
@@ -218,8 +228,8 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	return &team, nil
 }
 
-func (store *Postgres) ratingHistory(ctx context.Context, teamID string) ([]*model.EloRating, error) {
-	rows, err := store.pool.Query(ctx, ratingHistorySQL, teamID)
+func (store *Postgres) ratingHistory(ctx context.Context, sourceID string) ([]*model.EloRating, error) {
+	rows, err := store.pool.Query(ctx, ratingHistorySQL, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("select rating history: %w", err)
 	}
@@ -230,7 +240,7 @@ func (store *Postgres) ratingHistory(ctx context.Context, teamID string) ([]*mod
 		var rating model.EloRating
 		var asOf time.Time
 		var rank int64
-		if err := rows.Scan(&rating.Rating, &rank, &asOf); err != nil {
+		if err := rows.Scan(&rating.Season, &rating.Rating, &rank, &asOf); err != nil {
 			return nil, fmt.Errorf("scan rating history: %w", err)
 		}
 		rating.Rank = int(rank)
@@ -417,31 +427,34 @@ var teamSQL = teamFacts + `
 	LEFT JOIN records USING (team_key)
 	LEFT JOIN ratings USING (team_key)
 	WHERE team.is_current
-	  AND team.team_key = $2::uuid
+	  AND team.season = $1
+	  AND team.source_id = $2
 `
 
+// Ratings are published as one snapshot per season, so a single season holds a single point. The
+// history therefore follows the program across every season it has played.
 const ratingHistorySQL = `
-	WITH selected_team AS (
-		SELECT season
+	WITH program_seasons AS (
+		SELECT team_key
 		FROM ohfootball_marts.dim_teams
-		WHERE is_current AND team_key = $1::uuid
+		WHERE is_current AND source_id = $1
 	),
 	ranked AS (
 		SELECT
 			rating.team_key,
+			rating.season,
 			rating.elo_rating,
 			rating.as_of_date,
 			RANK() OVER (
-				PARTITION BY rating.as_of_date
+				PARTITION BY rating.season, rating.as_of_date
 				ORDER BY rating.elo_rating DESC
 			) AS rating_rank
 		FROM ohfootball_marts.fct_team_elo_ratings AS rating
-		INNER JOIN selected_team USING (season)
 	)
-	SELECT elo_rating, rating_rank, as_of_date
+	SELECT ranked.season, ranked.elo_rating, ranked.rating_rank, ranked.as_of_date
 	FROM ranked
-	WHERE team_key = $1::uuid
-	ORDER BY as_of_date
+	INNER JOIN program_seasons USING (team_key)
+	ORDER BY ranked.season, ranked.as_of_date
 `
 
 const scheduleSQL = `
