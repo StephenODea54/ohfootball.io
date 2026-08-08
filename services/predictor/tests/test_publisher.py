@@ -1,7 +1,31 @@
 import unittest
 from datetime import date
 
-from ohfootball_predictor.publisher import RatingSnapshot, publish_ratings
+from ohfootball_predictor.publisher import (
+    GamePredictionRow,
+    RatingSnapshot,
+    publish_predictions,
+    publish_ratings,
+)
+
+
+def _prediction(
+    game_key: str = "g1",
+    *,
+    team_a_rating: float = 1500.0,
+    team_b_rating: float = 1500.0,
+    probability: float = 0.5,
+) -> GamePredictionRow:
+    return GamePredictionRow(
+        game_key=game_key,
+        season=2025,
+        game_date=date(2025, 9, 5),
+        team_a_key="a",
+        team_b_key="b",
+        team_a_rating=team_a_rating,
+        team_b_rating=team_b_rating,
+        team_a_win_probability=probability,
+    )
 
 
 class PublisherContractTests(unittest.TestCase):
@@ -25,6 +49,34 @@ class PublisherContractTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "finite"):
             publish_ratings("unused", (snapshot,))
+
+
+class PredictionPublisherContractTests(unittest.TestCase):
+    def test_rejects_an_empty_publication(self) -> None:
+        with self.assertRaisesRegex(ValueError, "at least one prediction"):
+            publish_predictions("unused", ())
+
+    def test_rejects_duplicate_games(self) -> None:
+        prediction = _prediction()
+
+        with self.assertRaisesRegex(ValueError, "duplicate games"):
+            publish_predictions("unused", (prediction, prediction))
+
+    def test_rejects_non_finite_ratings(self) -> None:
+        prediction = _prediction(team_b_rating=float("inf"))
+
+        with self.assertRaisesRegex(ValueError, "finite"):
+            publish_predictions("unused", (prediction,))
+
+    def test_rejects_probabilities_outside_the_open_unit_interval(self) -> None:
+        for probability in (0.0, 1.0, -0.1, 1.4):
+            with self.subTest(probability=probability):
+                with self.assertRaisesRegex(ValueError, "between zero and one"):
+                    publish_predictions("unused", (_prediction(probability=probability),))
+
+    def test_rejects_an_invalid_schema_name(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid marts schema"):
+            publish_predictions("unused", (_prediction(),), marts_schema="bad schema")
 
 
 if __name__ == "__main__":

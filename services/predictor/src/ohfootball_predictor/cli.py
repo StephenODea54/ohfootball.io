@@ -12,7 +12,13 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .elo import EloConfig, Game, Prediction, backtest, initial_team_rating, predict
 from .metrics import evaluate
-from .publisher import RatingSnapshot, load_team_seasons, publish_ratings
+from .publisher import (
+    GamePredictionRow,
+    RatingSnapshot,
+    load_team_seasons,
+    publish_predictions,
+    publish_ratings,
+)
 from .repository import load_games
 from .tracking import track_run
 
@@ -303,10 +309,30 @@ def _publish(arguments: argparse.Namespace) -> None:
         snapshots,
         marts_schema=arguments.marts_schema,
     )
+    # The backtest already produced a pregame prediction for every completed game. Storing them
+    # lets a team page show what was expected before a game rather than recomputing it.
+    published_predictions = publish_predictions(
+        arguments.database_url,
+        (
+            GamePredictionRow(
+                game_key=prediction.game_key,
+                season=prediction.season,
+                game_date=prediction.game_date,
+                team_a_key=prediction.team_a_key,
+                team_b_key=prediction.team_b_key,
+                team_a_rating=prediction.team_a_rating,
+                team_b_rating=prediction.team_b_rating,
+                team_a_win_probability=prediction.team_a_win_probability,
+            )
+            for prediction in result.predictions
+        ),
+        marts_schema=arguments.marts_schema,
+    )
     print(
         json.dumps(
             {
                 "as_of_date": arguments.as_of_date.isoformat(),
+                "published_predictions": published_predictions,
                 "published_ratings": published,
                 "season": season,
             },

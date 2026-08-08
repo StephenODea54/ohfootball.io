@@ -1,4 +1,4 @@
-"""Production persistence for Elo rating snapshots."""
+"""Production persistence for Elo rating snapshots and pregame predictions."""
 
 from __future__ import annotations
 
@@ -25,6 +25,18 @@ class RatingSnapshot:
     season: int
     as_of_date: date
     rating: float
+
+
+@dataclass(frozen=True, slots=True)
+class GamePredictionRow:
+    game_key: str
+    season: int
+    game_date: date
+    team_a_key: str
+    team_b_key: str
+    team_a_rating: float
+    team_b_rating: float
+    team_a_win_probability: float
 
 
 def load_team_seasons(
@@ -139,6 +151,110 @@ def publish_ratings(
                     as_of_date,
                     elo_rating
                 FROM pending_team_elo_ratings
+                """
+            )
+    return len(rows)
+
+
+def publish_predictions(
+    database_url: str,
+    predictions: Iterable[GamePredictionRow],
+    *,
+    marts_schema: str = "ohfootball_marts",
+) -> int:
+    """Replace every stored pregame prediction and return the row count.
+
+    A backtest replays the whole history at once, so the full set is rewritten rather than one
+    season at a time. This keeps every stored prediction consistent with one configuration.
+    """
+    if not _IDENTIFIER.fullmatch(marts_schema):
+        raise ValueError(f"invalid marts schema: {marts_schema!r}")
+
+    rows = tuple(predictions)
+    if not rows:
+        raise ValueError("at least one prediction is required")
+    if len({row.game_key for row in rows}) != len(rows):
+        raise ValueError("a publication cannot contain duplicate games")
+    if any(
+        not math.isfinite(row.team_a_rating) or not math.isfinite(row.team_b_rating)
+        for row in rows
+    ):
+        raise ValueError("ratings must be finite")
+    if any(
+        not 0.0 < row.team_a_win_probability < 1.0 for row in rows
+    ):
+        raise ValueError("win probabilities must fall between zero and one")
+
+    import psycopg
+
+    target = f"{marts_schema}.fct_game_predictions"
+    with psycopg.connect(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TEMP TABLE pending_game_predictions (
+                    game_key UUID NOT NULL,
+                    season SMALLINT NOT NULL,
+                    game_date DATE NOT NULL,
+                    team_a_key UUID NOT NULL,
+                    team_b_key UUID NOT NULL,
+                    team_a_rating DOUBLE PRECISION NOT NULL,
+                    team_b_rating DOUBLE PRECISION NOT NULL,
+                    team_a_win_probability DOUBLE PRECISION NOT NULL
+                ) ON COMMIT DROP
+                """
+            )
+            with cursor.copy(
+                """
+                COPY pending_game_predictions (
+                    game_key,
+                    season,
+                    game_date,
+                    team_a_key,
+                    team_b_key,
+                    team_a_rating,
+                    team_b_rating,
+                    team_a_win_probability
+                ) FROM STDIN
+                """
+            ) as copy:
+                for row in rows:
+                    copy.write_row(
+                        (
+                            row.game_key,
+                            row.season,
+                            row.game_date,
+                            row.team_a_key,
+                            row.team_b_key,
+                            row.team_a_rating,
+                            row.team_b_rating,
+                            row.team_a_win_probability,
+                        )
+                    )
+
+            cursor.execute(f"DELETE FROM {target}")
+            cursor.execute(
+                f"""
+                INSERT INTO {target} (
+                    game_key,
+                    season,
+                    game_date,
+                    team_a_key,
+                    team_b_key,
+                    team_a_rating,
+                    team_b_rating,
+                    team_a_win_probability
+                )
+                SELECT
+                    game_key,
+                    season,
+                    game_date,
+                    team_a_key,
+                    team_b_key,
+                    team_a_rating,
+                    team_b_rating,
+                    team_a_win_probability
+                FROM pending_game_predictions
                 """
             )
     return len(rows)
