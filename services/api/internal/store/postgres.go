@@ -266,6 +266,8 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 		var notes pgtype.Text
 		var teamRating, opponentRating pgtype.Float8
 		var ratingDate pgtype.Date
+		var pregameTeamRating, pregameOpponentRating, pregameProbability pgtype.Float8
+		var pregameDate pgtype.Date
 		if err := rows.Scan(
 			&game.ID,
 			&gameDate,
@@ -280,6 +282,10 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 			&teamRating,
 			&opponentRating,
 			&ratingDate,
+			&pregameTeamRating,
+			&pregameOpponentRating,
+			&pregameProbability,
+			&pregameDate,
 		); err != nil {
 			return nil, fmt.Errorf("scan schedule: %w", err)
 		}
@@ -298,24 +304,29 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 		if notes.Valid {
 			game.Notes = &notes.String
 		}
-		if game.Result == model.GameResultUnknown && teamRating.Valid && opponentRating.Valid && ratingDate.Valid {
-			probability := winProbability(
+		switch {
+		// A played game keeps the prediction that was made from the ratings both teams carried
+		// into it, so the page shows what was expected rather than hindsight.
+		case pregameProbability.Valid && pregameTeamRating.Valid && pregameOpponentRating.Valid && pregameDate.Valid:
+			game.Prediction = buildPrediction(
+				pregameProbability.Float64,
+				pregameTeamRating.Float64,
+				pregameOpponentRating.Float64,
+				pregameDate.Time,
+			)
+		// An unplayed game has no stored prediction, so it is estimated from the latest ratings.
+		case game.Result == model.GameResultUnknown && teamRating.Valid && opponentRating.Valid && ratingDate.Valid:
+			game.Prediction = buildPrediction(
+				winProbability(
+					teamRating.Float64,
+					opponentRating.Float64,
+					game.Location,
+					store.prediction,
+				),
 				teamRating.Float64,
 				opponentRating.Float64,
-				game.Location,
-				store.prediction,
+				ratingDate.Time,
 			)
-			predictionResult := model.GameResultLoss
-			if probability >= 0.5 {
-				predictionResult = model.GameResultWin
-			}
-			game.Prediction = &model.GamePrediction{
-				WinProbability:  probability,
-				PredictedResult: predictionResult,
-				TeamRating:      teamRating.Float64,
-				OpponentRating:  opponentRating.Float64,
-				AsOf:            ratingDate.Time.Format(time.DateOnly),
-			}
 		}
 		games = append(games, &game)
 	}
@@ -334,6 +345,20 @@ func result(raw string) model.GameResult {
 		return model.GameResultCanceled
 	default:
 		return model.GameResultUnknown
+	}
+}
+
+func buildPrediction(probability, teamRating, opponentRating float64, asOf time.Time) *model.GamePrediction {
+	predictedResult := model.GameResultLoss
+	if probability >= 0.5 {
+		predictedResult = model.GameResultWin
+	}
+	return &model.GamePrediction{
+		WinProbability:  probability,
+		PredictedResult: predictedResult,
+		TeamRating:      teamRating,
+		OpponentRating:  opponentRating,
+		AsOf:            asOf.Format(time.DateOnly),
 	}
 }
 
@@ -488,7 +513,20 @@ const scheduleSQL = `
 		game.notes,
 		team_rating.elo_rating,
 		opponent_rating.elo_rating,
-		team_rating.as_of_date
+		team_rating.as_of_date,
+		CASE
+			WHEN game.team_a_key = $1::uuid THEN prediction.team_a_rating
+			ELSE prediction.team_b_rating
+		END AS pregame_team_rating,
+		CASE
+			WHEN game.team_a_key = $1::uuid THEN prediction.team_b_rating
+			ELSE prediction.team_a_rating
+		END AS pregame_opponent_rating,
+		CASE
+			WHEN game.team_a_key = $1::uuid THEN prediction.team_a_win_probability
+			ELSE 1 - prediction.team_a_win_probability
+		END AS pregame_win_probability,
+		prediction.game_date
 	FROM ohfootball_marts.fct_games AS game
 	INNER JOIN ohfootball_marts.dim_dates AS date
 		ON date.date_key = game.game_date_key
@@ -502,6 +540,8 @@ const scheduleSQL = `
 		ON team_rating.team_key = $1::uuid
 	LEFT JOIN ratings AS opponent_rating
 		ON opponent_rating.team_key = opponent.team_key
+	LEFT JOIN ohfootball_marts.fct_game_predictions AS prediction
+		ON prediction.game_key = game.game_key
 	WHERE game.is_current
 	  AND game.season = $2
 	  AND (game.team_a_key = $1::uuid OR game.team_b_key = $1::uuid)

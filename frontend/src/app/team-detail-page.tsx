@@ -188,7 +188,9 @@ export function TeamDetailPage({ team }: { team: Team }) {
             </CardContent>
           </Card>
           <Text className="mt-3 text-xs/5">
-            Upcoming probabilities use the latest published ratings. Opponents outside the rated Ohio population show as not rated.
+            A played game shows the probability calculated from the ratings both teams carried into
+            it. An upcoming game uses the latest published ratings. Opponents outside the rated Ohio
+            population show as not rated.
           </Text>
         </section>
       </Container>
