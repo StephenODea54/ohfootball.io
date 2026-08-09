@@ -4,41 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 )
-
-func TestNewRejectsSeasonBefore2000(t *testing.T) {
-	config := DefaultConfig()
-	config.Season = 1999
-
-	_, err := New(config)
-	if err == nil || !strings.Contains(err.Error(), "at least 2000") {
-		t.Fatalf("got error %v, want minimum season error", err)
-	}
-}
-
-func TestScrapeRejectsDiscoveredSeasonBefore2000(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(response, `<a href="seasons.jsp?year=1999">1999</a>`)
-	}))
-	defer server.Close()
-
-	config := DefaultConfig()
-	config.BaseURL = server.URL
-	config.RequestsPerSecond = 1000
-	scraper, err := New(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = scraper.Scrape(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "before 2000") {
-		t.Fatalf("got error %v, want discovered season error", err)
-	}
-}
 
 func TestScrapeStopsAfterOpponentMetadata(t *testing.T) {
 	var mutex sync.Mutex

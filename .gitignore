@@ -24,6 +24,7 @@
 !*.css
 !*.go
 !*.graphqls
+!*.html
 !*.json
 !*.md
 !*.py

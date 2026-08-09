@@ -5,27 +5,6 @@ import (
 	"testing"
 )
 
-func TestParseRegionTeamsHandlesHistoricalMarkupAndCanonicalizesURL(t *testing.T) {
-	html := `<html><body><pre>
-<a href="https://www.joeeitel.com/hsfoot/teams.jsp?year=2000&amp;teamID=1346">LAKEWOOD ST EDWARD</a>
-<a href="https://joeeitel.com/hsfoot/teams.jsp?teamID=1346&amp;year=2000">duplicate</a>
-</pre></body></html>`
-
-	teams, err := parseRegionTeams(strings.NewReader(html), "https://joeeitel.com/hsfoot/rankings/2000/region-1", 2000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(teams) != 1 {
-		t.Fatalf("got %d teams, want 1", len(teams))
-	}
-	if teams[0].TeamID != "1346" || teams[0].Season != 2000 {
-		t.Fatalf("unexpected team reference: %+v", teams[0])
-	}
-	if teams[0].URL != "https://joeeitel.com/hsfoot/teams.jsp?teamID=1346&year=2000" {
-		t.Fatalf("unexpected canonical URL: %s", teams[0].URL)
-	}
-}
-
 func TestParseCurrentTeamPage(t *testing.T) {
 	html := `<html><body>
 <div id="header" style="background-color:#006836;color:#FFD700;">

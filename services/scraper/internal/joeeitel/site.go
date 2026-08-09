@@ -1,10 +1,13 @@
 package joeeitel
 
 import (
+	"bytes"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 // host is the canonical host of the site. Links appear with and without the
@@ -25,6 +28,21 @@ func SeasonIndexURL(base string) string {
 // SeasonURL returns the address of the page for one season.
 func SeasonURL(base string, season int) string {
 	return fmt.Sprintf("%s/hsfoot/seasons.jsp?year=%d", strings.TrimRight(base, "/"), season)
+}
+
+// NewDocument parses a page body and returns the document with the base
+// address that resolves its relative links. Every parser in this package needs
+// both, because a parsed document does not hold the address it came from.
+func NewDocument(body []byte, pageURL string) (*goquery.Document, *url.URL, error) {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse %s: %w", pageURL, err)
+	}
+	base, err := url.Parse(pageURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse page URL %s: %w", pageURL, err)
+	}
+	return doc, base, nil
 }
 
 // ParseTeamRef reads one link and returns the team it points to. The second

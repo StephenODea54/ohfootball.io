@@ -49,9 +49,6 @@ func New(config Config) (*Scraper, error) {
 	if config.BaseURL == "" {
 		config.BaseURL = DefaultConfig().BaseURL
 	}
-	if config.Season != 0 && config.Season < 2000 {
-		return nil, fmt.Errorf("season must be 0 or at least 2000")
-	}
 	if config.Workers < 1 {
 		return nil, fmt.Errorf("workers must be at least 1")
 	}
@@ -89,9 +86,13 @@ func (s *Scraper) Scrape(ctx context.Context) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("fetch season %d: %w", season, err)
 	}
-	regions, err := parseRegionURLs(bytes.NewReader(body), seasonURL, season)
+	doc, base, err := NewDocument(body, seasonURL)
 	if err != nil {
 		return Result{}, err
+	}
+	regions := ParseRegionLinks(doc, base, season)
+	if len(regions) == 0 {
+		return Result{}, fmt.Errorf("season %d page did not contain region links", season)
 	}
 
 	ohsaaRefs, discoveryErrors := s.discoverTeams(ctx, regions, season)
@@ -138,14 +139,15 @@ func (s *Scraper) LatestSeason(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("fetch season index: %w", err)
 	}
-	season, err := parseLatestSeason(bytes.NewReader(body), indexURL)
+	doc, base, err := NewDocument(body, indexURL)
 	if err != nil {
 		return 0, err
 	}
-	if season < 2000 {
-		return 0, fmt.Errorf("latest available season %d is before 2000", season)
+	seasons := ParseSeasons(doc, base)
+	if len(seasons) == 0 {
+		return 0, fmt.Errorf("season index did not contain a year link")
 	}
-	return season, nil
+	return slices.Max(seasons), nil
 }
 
 func (s *Scraper) discoverTeams(ctx context.Context, regionURLs []string, season int) ([]TeamRef, []error) {
@@ -167,8 +169,17 @@ func (s *Scraper) discoverTeams(ctx context.Context, regionURLs []string, season
 					results <- regionResult{err: fmt.Errorf("fetch region %s: %w", regionURL, err)}
 					continue
 				}
-				teams, err := parseRegionTeams(bytes.NewReader(body), regionURL, season)
-				results <- regionResult{teams: teams, err: err}
+				doc, base, err := NewDocument(body, regionURL)
+				if err != nil {
+					results <- regionResult{err: err}
+					continue
+				}
+				teams := ParseTeamLinks(doc, base, season)
+				if len(teams) == 0 {
+					results <- regionResult{err: fmt.Errorf("region page did not contain team links: %s", regionURL)}
+					continue
+				}
+				results <- regionResult{teams: teams}
 			}
 		}()
 	}
