@@ -12,7 +12,8 @@ from typing import Iterable, Mapping
 from .games import Game, chronological
 
 RatingKey = tuple[int, str]
-ProgramRatingKey = tuple[int, str]
+# The last rating a program earned, and the season it earned it in.
+ProgramHistory = Mapping[str, tuple[int, float]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,7 +74,7 @@ class Prediction:
 class BacktestResult:
     predictions: tuple[Prediction, ...]
     ratings: Mapping[RatingKey, float]
-    program_ratings: Mapping[ProgramRatingKey, float]
+    program_ratings: ProgramHistory
     games_played: Mapping[RatingKey, int]
 
 
@@ -98,7 +99,7 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
     """
     completed_games = chronological(game for game in games if game.is_rateable)
     ratings: dict[RatingKey, float] = {}
-    program_ratings: dict[ProgramRatingKey, float] = {}
+    program_ratings: dict[str, tuple[int, float]] = {}
     games_played: defaultdict[RatingKey, int] = defaultdict(int)
     predictions: list[Prediction] = []
 
@@ -176,7 +177,7 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
                 ratings[team] if team in ratings else daily_start_ratings[team]
             )
             ratings[team] = starting_rating + change
-            program_ratings[(team[0], daily_programs[team])] = ratings[team]
+            program_ratings[daily_programs[team]] = (team[0], ratings[team])
         for team, games in daily_game_counts.items():
             games_played[team] += games
 
@@ -192,7 +193,7 @@ def predict(
     games: Iterable[Game],
     ratings: Mapping[RatingKey, float],
     config: EloConfig,
-    program_ratings: Mapping[ProgramRatingKey, float] | None = None,
+    program_ratings: ProgramHistory | None = None,
     games_played: Mapping[RatingKey, int] | None = None,
 ) -> tuple[Prediction, ...]:
     """Predict unplayed games without changing either team's rating."""
@@ -300,7 +301,7 @@ def _pregame_rating(
     division: int | None,
     ratings: Mapping[RatingKey, float],
     daily_start_ratings: dict[RatingKey, float],
-    program_ratings: Mapping[ProgramRatingKey, float],
+    program_ratings: ProgramHistory,
     config: EloConfig,
 ) -> float:
     if team in ratings:
@@ -321,17 +322,31 @@ def initial_team_rating(
     season: int,
     program_id: str,
     division: int | None,
-    program_ratings: Mapping[ProgramRatingKey, float],
+    program_ratings: ProgramHistory,
     config: EloConfig,
 ) -> float:
+    """Give the rating a team carries into its first game of a season.
+
+    The rating comes from the most recent season the program played, which is
+    not always the season before. A program that stops for one or more seasons
+    and then returns keeps its last rating instead of starting again at the
+    division prior.
+
+    The carryover applies one time, whatever the length of the absence. A
+    program away for four seasons regresses toward its division prior by the
+    same amount as a program that played last season.
+    """
     division_adjustment = (
         config.division_rating_step * (4 - division)
         if division is not None
         else 0.0
     )
     prior_rating = config.initial_rating + division_adjustment
-    previous_rating = program_ratings.get((season - 1, program_id))
-    if previous_rating is None:
+    previous = program_ratings.get(program_id)
+    if previous is None:
+        return prior_rating
+    previous_season, previous_rating = previous
+    if previous_season >= season:
         return prior_rating
     return prior_rating + config.season_carryover * (
         previous_rating - prior_rating

@@ -189,6 +189,92 @@ class BacktestTests(unittest.TestCase):
         self.assertEqual(result.predictions[1].team_b_rating, 1492.0)
         self.assertGreater(result.predictions[1].team_a_win_probability, 0.5)
 
+    def _returning_program_rating(
+        self,
+        return_season: int,
+        config: EloConfig,
+        *,
+        return_division: int | None = None,
+        first_division: int | None = None,
+    ) -> float:
+        result = backtest(
+            [
+                game(
+                    "first",
+                    date(2020, 8, 1),
+                    "2020-a",
+                    "2020-b",
+                    "W",
+                    season=2020,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                    team_a_division=first_division,
+                    team_b_division=first_division,
+                ),
+                game(
+                    "return",
+                    date(return_season, 8, 1),
+                    f"{return_season}-a",
+                    f"{return_season}-b",
+                    "W",
+                    season=return_season,
+                    team_a_program_id="a",
+                    team_b_program_id="b",
+                    team_a_division=return_division,
+                    team_b_division=first_division,
+                ),
+            ],
+            config,
+        )
+        return result.predictions[1].team_a_rating
+
+    def test_a_program_that_misses_seasons_keeps_its_last_rating(self) -> None:
+        config = EloConfig(season_carryover=0.5)
+
+        # The program last played in 2020 and returns in 2024. It carries the
+        # 1516 rating it earned, rather than starting again at 1500.
+        self.assertEqual(self._returning_program_rating(2024, config), 1508.0)
+
+    def test_the_carryover_does_not_compound_over_a_long_absence(self) -> None:
+        config = EloConfig(season_carryover=0.5)
+
+        after_one_season = self._returning_program_rating(2021, config)
+        after_four_seasons = self._returning_program_rating(2024, config)
+
+        self.assertEqual(after_one_season, after_four_seasons)
+
+    def test_a_returning_program_regresses_toward_its_new_division(self) -> None:
+        config = EloConfig(season_carryover=0.5, division_rating_step=10)
+
+        # The program played in division 1 in 2020 and returns in division 7.
+        # It finished 2020 at 1546 and the division 7 prior is 1470.
+        rating = self._returning_program_rating(
+            2024, config, first_division=1, return_division=7
+        )
+
+        self.assertEqual(rating, 1508.0)
+
+    def test_a_program_without_history_starts_at_its_division_prior(self) -> None:
+        config = EloConfig(season_carryover=0.5, division_rating_step=10)
+        result = backtest(
+            [
+                game(
+                    "one",
+                    date(2024, 8, 1),
+                    "a",
+                    "b",
+                    "W",
+                    season=2024,
+                    team_a_program_id="never-played",
+                    team_b_program_id="b",
+                    team_a_division=7,
+                )
+            ],
+            config,
+        )
+
+        self.assertEqual(result.predictions[0].team_a_rating, 1470.0)
+
     def test_applies_division_prior_to_a_new_team(self) -> None:
         result = backtest(
             [
