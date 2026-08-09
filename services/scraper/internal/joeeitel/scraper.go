@@ -208,14 +208,14 @@ func (s *Scraper) discoverTeams(ctx context.Context, regionURLs []string, season
 	return teams, errs
 }
 
-func (s *Scraper) scrapeTeams(ctx context.Context, refs []TeamRef, includeGames bool) ([]Team, []GameResult, []TeamRef, []error) {
+func (s *Scraper) scrapeTeams(ctx context.Context, refs []TeamRef, includeGames bool) ([]Team, []TeamScheduleRow, []TeamRef, []error) {
 	if len(refs) == 0 {
 		return nil, nil, nil, nil
 	}
 
 	type pageResult struct {
 		team      Team
-		games     []GameResult
+		games     []TeamScheduleRow
 		opponents []TeamRef
 		err       error
 	}
@@ -263,7 +263,7 @@ func (s *Scraper) scrapeTeams(ctx context.Context, refs []TeamRef, includeGames 
 	}()
 
 	var teams []Team
-	var games []GameResult
+	var games []TeamScheduleRow
 	opponentByKey := make(map[string]TeamRef)
 	var errs []error
 	for result := range results {

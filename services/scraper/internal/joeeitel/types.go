@@ -25,7 +25,12 @@ type Team struct {
 	Region         string
 }
 
-type GameResult struct {
+// TeamScheduleRow holds one team's view of one game, as its own schedule page
+// shows it. It is not a game. When two OHSAA teams play each other, the
+// crawler reads both schedules and writes two rows for that game. A consumer
+// that counts games must combine the rows on season, date, and the two team
+// identifiers.
+type TeamScheduleRow struct {
 	Season         int
 	SourceTeamID   string
 	GameDate       string
@@ -42,7 +47,7 @@ type Result struct {
 	RegionCount         int
 	OHSAATeams          []Team
 	OpponentTeams       []Team
-	Games               []GameResult
+	Games               []TeamScheduleRow
 	DiscoveredOpponents int
 	Errors              []error
 }

@@ -49,7 +49,7 @@ func (postgres *Postgres) SuccessfulSeasons(ctx context.Context, startSeason, en
 	return loaded, nil
 }
 
-func (postgres *Postgres) Append(ctx context.Context, runID pgtype.UUID, teams []joeeitel.Team, games []joeeitel.GameResult) error {
+func (postgres *Postgres) Append(ctx context.Context, runID pgtype.UUID, teams []joeeitel.Team, games []joeeitel.TeamScheduleRow) error {
 	transaction, err := postgres.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin raw append: %w", err)

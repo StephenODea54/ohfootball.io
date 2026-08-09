@@ -118,7 +118,7 @@ func parseRegionTeams(r io.Reader, pageURL string, season int) ([]TeamRef, error
 	return teams, nil
 }
 
-func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, error) {
+func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return Team{}, nil, nil, fmt.Errorf("parse team page: %w", err)
@@ -147,7 +147,7 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, err
 	team.PrimaryColor, team.SecondaryColor = parseColors(header)
 	team.Division, team.Region = parseDivisionRegion(metadata)
 
-	var games []GameResult
+	var games []TeamScheduleRow
 	opponents := make(map[string]TeamRef)
 	doc.Find("table.schedule tbody tr").Each(func(_ int, row *goquery.Selection) {
 		opponentCell := row.Find("td.opponent").First()
@@ -173,7 +173,7 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, err
 		if row.Find(".playoff").Length() > 0 {
 			playoff = cleanText(row.Find(".playoff").First().Text())
 		}
-		games = append(games, GameResult{
+		games = append(games, TeamScheduleRow{
 			Season:         ref.Season,
 			SourceTeamID:   ref.TeamID,
 			GameDate:       cellText(row, ".gameDate"),
@@ -194,7 +194,7 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []GameResult, []TeamRef, err
 	return team, games, opponentRefs, nil
 }
 
-func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Team, []GameResult, []TeamRef, error) {
+func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef, error) {
 	header := doc.Find("body > table").First().Find("td").First()
 	details := linesWithBreaks(header)
 	displayName := cleanText(header.Find("font").First().Text())
@@ -208,7 +208,7 @@ func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Tea
 	team.PrimaryColor = strings.TrimSpace(team.PrimaryColor)
 	team.SecondaryColor = strings.TrimSpace(team.SecondaryColor)
 
-	var games []GameResult
+	var games []TeamScheduleRow
 	opponents := make(map[string]TeamRef)
 	doc.Find("tr").Each(func(_ int, row *goquery.Selection) {
 		cells := row.ChildrenFiltered("td")
@@ -241,7 +241,7 @@ func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Tea
 		if cells.Length() > 6 {
 			notes = cleanText(cells.Eq(6).Text())
 		}
-		games = append(games, GameResult{
+		games = append(games, TeamScheduleRow{
 			Season:         ref.Season,
 			SourceTeamID:   ref.TeamID,
 			GameDate:       cleanText(cells.Eq(0).Text()),
