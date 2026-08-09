@@ -223,6 +223,13 @@ func TestSeasonStopsOnAnyError(t *testing.T) {
 			breakSite: func(g *stubGetter) { g.fail[teamURL("91", 2025)] = errors.New("offline") },
 			want:      "fetch team",
 		},
+		{
+			name: "a team page is in no known format",
+			breakSite: func(g *stubGetter) {
+				g.pages[teamURL("3", 2025)] = `<html><body><p>a new design</p></body></html>`
+			},
+			want: "parse team",
+		},
 	}
 
 	for _, test := range tests {

@@ -1,6 +1,9 @@
 package joeeitel
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 type TeamRef struct {
 	Season int
@@ -48,4 +51,11 @@ type TeamScheduleRow struct {
 	Score          string
 	Notes          string
 	Playoff        string
+}
+
+// teamKey identifies one team in one season. Two seasons of the same school
+// are two different teams, because the roster, the division, and the region
+// all change from year to year.
+func teamKey(season int, teamID string) string {
+	return strconv.Itoa(season) + ":" + teamID
 }

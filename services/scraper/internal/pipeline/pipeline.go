@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/StephenODea54/services/scraper/internal/joeeitel"
+	"github.com/StephenODea54/services/scraper/internal/joeeitel/teampage"
 )
 
 // Getter fetches one page. The fetch package satisfies it. A test satisfies it
@@ -163,7 +164,7 @@ func (r *Runner) writeTeamPage(ctx context.Context, ref joeeitel.TeamRef, sink S
 		return teamPage{}, err
 	}
 
-	team, rows, opponents, err := joeeitel.ParseTeamPage(doc, base, ref)
+	team, rows, opponents, err := teampage.Parse(doc, base, ref)
 	if err != nil {
 		return teamPage{}, fmt.Errorf("parse team %s: %w", ref.Key(), err)
 	}
