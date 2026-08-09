@@ -1,22 +1,30 @@
+// Command joe-eitel reads high school football results from joeeitel.com and
+// stores them in the raw layer of the warehouse.
+//
+// The environment supplies every input. See the README of this service.
 package main
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 
-	"github.com/StephenODea54/services/scraper/internal/joeeitel"
+	"github.com/StephenODea54/services/scraper/internal/config"
+	"github.com/StephenODea54/services/scraper/internal/fetch"
+	"github.com/StephenODea54/services/scraper/internal/pipeline"
 	"github.com/StephenODea54/services/scraper/internal/store"
 )
 
 const scraperVersion = "joe-eitel@0.1.0"
 
+// summary is one line of output for one season. The field names are part of
+// the contract with whatever reads the logs.
 type summary struct {
 	RunID                   string `json:"run_id,omitempty"`
 	Season                  int    `json:"season"`
@@ -25,9 +33,12 @@ type summary struct {
 	OpponentTeamsDiscovered int    `json:"opponent_teams_discovered"`
 	OpponentTeamsScraped    int    `json:"opponent_teams_scraped"`
 	GameRows                int    `json:"game_rows"`
-	Errors                  int    `json:"errors"`
 	Status                  string `json:"status"`
 }
+
+// statusSkipped names a season that the site does not list yet. It never
+// reaches the database, because such a run creates no row.
+const statusSkipped = "skipped"
 
 func main() {
 	if err := run(); err != nil {
@@ -37,142 +48,114 @@ func main() {
 }
 
 func run() error {
-	config := joeeitel.DefaultConfig()
-	startSeason := 0
-	if userAgent := os.Getenv("SCRAPER_USER_AGENT"); userAgent != "" {
-		config.UserAgent = userAgent
-	}
-
-	flag.IntVar(&config.Season, "season", 0, "season to scrape; 0 discovers the latest available season")
-	flag.IntVar(&startSeason, "from-season", 0, "backfill from this season through -season; 0 scrapes one season")
-	flag.IntVar(&config.Workers, "workers", config.Workers, "maximum concurrent HTTP workers")
-	flag.Float64Var(&config.RequestsPerSecond, "rate", config.RequestsPerSecond, "maximum requests per second across all workers")
-	flag.DurationVar(&config.RequestTimeout, "timeout", config.RequestTimeout, "timeout for one HTTP request")
-	flag.IntVar(&config.MaxRetries, "retries", config.MaxRetries, "retries for temporary HTTP failures")
-	flag.StringVar(&config.BaseURL, "base-url", config.BaseURL, "Joe Eitel site base URL")
-	flag.StringVar(&config.UserAgent, "user-agent", config.UserAgent, "HTTP user agent")
-	flag.Parse()
-	if startSeason != 0 && startSeason < 2000 {
-		return fmt.Errorf("from-season must be 0 or at least 2000")
+	configuration, err := config.Load(os.Getenv)
+	if err != nil {
+		return err
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return fmt.Errorf("DATABASE_URL is required")
-	}
-	database, err := store.Open(ctx, databaseURL)
+	database, err := store.New(ctx, configuration.DatabaseURL, configuration.Workers)
 	if err != nil {
 		return err
 	}
 	defer database.Close()
-	if startSeason > 0 {
-		return backfill(ctx, database, config, startSeason)
-	}
-	return scrapeSeason(ctx, database, config)
-}
 
-func backfill(ctx context.Context, database *store.Postgres, config joeeitel.Config, startSeason int) error {
-	endSeason := config.Season
-	if endSeason == 0 {
-		scraper, err := joeeitel.New(config)
-		if err != nil {
-			return err
-		}
-		endSeason, err = scraper.LatestSeason(ctx)
-		if err != nil {
-			return err
-		}
-	}
-	if startSeason > endSeason {
-		return fmt.Errorf("from-season %d is after season %d", startSeason, endSeason)
+	runner := &pipeline.Runner{
+		Client: fetch.New(fetch.Options{
+			RequestsPerSecond: configuration.RequestsPerSecond,
+			Timeout:           configuration.RequestTimeout,
+			MaxRetries:        configuration.MaxRetries,
+			UserAgent:         configuration.UserAgent,
+		}),
+		Workers: configuration.Workers,
+		BaseURL: configuration.BaseURL,
 	}
 
-	loaded, err := database.SuccessfulSeasons(ctx, startSeason, endSeason)
-	if err != nil {
-		return err
-	}
-	slog.Info("backfill started", "from_season", startSeason, "through_season", endSeason, "already_loaded", len(loaded))
-
-	var backfillErrors []error
-	for season := startSeason; season <= endSeason; season++ {
-		if _, exists := loaded[season]; exists {
-			slog.Info("season already loaded", "season", season)
-			continue
-		}
-		config.Season = season
-		if err := scrapeSeason(ctx, database, config); err != nil {
-			backfillErrors = append(backfillErrors, fmt.Errorf("season %d: %w", season, err))
-			if ctx.Err() != nil {
-				break
-			}
-		}
-	}
-	return errors.Join(backfillErrors...)
-}
-
-func scrapeSeason(ctx context.Context, database *store.Postgres, config joeeitel.Config) error {
-	scraper, err := joeeitel.New(config)
+	listed, err := runner.ListSeasons(ctx)
 	if err != nil {
 		return err
 	}
 
-	runID, err := database.StartRun(ctx, scraperVersion, config.BaseURL)
-	if err != nil {
-		return err
-	}
-	slog.Info("scrape started", "run_id", runID.String(), "requested_season", config.Season)
-
-	result, scrapeErr := scraper.Scrape(ctx)
-	if scrapeErr != nil {
-		finishErr := database.FinishRun(context.WithoutCancel(ctx), runID, "failed", scrapeErr)
-		return errors.Join(scrapeErr, finishErr)
-	}
-	if err := database.Append(ctx, runID, result.Teams(), result.Games); err != nil {
-		finishErr := database.FinishRun(context.WithoutCancel(ctx), runID, "failed", err)
-		return errors.Join(err, finishErr)
-	}
-
-	status := "succeeded"
-	if len(result.Errors) > 0 {
-		status = "failed"
-	}
-	pageErr := reportPageErrors(result.Errors)
-	if err := database.FinishRun(context.WithoutCancel(ctx), runID, status, pageErr); err != nil {
-		return err
-	}
-	printSummary(runID.String(), result, status)
-	return pageErr
-}
-
-func reportPageErrors(errs []error) error {
-	if len(errs) == 0 {
+	seasons, skipped := targetSeasons(configuration, listed)
+	if skipped {
+		slog.Info("the site does not list this season yet", "season", configuration.Season)
+		printSummary(summary{Season: configuration.Season, Status: statusSkipped})
 		return nil
 	}
-	for index, err := range errs {
-		if index == 10 {
-			slog.Warn("additional scrape errors omitted from logs", "count", len(errs)-index)
+
+	var failures []error
+	for _, season := range seasons {
+		if err := scrapeSeason(ctx, database, runner, season); err != nil {
+			failures = append(failures, fmt.Errorf("season %d: %w", season, err))
+		}
+		// A failed season does not stop the other seasons, but an interrupt
+		// does.
+		if ctx.Err() != nil {
 			break
 		}
-		slog.Warn("page scrape failed", "error", err)
 	}
-	return fmt.Errorf("scrape completed with %d page errors", len(errs))
+	return errors.Join(failures...)
 }
 
-func printSummary(runID string, result joeeitel.Result, status string) {
-	value := summary{
-		RunID:                   runID,
-		Season:                  result.Season,
-		Regions:                 result.RegionCount,
-		OHSAATeams:              len(result.OHSAATeams),
-		OpponentTeamsDiscovered: result.DiscoveredOpponents,
-		OpponentTeamsScraped:    len(result.OpponentTeams),
-		GameRows:                len(result.Games),
-		Errors:                  len(result.Errors),
-		Status:                  status,
+// targetSeasons applies the season selection rule to the seasons that the site
+// lists. skipped is true when the run names one season that the site does not
+// list yet. The daily job supplies the year of the season, and the site
+// publishes that year some time before the season starts.
+func targetSeasons(configuration config.Config, listed []int) (seasons []int, skipped bool) {
+	if configuration.AllSeasons {
+		return listed, false
 	}
+	if slices.Contains(listed, configuration.Season) {
+		return []int{configuration.Season}, false
+	}
+	return nil, true
+}
+
+// statusFor decides the status of one run. This is the only place that decides
+// it.
+func statusFor(err error) store.RunStatus {
+	if err != nil {
+		return store.RunFailed
+	}
+	return store.RunSucceeded
+}
+
+// scrapeSeason reads one season under one run row.
+func scrapeSeason(ctx context.Context, database *store.Store, runner *pipeline.Runner, season int) error {
+	runID, err := database.StartRun(ctx, scraperVersion, runner.BaseURL)
+	if err != nil {
+		return err
+	}
+	slog.Info("season started", "run_id", runID.String(), "season", season)
+
+	result, seasonErr := runner.Season(ctx, season, database.ForRun(runID))
+	status := statusFor(seasonErr)
+
+	// The run row must record the outcome even after an interrupt, so this
+	// call does not carry the cancelled context.
+	if err := database.FinishRun(context.WithoutCancel(ctx), runID, status, seasonErr); err != nil {
+		return errors.Join(seasonErr, err)
+	}
+	if seasonErr != nil {
+		return seasonErr
+	}
+
+	printSummary(summary{
+		RunID:                   runID.String(),
+		Season:                  result.Season,
+		Regions:                 result.Regions,
+		OHSAATeams:              result.OHSAATeams,
+		OpponentTeamsDiscovered: result.OpponentsDiscovered,
+		OpponentTeamsScraped:    result.OpponentsScraped,
+		GameRows:                result.GameRows,
+		Status:                  string(status),
+	})
+	return nil
+}
+
+func printSummary(value summary) {
 	if err := json.NewEncoder(os.Stdout).Encode(value); err != nil {
 		slog.Error("print summary", "error", err)
 	}

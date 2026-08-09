@@ -49,20 +49,3 @@ type TeamScheduleRow struct {
 	Notes          string
 	Playoff        string
 }
-
-type Result struct {
-	Season              int
-	RegionCount         int
-	OHSAATeams          []Team
-	OpponentTeams       []Team
-	Games               []TeamScheduleRow
-	DiscoveredOpponents int
-	Errors              []error
-}
-
-func (r Result) Teams() []Team {
-	teams := make([]Team, 0, len(r.OHSAATeams)+len(r.OpponentTeams))
-	teams = append(teams, r.OHSAATeams...)
-	teams = append(teams, r.OpponentTeams...)
-	return teams
-}
