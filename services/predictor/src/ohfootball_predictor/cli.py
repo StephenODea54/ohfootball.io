@@ -27,6 +27,8 @@ DEFAULT_DATABASE_URL = "postgresql://im_batman:shhhhhhhhh@localhost:5432/ohfootb
 DEFAULT_TIME_ZONE = "America/New_York"
 SWEEP_PARAMETERS = (
     "k_factor",
+    "rating_scale",
+    "margin_multiplier_cap",
     "home_advantage",
     "season_carryover",
     "division_rating_step",

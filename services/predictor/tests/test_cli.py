@@ -23,6 +23,18 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(arguments.tuning_seasons, (2000, 2021))
         self.assertEqual(arguments.validation_seasons, (2022, 2023))
 
+    def test_every_rating_parameter_can_be_swept(self) -> None:
+        # The rating scale sets how a rating difference becomes a probability,
+        # so it must be tunable together with the K factor.
+        for parameter in ("rating_scale", "margin_multiplier_cap"):
+            with self.subTest(parameter=parameter):
+                arguments = build_parser().parse_args(
+                    ["sweep", "--parameter", parameter, "--values", "1.5,2.0"]
+                )
+
+                self.assertEqual(arguments.parameter, parameter)
+                self.assertEqual(arguments.values, (1.5, 2.0))
+
     def test_parses_provisional_strategy(self) -> None:
         arguments = build_parser().parse_args(
             [
