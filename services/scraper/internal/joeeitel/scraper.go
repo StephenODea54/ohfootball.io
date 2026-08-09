@@ -84,7 +84,7 @@ func (s *Scraper) Scrape(ctx context.Context) (Result, error) {
 		return Result{}, err
 	}
 
-	seasonURL := fmt.Sprintf("%s/hsfoot/seasons.jsp?year=%d", strings.TrimRight(s.config.BaseURL, "/"), season)
+	seasonURL := SeasonURL(s.config.BaseURL, season)
 	body, err := s.fetch(ctx, seasonURL)
 	if err != nil {
 		return Result{}, fmt.Errorf("fetch season %d: %w", season, err)
@@ -133,7 +133,7 @@ func (s *Scraper) resolveSeason(ctx context.Context) (int, error) {
 }
 
 func (s *Scraper) LatestSeason(ctx context.Context) (int, error) {
-	indexURL := strings.TrimRight(s.config.BaseURL, "/") + "/hsfoot"
+	indexURL := SeasonIndexURL(s.config.BaseURL)
 	body, err := s.fetch(ctx, indexURL)
 	if err != nil {
 		return 0, fmt.Errorf("fetch season index: %w", err)

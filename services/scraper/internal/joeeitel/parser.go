@@ -67,10 +67,7 @@ func parseRegionURLs(r io.Reader, pageURL string, season int) ([]string, error) 
 		if resolveErr != nil || !sameHost(base, resolved) || !strings.HasPrefix(resolved.Path, prefix) {
 			return
 		}
-		if strings.TrimPrefix(strings.ToLower(resolved.Hostname()), "www.") == "joeeitel.com" {
-			resolved.Scheme = "https"
-			resolved.Host = "joeeitel.com"
-		}
+		canonicalHost(resolved)
 		resolved.Fragment = ""
 		canonical := resolved.String()
 		if _, ok := seen[canonical]; ok {
@@ -101,8 +98,8 @@ func parseRegionTeams(r io.Reader, pageURL string, season int) ([]TeamRef, error
 	var teams []TeamRef
 	doc.Find("a[href]").Each(func(_ int, link *goquery.Selection) {
 		href, _ := link.Attr("href")
-		ref, parseErr := parseTeamRef(base, href, season, cleanText(link.Text()))
-		if parseErr != nil {
+		ref, ok := ParseTeamRef(base, href, season, cleanText(link.Text()))
+		if !ok {
 			return
 		}
 		if _, ok := seen[ref.Key()]; ok {
@@ -163,7 +160,7 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef
 
 		var opponent TeamRef
 		if href, ok := opponentLink.Attr("href"); ok {
-			opponent, _ = parseTeamRef(base, href, ref.Season, opponentName)
+			opponent, _ = ParseTeamRef(base, href, ref.Season, opponentName)
 			if opponent.TeamID != "" {
 				opponents[opponent.Key()] = opponent
 			}
@@ -221,7 +218,7 @@ func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Tea
 		opponentName := legacyOpponentName(opponentLink)
 		var opponent TeamRef
 		if href, ok := opponentLink.Attr("href"); ok {
-			opponent, _ = parseTeamRef(base, href, ref.Season, opponentName)
+			opponent, _ = ParseTeamRef(base, href, ref.Season, opponentName)
 			if opponent.TeamID != "" {
 				opponents[opponent.Key()] = opponent
 			}
@@ -269,51 +266,6 @@ func legacyOpponentName(link *goquery.Selection) string {
 	clone := link.Clone()
 	clone.Find("font").Remove()
 	return cleanText(clone.Text())
-}
-
-func parseTeamRef(base *url.URL, href string, defaultSeason int, name string) (TeamRef, error) {
-	resolved, err := resolveURL(base, href)
-	if err != nil || !sameHost(base, resolved) || !strings.HasSuffix(resolved.Path, "/teams.jsp") {
-		return TeamRef{}, fmt.Errorf("not a team URL")
-	}
-
-	teamID := resolved.Query().Get("teamID")
-	season := defaultSeason
-	if rawYear := resolved.Query().Get("year"); rawYear != "" {
-		season, err = strconv.Atoi(rawYear)
-		if err != nil {
-			return TeamRef{}, fmt.Errorf("invalid team year %q", rawYear)
-		}
-	}
-	if teamID == "" || season == 0 {
-		return TeamRef{}, fmt.Errorf("team URL is missing teamID or year")
-	}
-	if season < 2000 {
-		return TeamRef{}, fmt.Errorf("team season %d is before 2000", season)
-	}
-
-	if host := strings.TrimPrefix(strings.ToLower(resolved.Host), "www."); host == "joeeitel.com" {
-		resolved.Scheme = "https"
-		resolved.Host = host
-	}
-	resolved.Path = "/hsfoot/teams.jsp"
-	resolved.RawQuery = url.Values{"teamID": {teamID}, "year": {strconv.Itoa(season)}}.Encode()
-	resolved.Fragment = ""
-	return TeamRef{Season: season, TeamID: teamID, Name: cleanText(name), URL: resolved.String()}, nil
-}
-
-func resolveURL(base *url.URL, href string) (*url.URL, error) {
-	parsed, err := url.Parse(strings.TrimSpace(href))
-	if err != nil {
-		return nil, err
-	}
-	return base.ResolveReference(parsed), nil
-}
-
-func sameHost(a, b *url.URL) bool {
-	aHost := strings.TrimPrefix(strings.ToLower(a.Hostname()), "www.")
-	bHost := strings.TrimPrefix(strings.ToLower(b.Hostname()), "www.")
-	return aHost != "" && aHost == bHost
 }
 
 func parseSchoolName(caption *goquery.Selection, ref TeamRef) string {
