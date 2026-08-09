@@ -1,19 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { HomePage } from '@/app/home-page'
-import { fetchTeams } from '@/lib/graphql'
+import { teamsQuery } from '@/lib/queries'
 
 export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
-      { title: 'ohfootball.io — Ohio high school football, predicted' },
+      { title: 'ohfootball.io — Ohio High School Football Ratings' },
       {
         name: 'description',
-        content: 'Search any Ohio high school football program to see its rating and schedule.',
+        content: 'Look up any Ohio high school football team and see how good it is.',
       },
     ],
   }),
   loaderDeps: ({ search }) => ({ season: search.season }),
-  loader: ({ deps }) => fetchTeams({ season: deps.season }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(teamsQuery({ season: deps.season })),
   component: Home,
 })
 

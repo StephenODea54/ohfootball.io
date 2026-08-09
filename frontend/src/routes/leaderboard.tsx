@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { LeaderboardPage } from '@/app/leaderboard-page'
-import { fetchTeams } from '@/lib/graphql'
+import { teamsQuery } from '@/lib/queries'
 
 export const Route = createFileRoute('/leaderboard')({
   head: () => ({
@@ -8,12 +8,13 @@ export const Route = createFileRoute('/leaderboard')({
       { title: 'Leaderboard — ohfootball.io' },
       {
         name: 'description',
-        content: 'Ohio high school football teams ranked by rating, filtered by region or division.',
+        content: 'Ohio high school football schools listed by rating.',
       },
     ],
   }),
   loaderDeps: ({ search }) => ({ season: search.season }),
-  loader: ({ deps }) => fetchTeams({ season: deps.season }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(teamsQuery({ season: deps.season })),
   component: LeaderboardRoute,
 })
 

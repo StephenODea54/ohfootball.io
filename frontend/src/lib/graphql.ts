@@ -47,6 +47,8 @@ export interface Team {
   city: string | null
   division: number | null
   region: number | null
+  primaryColor: string | null
+  secondaryColor: string | null
   record: TeamRecord
   rating: TeamRating | null
   ratingHistory: TeamRating[]
@@ -68,6 +70,8 @@ const teamFields = `
   city
   division
   region
+  primaryColor
+  secondaryColor
   record { wins losses ties }
   rating: elo { season value: rating rank asOf }
 `
@@ -155,6 +159,22 @@ export function formatRecord(record: TeamRecord) {
 
 export function formatRating(rating: TeamRating | null) {
   return rating ? Math.round(rating.value).toLocaleString() : "—"
+}
+
+/** The newest rating date across a set of teams. Returns null when none of them are rated. */
+export function lastUpdated(teams: Team[]) {
+  const dates = teams.flatMap((team) => team.rating?.asOf ?? [])
+  return dates.length > 0 ? dates.reduce((latest, date) => (date > latest ? date : latest)) : null
+}
+
+/** Formats an ISO date as a short, readable day. Parsed as UTC so the day never shifts. */
+export function formatDate(isoDate: string) {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
 }
 
 export function formatDivision(division: number | null) {
