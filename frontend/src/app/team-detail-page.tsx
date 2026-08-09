@@ -52,7 +52,7 @@ export function TeamDetailPage({ team }: { team: Team }) {
           href={withSeason("/leaderboard", team.season)}
           className="inline-flex text-sm/6 text-muted-fg hover:text-fg"
         >
-          ← {team.season} leaderboard
+          ← {team.season} Leaderboard
         </Link>
 
         <header className="mt-6 grid gap-8 border-b pb-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -79,13 +79,13 @@ export function TeamDetailPage({ team }: { team: Team }) {
 
         <section className="mt-10" aria-labelledby="rating-history-heading">
           <Heading id="rating-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
-            Rating by season
+            Rating By Season
           </Heading>
           <Card className="gap-4 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(6)]">
             <CardHeader>
               <div>
                 <p className="text-xs/5 font-semibold uppercase tracking-wide text-muted-fg">
-                  End of season rating
+                  End Of Season Rating
                 </p>
                 <p className="mt-1 text-sm/6 text-fg">
                   {firstSeason !== undefined && lastSeason !== undefined
@@ -138,26 +138,28 @@ export function TeamDetailPage({ team }: { team: Team }) {
           </Heading>
           <Card className="gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
             <CardContent>
-              <Table aria-label={`${team.name} schedule`} bleed>
-                <TableHeader className="bg-muted/70 uppercase text-xs/5 tracking-wide">
+              <Table aria-label={`${team.name} Schedule`} bleed>
+                <TableHeader className="bg-muted/70 text-xs/5 uppercase tracking-wide">
                   <TableColumn isRowHeader>Wk</TableColumn>
                   <TableColumn>Date</TableColumn>
                   <TableColumn>Opponent</TableColumn>
                   <TableColumn>Pred</TableColumn>
-                  <TableColumn>Win probability</TableColumn>
+                  <TableColumn>Win Probability</TableColumn>
                   <TableColumn className="text-end">Result</TableColumn>
                 </TableHeader>
-                <TableBody>
-                  {team.schedule.map((game) => {
+                <TableBody items={team.schedule}>
+                  {(game) => {
                     const probability = game.prediction
                       ? Math.round(game.prediction.winProbability * 100)
                       : null
                     return (
-                      <TableRow id={game.id} key={game.id}>
+                      <TableRow id={game.id}>
                         <TableCell className="font-semibold text-muted-fg">{game.week}</TableCell>
-                        <TableCell className="text-muted-fg">{formatDate(game.date)}</TableCell>
+                        <TableCell className="text-muted-fg">{formatGameDate(game.date)}</TableCell>
                         <TableCell>
-                          <span className="text-muted-fg">{locationLabel(game)}</span>{" "}
+                          {/* The cell lays its children out with flex, which drops a plain
+                              whitespace node, so the gap has to be a margin. */}
+                          <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
                           <span className="font-medium text-fg">{game.opponentName}</span>
                         </TableCell>
                         <TableCell>
@@ -175,14 +177,14 @@ export function TeamDetailPage({ team }: { team: Team }) {
                               </ProgressBar>
                               <span className="font-medium text-sm/5 text-muted-fg">{probability}%</span>
                             </div>
-                          ) : <span className="text-sm/5 text-muted-fg">Not rated</span>}
+                          ) : <span className="text-muted-fg text-sm/5">Not Rated</span>}
                         </TableCell>
                         <TableCell className="text-end">
                           <GameResult game={game} />
                         </TableCell>
                       </TableRow>
                     )
-                  })}
+                  }}
                 </TableBody>
               </Table>
             </CardContent>
@@ -234,7 +236,8 @@ function locationLabel(game: Game) {
   return "vs"
 }
 
-function formatDate(value: string) {
+/** Game dates are read next to the season heading, so the year is left out. */
+function formatGameDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(
     new Date(`${value}T00:00:00Z`),
   )

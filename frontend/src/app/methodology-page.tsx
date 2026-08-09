@@ -105,7 +105,7 @@ export function MethodologyPage({ season }: { season: number }) {
           <p className="font-semibold text-sm/6 uppercase tracking-[0.18em] text-primary-subtle-fg">
             Methodology
           </p>
-          <Heading className="mt-3 text-4xl/none sm:text-5xl/none">How the ratings work</Heading>
+          <Heading className="mt-3 text-4xl/none sm:text-5xl/none">How The Ratings Work</Heading>
           <Text className="mt-5 text-base/7 sm:text-lg/8">
             The rating is Elo, tuned for a sport with a ten game season and almost no crossover
             between regions. This page is the full description, including the parts that do not
@@ -117,7 +117,7 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="core-heading">
           <Heading id="core-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            The update rule
+            The Update Rule
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             Before a game, each team has a rating. The expected score for team A against team B is a
@@ -142,7 +142,7 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="parameters-heading">
           <Heading id="parameters-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Production parameters
+            Production Parameters
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             These are the values used for the published snapshots. They were selected by sweeping one
@@ -156,7 +156,7 @@ export function MethodologyPage({ season }: { season: number }) {
                 <TableHeader className="bg-muted/70 uppercase text-xs/5 tracking-wide">
                   <TableColumn isRowHeader>Parameter</TableColumn>
                   <TableColumn className="w-24 text-end">Value</TableColumn>
-                  <TableColumn>What it does</TableColumn>
+                  <TableColumn>What It Does</TableColumn>
                 </TableHeader>
                 <TableBody items={parameters}>
                   {(parameter) => (
@@ -176,7 +176,7 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="preseason-heading">
           <Heading id="preseason-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Where a season starts
+            Where A Season Starts
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             A team's preseason rating is built from its division, then pulled toward what the program
@@ -202,7 +202,7 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="provisional-heading">
           <Heading id="provisional-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Early-season behavior
+            Early Season Behavior
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             For a team's first three games, the K factor is multiplied by a boost that starts at 1.6
@@ -215,12 +215,12 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="mechanics-heading">
           <Heading id="mechanics-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Timing and exclusions
+            Timing And Exclusions
           </Heading>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <Card className="gap-3 shadow-none [--gutter:--spacing(5)]">
               <CardHeader>
-                <CardTitle className="text-lg/7">Games settle by date</CardTitle>
+                <CardTitle className="text-lg/7">Games Settle By Date</CardTitle>
               </CardHeader>
               <CardContent>
                 <Text className="m-0 text-sm/6">
@@ -233,7 +233,7 @@ export function MethodologyPage({ season }: { season: number }) {
             </Card>
             <Card className="gap-3 shadow-none [--gutter:--spacing(5)]">
               <CardHeader>
-                <CardTitle className="text-lg/7">What counts</CardTitle>
+                <CardTitle className="text-lg/7">What Counts</CardTitle>
               </CardHeader>
               <CardContent>
                 <Text className="m-0 text-sm/6">
@@ -249,7 +249,7 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="evaluation-heading">
           <Heading id="evaluation-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            How it is measured
+            How It Is Measured
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             Every configuration is scored by replaying history one game at a time and grading the
@@ -263,7 +263,7 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="pipeline-heading">
           <Heading id="pipeline-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Where the data comes from
+            Where The Data Comes From
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             Schedules and results are scraped from publicly posted Ohio high school football results
@@ -276,7 +276,7 @@ export function MethodologyPage({ season }: { season: number }) {
 
         <section className="mt-12" aria-labelledby="limits-heading">
           <Heading id="limits-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Known limits
+            Known Limits
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             These are real weaknesses, not disclaimers. Read a rating with them in mind.

@@ -7,6 +7,7 @@ import {
   NavbarMobile,
   NavbarProvider,
   NavbarSection,
+  NavbarSeparator,
   NavbarSpacer,
   NavbarStart,
 } from "@/components/ui/navbar"
@@ -16,10 +17,19 @@ import { CURRENT_SEASON, withSeason } from "@/lib/season"
 
 const navItems = [
   { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
   { label: "Leaderboard", href: "/leaderboard" },
   { label: "Methodology", href: "/methodology" },
-  { label: "About", href: "/about" },
 ]
+
+/** The wordmark. The suffix is tinted so the brand reads as one word with an accent. */
+function Wordmark({ className }: { className?: string }) {
+  return (
+    <span className={className}>
+      ohfootball<span className="text-primary">.io</span>
+    </span>
+  )
+}
 
 export function AppNavbar() {
   const navigate = useNavigate()
@@ -56,6 +66,17 @@ export function AppNavbar() {
     />
   )
 
+  // The separators group the three controls on the right so they stop reading as one crowded row.
+  const controls = (
+    <>
+      {navigation}
+      <NavbarSeparator className="mx-3" />
+      {seasonSelect}
+      <NavbarSeparator className="mx-3" />
+      <ThemeSwitcher />
+    </>
+  )
+
   return (
     <NavbarProvider
       style={
@@ -66,20 +87,16 @@ export function AppNavbar() {
     >
       <Navbar intent="default" isSticky>
         <NavbarStart>
-          <span className="font-semibold">ohfootball.io</span>
+          <Wordmark className="font-semibold" />
         </NavbarStart>
         <NavbarSpacer />
-        {navigation}
-        {seasonSelect}
-        <ThemeSwitcher />
+        {controls}
       </Navbar>
 
       <NavbarMobile>
-        <span className="font-semibold text-sm">ohfootball</span>
+        <Wordmark className="font-semibold text-sm" />
         <NavbarSpacer />
-        {navigation}
-        {seasonSelect}
-        <ThemeSwitcher />
+        {controls}
       </NavbarMobile>
     </NavbarProvider>
   )
