@@ -58,6 +58,69 @@ func (q *Queries) FinishScrapeRun(ctx context.Context, arg FinishScrapeRunParams
 	return err
 }
 
+const insertTeam = `-- name: InsertTeam :exec
+INSERT INTO ohfootball_raw.teams (
+    scrape_run_id,
+    season,
+    team_id,
+    name,
+    mascot,
+    city,
+    state,
+    county,
+    primary_color,
+    secondary_color,
+    division,
+    region
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12
+)
+`
+
+type InsertTeamParams struct {
+	ScrapeRunID    pgtype.UUID
+	Season         int32
+	TeamID         string
+	Name           pgtype.Text
+	Mascot         pgtype.Text
+	City           pgtype.Text
+	State          pgtype.Text
+	County         pgtype.Text
+	PrimaryColor   pgtype.Text
+	SecondaryColor pgtype.Text
+	Division       pgtype.Text
+	Region         pgtype.Text
+}
+
+func (q *Queries) InsertTeam(ctx context.Context, arg InsertTeamParams) error {
+	_, err := q.db.Exec(ctx, insertTeam,
+		arg.ScrapeRunID,
+		arg.Season,
+		arg.TeamID,
+		arg.Name,
+		arg.Mascot,
+		arg.City,
+		arg.State,
+		arg.County,
+		arg.PrimaryColor,
+		arg.SecondaryColor,
+		arg.Division,
+		arg.Region,
+	)
+	return err
+}
+
 const listSuccessfulSeasons = `-- name: ListSuccessfulSeasons :many
 SELECT DISTINCT teams.season
 FROM ohfootball_raw.teams AS teams

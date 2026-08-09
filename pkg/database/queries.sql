@@ -10,6 +10,35 @@ INSERT INTO ohfootball_metadata.scrape_runs (
 )
 RETURNING id;
 
+-- name: InsertTeam :exec
+INSERT INTO ohfootball_raw.teams (
+    scrape_run_id,
+    season,
+    team_id,
+    name,
+    mascot,
+    city,
+    state,
+    county,
+    primary_color,
+    secondary_color,
+    division,
+    region
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12
+);
+
 -- name: AppendTeams :copyfrom
 INSERT INTO ohfootball_raw.teams (
     scrape_run_id,
