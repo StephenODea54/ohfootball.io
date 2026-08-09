@@ -67,7 +67,7 @@ func ParseTeamRef(base *url.URL, href string, season int, name string) (TeamRef,
 	resolved.Path = "/hsfoot/teams.jsp"
 	resolved.RawQuery = url.Values{"teamID": {teamID}, "year": {strconv.Itoa(season)}}.Encode()
 	resolved.Fragment = ""
-	return TeamRef{Season: season, TeamID: teamID, Name: cleanText(name), URL: resolved.String()}, true
+	return TeamRef{Season: season, TeamID: teamID, Name: CleanText(name), URL: resolved.String()}, true
 }
 
 // canonicalHost reduces a URL on this site to one scheme and one host, so that

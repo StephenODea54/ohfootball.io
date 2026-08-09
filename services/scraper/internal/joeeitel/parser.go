@@ -10,13 +10,9 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"golang.org/x/net/html"
 )
 
-var (
-	divisionPattern = regexp.MustCompile(`(?i)(?:OHSAA\s+)?Division\s+([IVXLC]+|\d+)(?:\s*,\s*Region\s+(\d+))?`)
-	gameDatePattern = regexp.MustCompile(`^\d{1,2}/\d{1,2}$`)
-)
+var gameDatePattern = regexp.MustCompile(`^\d{1,2}/\d{1,2}$`)
 
 func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
@@ -32,9 +28,9 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef
 	}
 
 	header := doc.Find("#header").First()
-	details := linesWithBreaks(header.Find("h3, h4").First())
+	details := LinesWithBreaks(header.Find("h3, h4").First())
 	caption := doc.Find("table.schedule caption").First()
-	captionLines := linesWithBreaks(caption)
+	captionLines := LinesWithBreaks(caption)
 	metadata := strings.Join(append(slices.Clone(details), captionLines...), "\n")
 
 	team := Team{
@@ -42,10 +38,10 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef
 		TeamID: ref.TeamID,
 		Name:   parseSchoolName(caption, ref),
 	}
-	team.Mascot = parseMascot(team.Name, header.Find("h2").First().Text())
-	team.City, team.State, team.County = parseLocation(details)
+	team.Mascot = ParseMascot(team.Name, header.Find("h2").First().Text())
+	team.City, team.State, team.County = ParseLocation(details)
 	team.PrimaryColor, team.SecondaryColor = parseColors(header)
-	team.Division, team.Region = parseDivisionRegion(metadata)
+	team.Division, team.Region = ParseDivisionRegion(metadata)
 
 	var games []TeamScheduleRow
 	opponents := make(map[string]TeamRef)
@@ -58,7 +54,7 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef
 		opponentLink := opponentCell.Find("a.teamLink, a[href*='teams.jsp']").First()
 		opponentName := textWithoutClasses(opponentLink, "wltRecord", "playoff")
 		if opponentName == "" {
-			opponentName = cleanText(opponentCell.Text())
+			opponentName = CleanText(opponentCell.Text())
 		}
 
 		var opponent TeamRef
@@ -71,7 +67,7 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef
 
 		playoff := ""
 		if row.Find(".playoff").Length() > 0 {
-			playoff = cleanText(row.Find(".playoff").First().Text())
+			playoff = CleanText(row.Find(".playoff").First().Text())
 		}
 		games = append(games, TeamScheduleRow{
 			Season:         ref.Season,
@@ -96,13 +92,13 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef
 
 func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef, error) {
 	header := doc.Find("body > table").First().Find("td").First()
-	details := linesWithBreaks(header)
-	displayName := cleanText(header.Find("font").First().Text())
+	details := LinesWithBreaks(header)
+	displayName := CleanText(header.Find("font").First().Text())
 
-	team := Team{Season: ref.Season, TeamID: ref.TeamID, Name: cleanText(ref.Name)}
-	team.Mascot = parseMascot(team.Name, displayName)
-	team.City, team.State, team.County = parseLocation(details)
-	team.Division, team.Region = parseDivisionRegion(strings.Join(details, "\n"))
+	team := Team{Season: ref.Season, TeamID: ref.TeamID, Name: CleanText(ref.Name)}
+	team.Mascot = ParseMascot(team.Name, displayName)
+	team.City, team.State, team.County = ParseLocation(details)
+	team.Division, team.Region = ParseDivisionRegion(strings.Join(details, "\n"))
 	team.PrimaryColor, _ = header.Attr("bgcolor")
 	team.SecondaryColor, _ = header.Find("font[color]").First().Attr("color")
 	team.PrimaryColor = strings.TrimSpace(team.PrimaryColor)
@@ -112,7 +108,7 @@ func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Tea
 	opponents := make(map[string]TeamRef)
 	doc.Find("tr").Each(func(_ int, row *goquery.Selection) {
 		cells := row.ChildrenFiltered("td")
-		if cells.Length() < 6 || !gameDatePattern.MatchString(cleanText(cells.Eq(0).Text())) {
+		if cells.Length() < 6 || !gameDatePattern.MatchString(CleanText(cells.Eq(0).Text())) {
 			return
 		}
 
@@ -139,16 +135,16 @@ func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Tea
 
 		notes := ""
 		if cells.Length() > 6 {
-			notes = cleanText(cells.Eq(6).Text())
+			notes = CleanText(cells.Eq(6).Text())
 		}
 		games = append(games, TeamScheduleRow{
 			Season:         ref.Season,
 			SourceTeamID:   ref.TeamID,
-			GameDate:       cleanText(cells.Eq(0).Text()),
-			HomeAway:       cleanText(cells.Eq(1).Text()),
+			GameDate:       CleanText(cells.Eq(0).Text()),
+			HomeAway:       CleanText(cells.Eq(1).Text()),
 			OpponentTeamID: opponent.TeamID,
-			Result:         cleanText(cells.Eq(4).Text()),
-			Score:          cleanText(cells.Eq(5).Text()),
+			Result:         CleanText(cells.Eq(4).Text()),
+			Score:          CleanText(cells.Eq(5).Text()),
 			Notes:          notes,
 			Playoff:        playoff,
 		})
@@ -168,11 +164,11 @@ func legacyOpponentName(link *goquery.Selection) string {
 	}
 	clone := link.Clone()
 	clone.Find("font").Remove()
-	return cleanText(clone.Text())
+	return CleanText(clone.Text())
 }
 
 func parseSchoolName(caption *goquery.Selection, ref TeamRef) string {
-	text := cleanText(caption.Text())
+	text := CleanText(caption.Text())
 	year := strconv.Itoa(ref.Season)
 	patterns := []*regexp.Regexp{
 		regexp.MustCompile(`(?i)^` + regexp.QuoteMeta(year) + `\s+(.+?)\s+Football\b`),
@@ -180,39 +176,10 @@ func parseSchoolName(caption *goquery.Selection, ref TeamRef) string {
 	}
 	for _, pattern := range patterns {
 		if match := pattern.FindStringSubmatch(text); len(match) == 2 {
-			return cleanText(match[1])
+			return CleanText(match[1])
 		}
 	}
-	return cleanText(ref.Name)
-}
-
-func parseMascot(name, displayName string) string {
-	nameWords := strings.Fields(name)
-	displayWords := strings.Fields(displayName)
-	if len(nameWords) == 0 || len(displayWords) <= len(nameWords) {
-		return ""
-	}
-	for index, word := range nameWords {
-		if !strings.EqualFold(word, displayWords[index]) {
-			return ""
-		}
-	}
-	return strings.Join(displayWords[len(nameWords):], " ")
-}
-
-func parseLocation(lines []string) (city, state, county string) {
-	for _, line := range lines {
-		if strings.HasSuffix(strings.ToLower(line), " county") {
-			county = strings.TrimSpace(line[:len(line)-len(" County")])
-			continue
-		}
-		parts := strings.Split(line, ",")
-		if len(parts) == 2 && city == "" {
-			city = cleanText(parts[0])
-			state = cleanText(parts[1])
-		}
-	}
-	return city, state, county
+	return CleanText(ref.Name)
 }
 
 func parseColors(header *goquery.Selection) (primary, secondary string) {
@@ -232,42 +199,6 @@ func parseColors(header *goquery.Selection) (primary, secondary string) {
 	return primary, secondary
 }
 
-func parseDivisionRegion(text string) (division, region string) {
-	match := divisionPattern.FindStringSubmatch(text)
-	if len(match) != 3 {
-		return "", ""
-	}
-	return cleanText(match[1]), cleanText(match[2])
-}
-
-func linesWithBreaks(selection *goquery.Selection) []string {
-	if selection.Length() == 0 {
-		return nil
-	}
-	var builder strings.Builder
-	writeNodeText(&builder, selection.Get(0))
-	rawLines := strings.Split(builder.String(), "\n")
-	lines := make([]string, 0, len(rawLines))
-	for _, line := range rawLines {
-		if line = cleanText(line); line != "" {
-			lines = append(lines, line)
-		}
-	}
-	return lines
-}
-
-func writeNodeText(builder *strings.Builder, node *html.Node) {
-	if node.Type == html.TextNode {
-		builder.WriteString(node.Data)
-	}
-	if node.Type == html.ElementNode && node.Data == "br" {
-		builder.WriteByte('\n')
-	}
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		writeNodeText(builder, child)
-	}
-}
-
 func textWithoutClasses(selection *goquery.Selection, excluded ...string) string {
 	if selection.Length() == 0 {
 		return ""
@@ -276,15 +207,11 @@ func textWithoutClasses(selection *goquery.Selection, excluded ...string) string
 	for _, class := range excluded {
 		clone.Find("." + class).Remove()
 	}
-	return cleanText(clone.Text())
+	return CleanText(clone.Text())
 }
 
 func cellText(row *goquery.Selection, selector string) string {
-	return cleanText(row.Find(selector).First().Text())
-}
-
-func cleanText(value string) string {
-	return strings.Join(strings.Fields(value), " ")
+	return CleanText(row.Find(selector).First().Text())
 }
 
 func teamKey(season int, teamID string) string {

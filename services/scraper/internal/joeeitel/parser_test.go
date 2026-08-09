@@ -100,25 +100,3 @@ func TestParseLegacyTeamPage(t *testing.T) {
 		t.Fatalf("unexpected legacy opponent: %+v", opponents[1])
 	}
 }
-
-func TestParseMascot(t *testing.T) {
-	tests := []struct {
-		name        string
-		displayName string
-		want        string
-	}{
-		{name: "Ada", displayName: "Ada Bulldogs", want: "Bulldogs"},
-		{name: "Perrysburg", displayName: "Perrysburg Yellow Jackets", want: "Yellow Jackets"},
-		{name: "LAKEWOOD ST EDWARD", displayName: "Lakewood St Edward Eagles", want: "Eagles"},
-		{name: "Ada", displayName: "Ada", want: ""},
-		{name: "Ada", displayName: "Adams County Mustangs", want: ""},
-	}
-
-	for _, test := range tests {
-		t.Run(test.displayName, func(t *testing.T) {
-			if got := parseMascot(test.name, test.displayName); got != test.want {
-				t.Fatalf("parseMascot(%q, %q) = %q, want %q", test.name, test.displayName, got, test.want)
-			}
-		})
-	}
-}

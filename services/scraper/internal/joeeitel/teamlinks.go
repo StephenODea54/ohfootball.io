@@ -19,7 +19,7 @@ func ParseTeamLinks(doc *goquery.Document, base *url.URL, season int) []TeamRef 
 
 	doc.Find("a[href]").Each(func(_ int, link *goquery.Selection) {
 		href, _ := link.Attr("href")
-		ref, ok := ParseTeamRef(base, href, season, cleanText(link.Text()))
+		ref, ok := ParseTeamRef(base, href, season, CleanText(link.Text()))
 		if !ok {
 			return
 		}
