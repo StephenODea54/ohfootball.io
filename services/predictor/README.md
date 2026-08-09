@@ -172,6 +172,60 @@ The tracked candidate is MLflow run `1054e7e69a9d49c89bdf3bb6e86d6b31`.
 Earlier division experiments whose prior accidentally compounded across years
 are tagged `validation_status=invalid` in MLflow.
 
+## 2026-08-09 experiment result
+
+Every result below uses the same method as the 2026-08-05 result. Parameters
+were tuned on 2000 through 2023 and scored on the untouched 2024 and 2025
+seasons. The candidate strategy is unchanged: K=148, 30 points of home
+advantage, 85% season carryover, a 140 point division step, and a 1.6x K boost
+across the first three games. It scores 0.42762 log loss, 0.13983 Brier score,
+and 79.50% favorite accuracy on the holdout.
+
+Ties now count as half a point and forfeits no longer change a rating. The
+holdout lost 18 games, which are the forfeits. Log loss and Brier score did not
+move at four decimal places, and accuracy rose from 79.43% to 79.50%. Ohio
+plays overtime, so ties are almost absent from data after 2000: only 5 games in
+88,055 produced no decision. The change is correct, but it does not improve the
+model. MLflow run `6f3e2735a4924d1ba249bc6a61344801`.
+
+Four parameters were tested and all four keep their current value.
+
+| Parameter | Range tested | Best value | Log loss against the candidate |
+| --- | --- | ---: | ---: |
+| Rating scale | 350 to 600 | 425 | -0.00021 |
+| Playoff K multiplier | 1.0 to 2.0 | 1.0 | 0.00000 |
+| Division K slope | -0.06 to 0.10 | 0.03 | -0.00015 |
+| Early season K boost | 0.0 to 0.75 | 0.0 | 0.00000 |
+
+The rating scale is flat between 375 and 500. The best value on the holdout is
+425, but the best value on the tuning window is 450, and accuracy peaks at 375.
+A real effect would put all three in one place. The gain is also smaller than
+the margin of victory gain that was rejected on 2026-08-05, so the same
+standard rejects it. Keep 400.
+
+A playoff K multiplier makes the model worse at every value, on both windows,
+and the loss grows with the multiplier. By the playoffs both teams carry ten
+games of evidence, so a surprise result is more often variance than
+information. Raising its weight raises the noise. Keep 1.0.
+
+The division K slope changes the update by school size, where a positive slope
+moves the small schools faster. Negative slopes are clearly worse, so the
+direction has weak support, but the best gain is smaller than the rating scale
+gain and the two windows choose different values. Keep 0.0.
+
+An early season K boost raises the update in week one and falls to no change at
+the end of the regular season. It makes log loss worse at every value, but it
+raises accuracy to 79.68% at a boost of 0.30. This is the clearest reason to
+choose log loss as the primary metric. A model tuned for accuracy would take
+this value and would sell worse probabilities under a better headline number.
+The boost also overlaps the provisional boost, which already raises the update
+across a team's first games. Keep 0.0.
+
+Nine parameters have now been tested. All nine sit at their default or at the
+value already chosen. The next gain will not come from another parameter. It
+needs either information the model does not have, or a model that predicts the
+score rather than the winner.
+
 ## Experiments to try next
 
 Keep the season-reset, result-only model as the permanent baseline. Add one idea
@@ -180,7 +234,6 @@ backtest.
 
 ### Rating mechanics
 
-- Tune the rating scale to change how rating differences map to probabilities.
 - Compare the linear provisional decay with an uncertainty-based or
   games-played curve, without tuning directly for an 80% accuracy threshold.
 - Check whether the chosen values remain stable with rolling-origin validation
@@ -193,10 +246,10 @@ carryover.
 
 ### Football context
 
-- Test division or playoff multipliers on K-factor.
 - Revisit margin of victory only with multiple validation windows; keep its
   multiplier capped so one extreme score cannot dominate a season.
-- Decide how forfeits and ties should affect ratings.
+- Predict the score difference and convert it to a probability, rather than
+  updating on the winner alone. This is a different model, not a parameter.
 
 ### Evaluation and monitoring
 
