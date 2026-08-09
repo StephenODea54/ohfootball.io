@@ -177,7 +177,7 @@ type rowScanner interface {
 
 func scanTeam(row rowScanner) (*model.Team, error) {
 	var team model.Team
-	var mascot, city pgtype.Text
+	var mascot, city, primaryColor, secondaryColor pgtype.Text
 	var division, region pgtype.Int2
 	var rating pgtype.Float8
 	var ratingRank pgtype.Int8
@@ -191,6 +191,8 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 		&city,
 		&division,
 		&region,
+		&primaryColor,
+		&secondaryColor,
 		&wins,
 		&losses,
 		&ties,
@@ -213,6 +215,12 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	if region.Valid {
 		value := int(region.Int16)
 		team.Region = &value
+	}
+	if primaryColor.Valid {
+		team.PrimaryColor = &primaryColor.String
+	}
+	if secondaryColor.Valid {
+		team.SecondaryColor = &secondaryColor.String
 	}
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
 	team.EloHistory = []*model.EloRating{}
@@ -415,6 +423,8 @@ const teamColumns = `
 	team.city,
 	team.division,
 	team.region,
+	team.primary_color_hex,
+	team.secondary_color_hex,
 	COALESCE(records.wins, 0),
 	COALESCE(records.losses, 0),
 	COALESCE(records.ties, 0),

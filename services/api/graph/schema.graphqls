@@ -61,6 +61,8 @@ type Team {
   city: String
   division: Int
   region: Int
+  primaryColor: String
+  secondaryColor: String
   record: Record!
   elo: EloRating
   eloHistory: [EloRating!]!

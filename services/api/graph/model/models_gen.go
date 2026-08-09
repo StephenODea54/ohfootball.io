@@ -48,17 +48,19 @@ type Record struct {
 }
 
 type Team struct {
-	ID         string       `json:"id"`
-	Season     int          `json:"season"`
-	Name       string       `json:"name"`
-	Mascot     *string      `json:"mascot,omitempty"`
-	City       *string      `json:"city,omitempty"`
-	Division   *int         `json:"division,omitempty"`
-	Region     *int         `json:"region,omitempty"`
-	Record     *Record      `json:"record"`
-	Elo        *EloRating   `json:"elo,omitempty"`
-	EloHistory []*EloRating `json:"eloHistory"`
-	Schedule   []*Game      `json:"schedule"`
+	ID             string       `json:"id"`
+	Season         int          `json:"season"`
+	Name           string       `json:"name"`
+	Mascot         *string      `json:"mascot,omitempty"`
+	City           *string      `json:"city,omitempty"`
+	Division       *int         `json:"division,omitempty"`
+	Region         *int         `json:"region,omitempty"`
+	PrimaryColor   *string      `json:"primaryColor,omitempty"`
+	SecondaryColor *string      `json:"secondaryColor,omitempty"`
+	Record         *Record      `json:"record"`
+	Elo            *EloRating   `json:"elo,omitempty"`
+	EloHistory     []*EloRating `json:"eloHistory"`
+	Schedule       []*Game      `json:"schedule"`
 }
 
 type GameLocation string
