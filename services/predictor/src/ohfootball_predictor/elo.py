@@ -7,9 +7,10 @@ from dataclasses import dataclass
 from datetime import date
 from itertools import groupby
 from math import log1p
-from typing import Iterable, Literal, Mapping
+from typing import Iterable, Mapping
 
-Result = Literal["W", "L", "unknown"]
+from .games import Game, chronological
+
 RatingKey = tuple[int, str]
 ProgramRatingKey = tuple[int, str]
 
@@ -46,26 +47,6 @@ class EloConfig:
             raise ValueError("provisional_games cannot be negative")
         if self.provisional_k_multiplier < 1:
             raise ValueError("provisional_k_multiplier must be at least one")
-
-
-@dataclass(frozen=True, slots=True)
-class Game:
-    game_key: str
-    season: int
-    game_date: date
-    team_a_key: str
-    team_a_name: str
-    team_b_key: str
-    team_b_name: str
-    team_a_result: Result
-    team_a_program_id: str | None = None
-    team_b_program_id: str | None = None
-    team_a_division: int | None = None
-    team_b_division: int | None = None
-    is_team_a_home: bool = False
-    is_team_b_home: bool = False
-    team_a_score: int | None = None
-    team_b_score: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,10 +96,7 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
     date. This prevents input order from creating false precision when kickoff
     times are not available.
     """
-    completed_games = sorted(
-        (game for game in games if game.team_a_result in ("W", "L")),
-        key=lambda game: (game.season, game.game_date, game.game_key),
-    )
+    completed_games = chronological(game for game in games if game.is_rateable)
     ratings: dict[RatingKey, float] = {}
     program_ratings: dict[ProgramRatingKey, float] = {}
     games_played: defaultdict[RatingKey, int] = defaultdict(int)
@@ -164,7 +142,8 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
                 rating_b + config.home_advantage * game.is_team_b_home,
                 rating_scale=config.rating_scale,
             )
-            actual_a = 1.0 if game.team_a_result == "W" else 0.0
+            actual_a = game.rateable_score
+            assert actual_a is not None  # The games were filtered on is_rateable.
             team_a_games_played = games_played[team_a]
             team_b_games_played = games_played[team_b]
             update_multiplier = rating_update_multiplier(
@@ -220,7 +199,7 @@ def predict(
     predictions: list[Prediction] = []
     prior_program_ratings = program_ratings or {}
     prior_games_played = games_played or {}
-    for game in sorted(games, key=lambda item: (item.season, item.game_date, item.game_key)):
+    for game in chronological(games):
         team_a = (game.season, game.team_a_key)
         team_b = (game.season, game.team_b_key)
         rating_a = ratings.get(

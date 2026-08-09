@@ -28,6 +28,7 @@ def game(
     is_team_b_home: bool = False,
     team_a_score: int | None = None,
     team_b_score: int | None = None,
+    notes: str | None = None,
 ) -> Game:
     return Game(
         game_key=game_key,
@@ -46,6 +47,7 @@ def game(
         is_team_b_home=is_team_b_home,
         team_a_score=team_a_score,
         team_b_score=team_b_score,
+        notes=notes,
     )
 
 
@@ -73,6 +75,64 @@ class BacktestTests(unittest.TestCase):
         self.assertGreater(result.predictions[1].team_a_win_probability, 0.5)
         self.assertAlmostEqual(result.ratings[(2025, "a")], 1530.5304984710244)
         self.assertAlmostEqual(result.ratings[(2025, "b")], 1469.4695015289756)
+
+    def test_a_tie_between_equal_teams_changes_nothing(self) -> None:
+        result = backtest(
+            [game("one", date(2025, 8, 1), "a", "b", "T")],
+            EloConfig(),
+        )
+
+        self.assertEqual(result.predictions[0].actual_team_a_score, 0.5)
+        self.assertEqual(result.ratings[(2025, "a")], 1500.0)
+        self.assertEqual(result.ratings[(2025, "b")], 1500.0)
+
+    def test_a_tie_moves_the_favorite_toward_the_underdog(self) -> None:
+        result = backtest(
+            [
+                game("one", date(2025, 8, 1), "a", "b", "W"),
+                game("two", date(2025, 8, 8), "a", "b", "T"),
+            ],
+            EloConfig(),
+        )
+
+        rating_after_the_win = 1516.0
+        self.assertLess(result.ratings[(2025, "a")], rating_after_the_win)
+        self.assertGreater(result.ratings[(2025, "a")], 1500.0)
+        self.assertAlmostEqual(
+            result.ratings[(2025, "a")] + result.ratings[(2025, "b")], 3000.0
+        )
+
+    def test_a_forfeit_does_not_change_a_rating(self) -> None:
+        result = backtest(
+            [game("one", date(2025, 8, 1), "a", "b", "W", notes="forfeit")],
+            EloConfig(),
+        )
+
+        self.assertEqual(result.ratings, {})
+
+    def test_a_double_forfeit_does_not_change_a_rating(self) -> None:
+        result = backtest(
+            [game("one", date(2025, 8, 1), "a", "b", "L", notes="double forfeit")],
+            EloConfig(),
+        )
+
+        self.assertEqual(result.ratings, {})
+
+    def test_a_canceled_game_does_not_change_a_rating(self) -> None:
+        result = backtest(
+            [game("one", date(2025, 8, 1), "a", "b", "C")],
+            EloConfig(),
+        )
+
+        self.assertEqual(result.ratings, {})
+
+    def test_an_overtime_note_still_rates_the_game(self) -> None:
+        result = backtest(
+            [game("one", date(2025, 8, 1), "a", "b", "W", notes="overtime")],
+            EloConfig(),
+        )
+
+        self.assertEqual(result.ratings[(2025, "a")], 1516.0)
 
     def test_same_day_games_use_start_of_day_ratings(self) -> None:
         result = backtest(

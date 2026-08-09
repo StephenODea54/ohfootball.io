@@ -10,7 +10,8 @@ from datetime import date, datetime
 from typing import Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .elo import EloConfig, Game, Prediction, backtest, initial_team_rating, predict
+from .elo import EloConfig, Prediction, backtest, initial_team_rating, predict
+from .games import Game
 from .metrics import evaluate
 from .publisher import (
     GamePredictionRow,
@@ -162,7 +163,7 @@ def _run(arguments: argparse.Namespace) -> None:
     upcoming_games = tuple(
         game
         for game in games
-        if game.team_a_result == "unknown" and game.game_date >= arguments.as_of_date
+        if game.is_scheduled and game.game_date >= arguments.as_of_date
     )
     result = backtest(training_games, config)
     upcoming_predictions = predict(
@@ -359,9 +360,7 @@ def _config(arguments: argparse.Namespace) -> EloConfig:
 
 def _completed_games(games: Iterable[Game], as_of_date: date) -> tuple[Game, ...]:
     return tuple(
-        game
-        for game in games
-        if game.team_a_result in ("W", "L") and game.game_date < as_of_date
+        game for game in games if game.is_rateable and game.game_date < as_of_date
     )
 
 

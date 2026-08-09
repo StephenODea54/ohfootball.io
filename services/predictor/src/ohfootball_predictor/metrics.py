@@ -11,6 +11,13 @@ from .elo import Prediction
 
 @dataclass(frozen=True, slots=True)
 class Evaluation:
+    """Scores for a set of forecasts.
+
+    `games` counts every scored game. `decided_games` counts only the games
+    that the accuracy can speak about: the game had a winner and the forecast
+    picked a team.
+    """
+
     games: int
     decided_games: int
     accuracy: float | None
@@ -44,7 +51,11 @@ def evaluate(predictions: Iterable[Prediction]) -> Evaluation:
             1.0 - clipped_probability
         )
 
-        if probability != 0.5:
+        # A tie has no winner, so it can neither agree nor disagree with a
+        # pick. It stays in the Brier score and the log loss, which measure
+        # the probability, but it leaves the accuracy on both sides of the
+        # fraction. An even forecast picks no team, so it also leaves.
+        if probability != 0.5 and actual != 0.5:
             decided += 1
             correct += int((probability > 0.5) == (actual == 1.0))
 

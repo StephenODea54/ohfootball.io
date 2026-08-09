@@ -12,7 +12,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Iterable, Mapping
 
-from .elo import EloConfig, Game, Prediction, RatingKey
+from .elo import EloConfig, Prediction, RatingKey
+from .games import Game
 from .metrics import Evaluation, evaluate
 
 
@@ -133,7 +134,8 @@ def _fingerprint(games: Iterable[Game]) -> str:
                 f"{game.team_a_program_id}|{game.team_b_program_id}|"
                 f"{game.team_a_division}|{game.team_b_division}|"
                 f"{game.is_team_a_home}|{game.is_team_b_home}|"
-                f"{game.team_a_score}|{game.team_b_score}|{game.team_a_result}\n"
+                f"{game.team_a_score}|{game.team_b_score}|{game.team_a_result}|"
+                f"{game.notes}\n"
             ).encode()
         )
     return digest.hexdigest()

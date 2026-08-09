@@ -5,13 +5,17 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .elo import Game
+from .games import Game
 
 _IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
 def load_games(database_url: str, *, marts_schema: str = "ohfootball_marts") -> tuple[Game, ...]:
-    """Load current canonical games and their current team names."""
+    """Load current canonical games and their current team names.
+
+    The query does not remove games by result. The rule for which games change
+    a rating lives on the Game record, so that one rule applies everywhere.
+    """
     query = _build_query(marts_schema)
 
     import psycopg
@@ -38,6 +42,7 @@ def load_games(database_url: str, *, marts_schema: str = "ohfootball_marts") -> 
             is_team_b_home=row["is_team_b_home"],
             team_a_score=row["team_a_score"],
             team_b_score=row["team_b_score"],
+            notes=row["notes"],
         )
         for row in rows
     )
@@ -64,7 +69,8 @@ def _build_query(marts_schema: str) -> str:
             game.is_team_a_home,
             game.is_team_b_home,
             game.team_a_score,
-            game.team_b_score
+            game.team_b_score,
+            game.notes
         FROM {marts_schema}.fct_games AS game
         INNER JOIN {marts_schema}.dim_dates AS dates
             ON dates.date_key = game.game_date_key
@@ -75,9 +81,7 @@ def _build_query(marts_schema: str) -> str:
             ON team_b.team_key = game.team_b_key
            AND team_b.is_current
         WHERE game.is_current
-          AND game.team_a_result IN ('W', 'L', 'unknown')
           AND team_a.state_code = 'OH'
           AND team_b.state_code = 'OH'
-          AND COALESCE(game.notes, '') <> 'double forfeit'
         ORDER BY game.season, dates.date_day, game.game_key
     """
