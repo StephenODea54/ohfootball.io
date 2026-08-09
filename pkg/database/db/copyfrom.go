@@ -9,13 +9,13 @@ import (
 	"context"
 )
 
-// iteratorForAppendGames implements pgx.CopyFromSource.
-type iteratorForAppendGames struct {
-	rows                 []AppendGamesParams
+// iteratorForInsertGames implements pgx.CopyFromSource.
+type iteratorForInsertGames struct {
+	rows                 []InsertGamesParams
 	skippedFirstNextCall bool
 }
 
-func (r *iteratorForAppendGames) Next() bool {
+func (r *iteratorForInsertGames) Next() bool {
 	if len(r.rows) == 0 {
 		return false
 	}
@@ -27,7 +27,7 @@ func (r *iteratorForAppendGames) Next() bool {
 	return len(r.rows) > 0
 }
 
-func (r iteratorForAppendGames) Values() ([]interface{}, error) {
+func (r iteratorForInsertGames) Values() ([]interface{}, error) {
 	return []interface{}{
 		r.rows[0].ScrapeRunID,
 		r.rows[0].Season,
@@ -42,53 +42,10 @@ func (r iteratorForAppendGames) Values() ([]interface{}, error) {
 	}, nil
 }
 
-func (r iteratorForAppendGames) Err() error {
+func (r iteratorForInsertGames) Err() error {
 	return nil
 }
 
-func (q *Queries) AppendGames(ctx context.Context, arg []AppendGamesParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"ohfootball_raw", "games"}, []string{"scrape_run_id", "season", "source_team_id", "game_date", "home_away", "opponent_team_id", "result", "score", "notes", "playoff"}, &iteratorForAppendGames{rows: arg})
-}
-
-// iteratorForAppendTeams implements pgx.CopyFromSource.
-type iteratorForAppendTeams struct {
-	rows                 []AppendTeamsParams
-	skippedFirstNextCall bool
-}
-
-func (r *iteratorForAppendTeams) Next() bool {
-	if len(r.rows) == 0 {
-		return false
-	}
-	if !r.skippedFirstNextCall {
-		r.skippedFirstNextCall = true
-		return true
-	}
-	r.rows = r.rows[1:]
-	return len(r.rows) > 0
-}
-
-func (r iteratorForAppendTeams) Values() ([]interface{}, error) {
-	return []interface{}{
-		r.rows[0].ScrapeRunID,
-		r.rows[0].Season,
-		r.rows[0].TeamID,
-		r.rows[0].Name,
-		r.rows[0].Mascot,
-		r.rows[0].City,
-		r.rows[0].State,
-		r.rows[0].County,
-		r.rows[0].PrimaryColor,
-		r.rows[0].SecondaryColor,
-		r.rows[0].Division,
-		r.rows[0].Region,
-	}, nil
-}
-
-func (r iteratorForAppendTeams) Err() error {
-	return nil
-}
-
-func (q *Queries) AppendTeams(ctx context.Context, arg []AppendTeamsParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"ohfootball_raw", "teams"}, []string{"scrape_run_id", "season", "team_id", "name", "mascot", "city", "state", "county", "primary_color", "secondary_color", "division", "region"}, &iteratorForAppendTeams{rows: arg})
+func (q *Queries) InsertGames(ctx context.Context, arg []InsertGamesParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"ohfootball_raw", "games"}, []string{"scrape_run_id", "season", "source_team_id", "game_date", "home_away", "opponent_team_id", "result", "score", "notes", "playoff"}, &iteratorForInsertGames{rows: arg})
 }

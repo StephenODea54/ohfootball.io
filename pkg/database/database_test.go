@@ -10,6 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// TestScrapeQueries runs every query of one scrape run against the development
+// database. The whole test runs in one transaction, which it rolls back, so it
+// leaves no rows for the analytics models to read.
 func TestScrapeQueries(t *testing.T) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -38,20 +41,16 @@ func TestScrapeQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	teamCount, err := queries.AppendTeams(ctx, []db.AppendTeamsParams{{
+	if err := queries.InsertTeam(ctx, db.InsertTeamParams{
 		ScrapeRunID: runID,
 		Season:      2025,
 		TeamID:      "test-team",
 		Name:        pgtype.Text{String: "Test Team", Valid: true},
-	}})
-	if err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if teamCount != 1 {
-		t.Fatalf("appended %d teams, want 1", teamCount)
-	}
 
-	gameCount, err := queries.AppendGames(ctx, []db.AppendGamesParams{{
+	gameCount, err := queries.InsertGames(ctx, []db.InsertGamesParams{{
 		ScrapeRunID:    runID,
 		Season:         2025,
 		SourceTeamID:   pgtype.Text{String: "test-team", Valid: true},
@@ -61,7 +60,7 @@ func TestScrapeQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 	if gameCount != 1 {
-		t.Fatalf("appended %d games, want 1", gameCount)
+		t.Fatalf("inserted %d games, want 1", gameCount)
 	}
 
 	if err := queries.FinishScrapeRun(ctx, db.FinishScrapeRunParams{
@@ -71,14 +70,13 @@ func TestScrapeQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	seasons, err := queries.ListSuccessfulSeasons(ctx, db.ListSuccessfulSeasonsParams{
-		StartSeason: 2000,
-		EndSeason:   2026,
-	})
-	if err != nil {
+	var teamCount int
+	row := transaction.QueryRow(ctx,
+		"SELECT count(*) FROM ohfootball_raw.teams WHERE scrape_run_id = $1", runID)
+	if err := row.Scan(&teamCount); err != nil {
 		t.Fatal(err)
 	}
-	if len(seasons) != 1 || seasons[0] != 2025 {
-		t.Fatalf("successful seasons = %v, want [2025]", seasons)
+	if teamCount != 1 {
+		t.Fatalf("stored %d teams, want 1", teamCount)
 	}
 }

@@ -28,7 +28,7 @@ func (r *RunSink) WriteTeam(ctx context.Context, team joeeitel.Team, rows []joee
 		if len(rows) == 0 {
 			return nil
 		}
-		if _, err := queries.AppendGames(ctx, gameParams(r.runID, rows)); err != nil {
+		if _, err := queries.InsertGames(ctx, gameParams(r.runID, rows)); err != nil {
 			return fmt.Errorf("insert schedule of team %d:%s: %w", team.Season, team.TeamID, err)
 		}
 		return nil

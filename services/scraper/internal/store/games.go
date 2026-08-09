@@ -8,10 +8,10 @@ import (
 
 // gameParams maps the schedule rows of one team page onto the bulk insert. One
 // team page holds about ten rows, so one bulk call covers a whole page.
-func gameParams(runID pgtype.UUID, rows []joeeitel.TeamScheduleRow) []db.AppendGamesParams {
-	params := make([]db.AppendGamesParams, 0, len(rows))
+func gameParams(runID pgtype.UUID, rows []joeeitel.TeamScheduleRow) []db.InsertGamesParams {
+	params := make([]db.InsertGamesParams, 0, len(rows))
 	for _, row := range rows {
-		params = append(params, db.AppendGamesParams{
+		params = append(params, db.InsertGamesParams{
 			ScrapeRunID:    runID,
 			Season:         int32(row.Season),
 			SourceTeamID:   nullableText(row.SourceTeamID),

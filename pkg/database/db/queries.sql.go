@@ -11,34 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type AppendGamesParams struct {
-	ScrapeRunID    pgtype.UUID
-	Season         int32
-	SourceTeamID   pgtype.Text
-	GameDate       pgtype.Text
-	HomeAway       pgtype.Text
-	OpponentTeamID pgtype.Text
-	Result         pgtype.Text
-	Score          pgtype.Text
-	Notes          pgtype.Text
-	Playoff        pgtype.Text
-}
-
-type AppendTeamsParams struct {
-	ScrapeRunID    pgtype.UUID
-	Season         int32
-	TeamID         string
-	Name           pgtype.Text
-	Mascot         pgtype.Text
-	City           pgtype.Text
-	State          pgtype.Text
-	County         pgtype.Text
-	PrimaryColor   pgtype.Text
-	SecondaryColor pgtype.Text
-	Division       pgtype.Text
-	Region         pgtype.Text
-}
-
 const finishScrapeRun = `-- name: FinishScrapeRun :exec
 UPDATE ohfootball_metadata.scrape_runs
 SET finished_at = NOW(),
@@ -56,6 +28,19 @@ type FinishScrapeRunParams struct {
 func (q *Queries) FinishScrapeRun(ctx context.Context, arg FinishScrapeRunParams) error {
 	_, err := q.db.Exec(ctx, finishScrapeRun, arg.ID, arg.Status, arg.ErrorMessage)
 	return err
+}
+
+type InsertGamesParams struct {
+	ScrapeRunID    pgtype.UUID
+	Season         int32
+	SourceTeamID   pgtype.Text
+	GameDate       pgtype.Text
+	HomeAway       pgtype.Text
+	OpponentTeamID pgtype.Text
+	Result         pgtype.Text
+	Score          pgtype.Text
+	Notes          pgtype.Text
+	Playoff        pgtype.Text
 }
 
 const insertTeam = `-- name: InsertTeam :exec
@@ -119,41 +104,6 @@ func (q *Queries) InsertTeam(ctx context.Context, arg InsertTeamParams) error {
 		arg.Region,
 	)
 	return err
-}
-
-const listSuccessfulSeasons = `-- name: ListSuccessfulSeasons :many
-SELECT DISTINCT teams.season
-FROM ohfootball_raw.teams AS teams
-INNER JOIN ohfootball_metadata.scrape_runs AS runs
-    ON runs.id = teams.scrape_run_id
-WHERE runs.status = 'succeeded'
-  AND teams.season BETWEEN $1 AND $2
-ORDER BY teams.season
-`
-
-type ListSuccessfulSeasonsParams struct {
-	StartSeason int32
-	EndSeason   int32
-}
-
-func (q *Queries) ListSuccessfulSeasons(ctx context.Context, arg ListSuccessfulSeasonsParams) ([]int32, error) {
-	rows, err := q.db.Query(ctx, listSuccessfulSeasons, arg.StartSeason, arg.EndSeason)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []int32{}
-	for rows.Next() {
-		var season int32
-		if err := rows.Scan(&season); err != nil {
-			return nil, err
-		}
-		items = append(items, season)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const startScrapeRun = `-- name: StartScrapeRun :one
