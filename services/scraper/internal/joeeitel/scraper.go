@@ -1,7 +1,6 @@
 package joeeitel
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -215,7 +214,7 @@ func (s *Scraper) discoverTeams(ctx context.Context, regionURLs []string, season
 	for _, team := range teamByKey {
 		teams = append(teams, team)
 	}
-	slices.SortFunc(teams, compareTeamRefs)
+	slices.SortFunc(teams, CompareTeamRefs)
 	return teams, errs
 }
 
@@ -244,7 +243,12 @@ func (s *Scraper) scrapeTeams(ctx context.Context, refs []TeamRef, includeGames 
 					results <- pageResult{err: fmt.Errorf("fetch team %s: %w", ref.Key(), err)}
 					continue
 				}
-				team, games, opponents, err := parseTeamPage(bytes.NewReader(body), ref)
+				doc, base, err := NewDocument(body, ref.URL)
+				if err != nil {
+					results <- pageResult{err: err}
+					continue
+				}
+				team, games, opponents, err := ParseTeamPage(doc, base, ref)
 				if err != nil {
 					results <- pageResult{err: fmt.Errorf("parse team %s: %w", ref.Key(), err)}
 					continue
@@ -293,7 +297,7 @@ func (s *Scraper) scrapeTeams(ctx context.Context, refs []TeamRef, includeGames 
 	for _, opponent := range opponentByKey {
 		opponents = append(opponents, opponent)
 	}
-	slices.SortFunc(opponents, compareTeamRefs)
+	slices.SortFunc(opponents, CompareTeamRefs)
 	slices.SortFunc(teams, func(a, b Team) int { return strings.Compare(teamKey(a.Season, a.TeamID), teamKey(b.Season, b.TeamID)) })
 	return teams, games, opponents, errs
 }
@@ -369,8 +373,4 @@ func waitForRetry(ctx context.Context, attempt int, retryAfter string) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-}
-
-func compareTeamRefs(a, b TeamRef) int {
-	return strings.Compare(a.Key(), b.Key())
 }

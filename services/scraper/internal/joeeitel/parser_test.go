@@ -1,9 +1,6 @@
 package joeeitel
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 func TestParseCurrentTeamPage(t *testing.T) {
 	html := `<html><body>
@@ -20,7 +17,8 @@ func TestParseCurrentTeamPage(t *testing.T) {
 </table></body></html>`
 	ref := TeamRef{Season: 2025, TeamID: "1346", Name: "St Edward", URL: "https://joeeitel.com/hsfoot/teams.jsp?teamID=1346&year=2025"}
 
-	team, games, opponents, err := parseTeamPage(strings.NewReader(html), ref)
+	doc, base := documentFromString(t, html, ref.URL)
+	team, games, opponents, err := ParseTeamPage(doc, base, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +54,8 @@ func TestParseHistoricalTeamPage(t *testing.T) {
 </tr></tbody></table></body></html>`
 	ref := TeamRef{Season: 2000, TeamID: "1346", URL: "https://joeeitel.com/hsfoot/teams.jsp?teamID=1346&year=2000"}
 
-	team, games, _, err := parseTeamPage(strings.NewReader(html), ref)
+	doc, base := documentFromString(t, html, ref.URL)
+	team, games, _, err := ParseTeamPage(doc, base, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +76,8 @@ func TestParseLegacyTeamPage(t *testing.T) {
 </table></body></html>`
 	ref := TeamRef{Season: 2002, TeamID: "1346", Name: "St Edward", URL: "https://joeeitel.com/hsfoot/teams.jsp?teamID=1346&year=2002"}
 
-	team, games, opponents, err := parseTeamPage(strings.NewReader(html), ref)
+	doc, base := documentFromString(t, html, ref.URL)
+	team, games, opponents, err := ParseTeamPage(doc, base, ref)
 	if err != nil {
 		t.Fatal(err)
 	}

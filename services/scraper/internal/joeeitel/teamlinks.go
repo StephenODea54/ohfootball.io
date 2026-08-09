@@ -30,6 +30,6 @@ func ParseTeamLinks(doc *goquery.Document, base *url.URL, season int) []TeamRef 
 		teams = append(teams, ref)
 	})
 
-	slices.SortFunc(teams, compareTeamRefs)
+	slices.SortFunc(teams, CompareTeamRefs)
 	return teams
 }

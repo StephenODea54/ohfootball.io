@@ -21,7 +21,7 @@ func TestParseTeamLinksReadsAModernRegionPage(t *testing.T) {
 			t.Errorf("team reference is incomplete: %+v", team)
 		}
 	}
-	if !slices.IsSortedFunc(teams, compareTeamRefs) {
+	if !slices.IsSortedFunc(teams, CompareTeamRefs) {
 		t.Error("team references are not sorted")
 	}
 }

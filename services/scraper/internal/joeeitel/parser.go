@@ -1,8 +1,6 @@
 package joeeitel
 
 import (
-	"fmt"
-	"io"
 	"net/url"
 	"regexp"
 	"slices"
@@ -14,15 +12,10 @@ import (
 
 var gameDatePattern = regexp.MustCompile(`^\d{1,2}/\d{1,2}$`)
 
-func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef, error) {
-	doc, err := goquery.NewDocumentFromReader(r)
-	if err != nil {
-		return Team{}, nil, nil, fmt.Errorf("parse team page: %w", err)
-	}
-	base, err := url.Parse(ref.URL)
-	if err != nil {
-		return Team{}, nil, nil, fmt.Errorf("parse team page URL: %w", err)
-	}
+// ParseTeamPage reads one team page. It returns the team, the rows of its
+// schedule, and the teams that the schedule links to. The base resolves the
+// relative links of the schedule.
+func ParseTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef, error) {
 	if doc.Find("table.schedule").Length() == 0 {
 		return parseLegacyTeamPage(doc, base, ref)
 	}
@@ -86,7 +79,7 @@ func parseTeamPage(r io.Reader, ref TeamRef) (Team, []TeamScheduleRow, []TeamRef
 	for _, opponent := range opponents {
 		opponentRefs = append(opponentRefs, opponent)
 	}
-	slices.SortFunc(opponentRefs, func(a, b TeamRef) int { return strings.Compare(a.Key(), b.Key()) })
+	slices.SortFunc(opponentRefs, CompareTeamRefs)
 	return team, games, opponentRefs, nil
 }
 
@@ -154,7 +147,7 @@ func parseLegacyTeamPage(doc *goquery.Document, base *url.URL, ref TeamRef) (Tea
 	for _, opponent := range opponents {
 		opponentRefs = append(opponentRefs, opponent)
 	}
-	slices.SortFunc(opponentRefs, compareTeamRefs)
+	slices.SortFunc(opponentRefs, CompareTeamRefs)
 	return team, games, opponentRefs, nil
 }
 
