@@ -85,7 +85,7 @@ const limits = [
   },
   {
     title: "Program continuity can break",
-    body: "Carryover follows a program identifier across seasons. Co-ops, mergers, and renames can split one program into two histories, which resets a team to its prior.",
+    body: "Carryover follows a program identifier across seasons, so a program that misses a season keeps the rating it last earned. Co-ops, mergers, and renames can still split one program into two histories, which resets a team to its prior.",
   },
   {
     title: "The model knows nothing about football",
@@ -147,7 +147,8 @@ export function MethodologyPage({ season }: { season: number }) {
           <Text className="mt-3 text-base/7 sm:text-base/7">
             These are the values used for the published snapshots. They were selected by sweeping one
             parameter at a time on the 2000 through 2021 seasons and checking the result on 2022 and
-            2023.
+            2023. They were then checked again on the 2024 and 2025 seasons, which were held back
+            until the choices were fixed.
           </Text>
           <Card className="mt-5 gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
             <CardContent>
@@ -179,17 +180,23 @@ export function MethodologyPage({ season }: { season: number }) {
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
             A team's preseason rating is built from its division, then pulled toward what the program
-            finished with last season:
+            finished with in the most recent season it played:
           </Text>
           <pre className="mt-4 overflow-x-auto rounded-lg border bg-muted/60 px-4 py-3 text-sm/6 text-fg">
             <code>
-              {"prior = 1500 + 140 * (4 - division)\nstart = prior + 0.85 * (last_season_rating - prior)"}
+              {"prior = 1500 + 140 * (4 - division)\nstart = prior + 0.85 * (last_played_rating - prior)"}
             </code>
           </pre>
           <Text className="mt-4 text-base/7 sm:text-base/7">
             Division I sits 420 points above the baseline and Division VII sits 420 below it, with
-            Division IV at the baseline. Independent teams get no division adjustment. A program with
-            no prior season stays at its prior.
+            Division IV at the baseline. Independent teams get no division adjustment. A program that
+            has never played stays at its prior.
+          </Text>
+          <Text className="mt-4 text-base/7 sm:text-base/7">
+            A program that stops for a season or more keeps the rating it last earned rather than
+            starting again at its prior, because a team that comes back is not a new team. The pull
+            toward the prior is applied once, however long the program was away. A program that
+            returns in a different division is pulled toward the prior of the division it returns in.
           </Text>
         </section>
 
@@ -226,13 +233,14 @@ export function MethodologyPage({ season }: { season: number }) {
             </Card>
             <Card className="gap-3 shadow-none [--gutter:--spacing(5)]">
               <CardHeader>
-                <CardTitle className="text-lg/7">What is skipped</CardTitle>
+                <CardTitle className="text-lg/7">What counts</CardTitle>
               </CardHeader>
               <CardContent>
                 <Text className="m-0 text-sm/6">
-                  Only games with a recorded win or loss update ratings. Ties, cancellations,
-                  forfeits without a result, and scheduled games that have not been played are all
-                  excluded. Upcoming games get a probability but never change a rating.
+                  A win, a loss, and a tie all move ratings, with a tie counted as half a win for
+                  both teams. A forfeit never moves a rating, because no team played the game.
+                  Cancellations are excluded for the same reason. Upcoming games get a probability
+                  but never change a rating.
                 </Text>
               </CardContent>
             </Card>

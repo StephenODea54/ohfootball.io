@@ -178,8 +178,9 @@ Every result below uses the same method as the 2026-08-05 result. Parameters
 were tuned on 2000 through 2023 and scored on the untouched 2024 and 2025
 seasons. The candidate strategy is unchanged: K=148, 30 points of home
 advantage, 85% season carryover, a 140 point division step, and a 1.6x K boost
-across the first three games. It scores 0.42762 log loss, 0.13983 Brier score,
-and 79.50% favorite accuracy on the holdout.
+across the first three games. Every parameter test below is measured against
+0.42762 log loss, 0.13983 Brier score, and 79.50% favorite accuracy, which is
+what the candidate scored before the carryover fix at the end of this section.
 
 Ties now count as half a point and forfeits no longer change a rating. The
 holdout lost 18 games, which are the forfeits. Log loss and Brier score did not
@@ -225,6 +226,27 @@ Nine parameters have now been tested. All nine sit at their default or at the
 value already chosen. The next gain will not come from another parameter. It
 needs either information the model does not have, or a model that predicts the
 score rather than the winner.
+
+After those tests, the carryover changed to read the most recent season a
+program played rather than the season before. A program that stopped for a
+season used to lose every rating point it had earned. This is the largest gain
+measured so far.
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| Holdout log loss | 0.42762 | 0.42484 |
+| Holdout Brier score | 0.13983 | 0.13880 |
+| Holdout favorite accuracy | 79.50% | 79.51% |
+| Tuning log loss | 0.46107 | 0.45984 |
+
+The gain of 0.00278 is about ten times the margin of victory gain that was
+rejected on 2026-08-05, and no parameter changed to earn it. Both windows moved
+the same way, which separates this result from the parameter tests above, where
+the two windows chose different values. MLflow run
+`f837fb020b8a481c9a3c99b809e7cb04`.
+
+Accuracy moved by 0.01 points. A view of the model through accuracy alone would
+have shown nothing at all.
 
 ## Experiments to try next
 
