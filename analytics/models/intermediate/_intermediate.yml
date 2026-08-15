@@ -66,11 +66,83 @@ models:
               arguments:
                 values: [1, 2]
       - name: has_conflicting_perspectives
-        description: True when the two source schedules disagree on canonical game attributes.
+        description: >
+          True when the two schedules of one game disagree. The seasons from
+          2000 come from a site that never disagrees with itself, so the rule
+          stays strict there. The seasons before that come from a site kept by
+          hand, where a few games really do disagree, and a separate test
+          reports those as a warning rather than hiding them.
         data_tests:
           - accepted_values:
               arguments:
                 values: [false]
+              config:
+                where: "season >= 2000"
       - name: state_hash
+        data_tests:
+          - not_null
+
+  - name: int_ohhsfbdb_sheet_teams
+    description: >
+      One row for each sheet of ohhsfbdb.net, with the identifier of its school.
+      The identifier comes from the sheet itself, from the override seed where
+      the sheet holds a wrong digit, or is minted where joeeitel.com never named
+      the school.
+    columns:
+      - name: sheet
+        data_tests:
+          - not_null
+          - unique
+      - name: team_id
+        data_tests:
+          - not_null
+          - unique
+      - name: name
+        data_tests:
+          - not_null
+
+  - name: int_ohhsfbdb_games
+    description: >
+      One row for each game as one school of ohhsfbdb.net recorded it, with the
+      opponent resolved to an identifier where it could be.
+    columns:
+      - name: game_record_id
+        data_tests:
+          - not_null
+          - unique
+      - name: source_team_id
+        data_tests:
+          - not_null
+      - name: season
+        data_tests:
+          - not_null
+      - name: opponent_resolved_by
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [link, name, match, out of state]
+
+  - name: int_ohhsfbdb_team_observations
+    description: One observation of one school in one season, from ohhsfbdb.net.
+    columns:
+      - name: team_key
+        data_tests:
+          - not_null
+          - unique
+      - name: team_id
+        data_tests:
+          - not_null
+
+  - name: int_ohhsfbdb_games_canonicalized
+    description: One row for each game of ohhsfbdb.net, from the schools that recorded it.
+    columns:
+      - name: game_key
+        data_tests:
+          - not_null
+          - unique
+      - name: team_a_id
+        data_tests:
+          - not_null
+      - name: team_b_id
         data_tests:
           - not_null

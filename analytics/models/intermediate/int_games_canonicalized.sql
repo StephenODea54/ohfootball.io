@@ -107,4 +107,11 @@ with_state AS (
     FROM canonicalized
 )
 
+-- The warehouse reads two sites. Each one has its own raw tables and its own
+-- staging models, and they meet here. The seasons do not overlap, so no game
+-- comes from both.
 SELECT * FROM with_state
+
+UNION ALL
+
+SELECT * FROM {{ ref('int_ohhsfbdb_games_canonicalized') }}

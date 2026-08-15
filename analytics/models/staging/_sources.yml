@@ -71,3 +71,74 @@ sources:
               - accepted_values:
                   arguments:
                     values: [H, A, N]
+
+      - name: ohhsfbdb_index
+        description: The index sheet of ohhsfbdb.net, which is the only page holding full school names.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: scrape_run_id
+            data_tests:
+              - not_null
+          - name: school_name
+            data_tests:
+              - not_null
+          - name: sheet
+            data_tests:
+              - not_null
+
+      - name: ohhsfbdb_teams
+        description: One school per sheet of ohhsfbdb.net.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: scrape_run_id
+            data_tests:
+              - not_null
+          - name: sheet
+            data_tests:
+              - not_null
+
+      - name: ohhsfbdb_games
+        description: One school's view of one game, from its sheet on ohhsfbdb.net.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: scrape_run_id
+            data_tests:
+              - not_null
+          - name: sheet
+            data_tests:
+              - not_null
+          - name: season
+            data_tests:
+              - not_null
+          - name: home_away
+            description: H, A, or N. N is a game on neither ground, used for the state tournament.
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: [H, A, N]
+
+      - name: ohhsfbdb_season_summaries
+        description: One row per season of one school, holding its own conference, division, region, and rank.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: scrape_run_id
+            data_tests:
+              - not_null
+          - name: sheet
+            data_tests:
+              - not_null
+          - name: season
+            data_tests:
+              - not_null
