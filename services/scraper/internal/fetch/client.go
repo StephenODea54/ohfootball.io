@@ -24,6 +24,17 @@ type Options struct {
 	Timeout           time.Duration
 	MaxRetries        int
 	UserAgent         string
+
+	// AcceptBody reads a body that arrived with a success status, and reports
+	// whether it is the page that was asked for. A non-nil error rejects the
+	// body, and the client retries as it does after a server error. A nil
+	// AcceptBody accepts every body.
+	//
+	// Some sites answer status 200 with a page that holds no data, such as a
+	// page that asks the browser to run a script. Only the caller knows what
+	// such a page looks like, so the caller supplies this function and this
+	// package stays free of the knowledge of any site.
+	AcceptBody func(body []byte) error
 }
 
 // Client fetches pages under a shared rate limit.
@@ -44,8 +55,12 @@ func New(options Options) *Client {
 }
 
 // Get fetches one URL and returns its body. It retries on a transport error,
-// on HTTP 429, and on any 5xx status. It does not retry on other 4xx statuses.
-// It obeys a Retry-After header when the server sends one.
+// on HTTP 429, on any 5xx status, and on a body that AcceptBody rejects. It
+// does not retry on other 4xx statuses. It obeys a Retry-After header when the
+// server sends one.
+//
+// The error of a rejected body carries the error of AcceptBody, so a caller
+// tells such a failure from a server error with errors.Is.
 func (c *Client) Get(ctx context.Context, pageURL string) ([]byte, error) {
 	var lastErr error
 	for attempt := 0; attempt <= c.options.MaxRetries; attempt++ {
@@ -85,7 +100,22 @@ func (c *Client) Get(ctx context.Context, pageURL string) ([]byte, error) {
 			continue
 		}
 		if response.StatusCode >= 200 && response.StatusCode < 300 {
-			return body, nil
+			if c.options.AcceptBody == nil {
+				return body, nil
+			}
+			rejected := c.options.AcceptBody(body)
+			if rejected == nil {
+				return body, nil
+			}
+
+			lastErr = fmt.Errorf("the body of %s was rejected: %w", pageURL, rejected)
+			if attempt == c.options.MaxRetries {
+				break
+			}
+			if waitErr := waitForRetry(ctx, attempt, response.Header.Get("Retry-After")); waitErr != nil {
+				return nil, waitErr
+			}
+			continue
 		}
 
 		lastErr = fmt.Errorf("unexpected HTTP status %s", response.Status)

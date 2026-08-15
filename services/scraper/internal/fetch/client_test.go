@@ -271,6 +271,163 @@ func TestGetStopsWhenTheContextIsCancelledDuringTheRetryWait(t *testing.T) {
 	}
 }
 
+// errRejected stands for the reason a caller rejects a body. A real caller
+// supplies its own reason, and tells it apart with errors.Is.
+var errRejected = errors.New("the body is not the page that was asked for")
+
+// rejectBodies returns an AcceptBody that rejects the first count bodies.
+func rejectBodies(count int, seen *atomic.Int32) func([]byte) error {
+	return func([]byte) error {
+		if seen.Add(1) <= int32(count) {
+			return errRejected
+		}
+		return nil
+	}
+}
+
+func TestGetAcceptsEveryBodyWhenAcceptBodyIsNil(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("anything"))
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.AcceptBody = nil
+	body, err := New(options).Get(context.Background(), server.URL)
+	if err != nil {
+		t.Fatalf("Get returned %v", err)
+	}
+	if string(body) != "anything" {
+		t.Errorf("body is %q, want %q", body, "anything")
+	}
+}
+
+func TestGetRetriesWhenTheBodyIsRejected(t *testing.T) {
+	fastRetries(t)
+	var calls, checks atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Write([]byte("body"))
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.AcceptBody = rejectBodies(1, &checks)
+	body, err := New(options).Get(context.Background(), server.URL)
+	if err != nil {
+		t.Fatalf("Get returned %v", err)
+	}
+	if string(body) != "body" {
+		t.Errorf("body is %q, want %q", body, "body")
+	}
+	if got := calls.Load(); got != 2 {
+		t.Errorf("server saw %d calls, want 2", got)
+	}
+}
+
+func TestGetReturnsTheRejectionAfterRetryExhaustion(t *testing.T) {
+	fastRetries(t)
+	var calls, checks atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Write([]byte("body"))
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.MaxRetries = 2
+	options.AcceptBody = rejectBodies(99, &checks)
+	_, err := New(options).Get(context.Background(), server.URL)
+	if !errors.Is(err, errRejected) {
+		t.Fatalf("Get returned %v, want an error that wraps the rejection", err)
+	}
+	if got := calls.Load(); got != 3 {
+		t.Errorf("server saw %d calls, want 3", got)
+	}
+}
+
+func TestGetReturnsTheRejectionWithoutRetryWhenNoneIsAllowed(t *testing.T) {
+	var calls, checks atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Write([]byte("body"))
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.MaxRetries = 0
+	options.AcceptBody = rejectBodies(99, &checks)
+	_, err := New(options).Get(context.Background(), server.URL)
+	if !errors.Is(err, errRejected) {
+		t.Fatalf("Get returned %v, want an error that wraps the rejection", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Errorf("server saw %d calls, want 1", got)
+	}
+}
+
+func TestGetDoesNotReadTheBodyOfAnErrorStatus(t *testing.T) {
+	fastRetries(t)
+	var checks atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.AcceptBody = rejectBodies(99, &checks)
+	if _, err := New(options).Get(context.Background(), server.URL); err == nil {
+		t.Fatal("Get returned no error for status 404")
+	}
+	if got := checks.Load(); got != 0 {
+		t.Errorf("AcceptBody ran %d times for an error status, want 0", got)
+	}
+}
+
+func TestGetHonorsRetryAfterWhenTheBodyIsRejected(t *testing.T) {
+	fastRetries(t)
+	var checks atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "1")
+		w.Write([]byte("body"))
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.MaxRetries = 1
+	options.AcceptBody = rejectBodies(1, &checks)
+
+	start := time.Now()
+	if _, err := New(options).Get(context.Background(), server.URL); err != nil {
+		t.Fatalf("Get returned %v", err)
+	}
+	if elapsed := time.Since(start); elapsed < 900*time.Millisecond {
+		t.Errorf("Get waited %v, want at least 900ms from the Retry-After header", elapsed)
+	}
+}
+
+func TestGetStopsWhenTheContextIsCancelledAfterARejectedBody(t *testing.T) {
+	var checks atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "3")
+		w.Write([]byte("body"))
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.AcceptBody = rejectBodies(99, &checks)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+	}()
+	_, err := New(options).Get(ctx, server.URL)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Get returned %v, want context.Canceled", err)
+	}
+}
+
 func TestWaitForRetryHonorsAnHTTPDate(t *testing.T) {
 	fastRetries(t)
 	start := time.Now()
