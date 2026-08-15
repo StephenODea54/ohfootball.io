@@ -2,7 +2,7 @@
 
 import { MoonIcon, SunIcon } from "@heroicons/react/20/solid"
 import { Button } from "@/components/ui/button"
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/theme/theme-provider"
 
 export function ThemeSwitcher() {
   const { resolvedTheme, setTheme } = useTheme()

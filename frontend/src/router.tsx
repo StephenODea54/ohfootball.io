@@ -1,9 +1,8 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
-import { getContext } from './integrations/tanstack-query/root-provider'
-import { RouterError } from './app/router-error'
+import { RouterError } from '@/components/errors/router-error'
+import { getContext } from '@/lib/react-query'
+import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
   const context = getContext()

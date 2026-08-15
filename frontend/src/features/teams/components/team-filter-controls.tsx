@@ -2,24 +2,15 @@
 
 import { SearchField, SearchInput } from "@/components/ui/search-field"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { formatDivision, type Team } from "@/lib/graphql"
-
-export const ALL_REGIONS = "all"
-export const UNASSIGNED_REGION = "unassigned"
-export const ALL_DIVISIONS = "all"
-export const INDEPENDENT_DIVISION = "independent"
-
-export interface TeamFilterState {
-  query: string
-  region: string
-  division: string
-}
-
-export const EMPTY_TEAM_FILTERS: TeamFilterState = {
-  query: "",
-  region: ALL_REGIONS,
-  division: ALL_DIVISIONS,
-}
+import { formatDivision } from "@/features/teams/utils/format"
+import {
+  ALL_DIVISIONS,
+  ALL_REGIONS,
+  INDEPENDENT_DIVISION,
+  UNASSIGNED_REGION,
+  type TeamFilterState,
+} from "@/features/teams/utils/filter-teams"
+import type { Team } from "@/types/api"
 
 interface FilterSelectProps {
   onChange: (value: string) => void
@@ -109,23 +100,4 @@ export function TeamFilterControls({ filters, onChange, teams }: TeamFilterContr
       />
     </div>
   )
-}
-
-/** Filters teams. The text query matches the school name only, never the city or the mascot. */
-export function filterTeams(teams: Team[], filters: TeamFilterState) {
-  const query = filters.query.trim().toLowerCase()
-
-  return teams.filter((team) => {
-    const matchesQuery = !query || team.name.toLowerCase().includes(query)
-    const matchesRegion = filters.region === ALL_REGIONS
-      || (filters.region === UNASSIGNED_REGION
-        ? team.region === null
-        : team.region === Number(filters.region))
-    const matchesDivision = filters.division === ALL_DIVISIONS
-      || (filters.division === INDEPENDENT_DIVISION
-        ? team.division === null
-        : team.division === Number(filters.division))
-
-    return matchesQuery && matchesRegion && matchesDivision
-  })
 }

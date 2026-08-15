@@ -1,8 +1,8 @@
 "use client"
 
 import { GridList, GridListItem } from "@/components/ui/grid-list"
-import type { Team } from "@/lib/graphql"
-import { teamSwatches } from "@/lib/team-colors"
+import { teamSwatches } from "@/features/teams/utils/team-colors"
+import type { Team } from "@/types/api"
 
 interface TeamColorGridProps {
   label: string

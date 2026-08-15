@@ -24,8 +24,3 @@ export function validateSeasonSearch(search: Record<string, unknown>): SeasonSea
 
   return { season }
 }
-
-/** Builds a path that keeps the selected season, so full page loads do not lose it. */
-export function withSeason(path: string, season: number) {
-  return `${path}?season=${season}`
-}

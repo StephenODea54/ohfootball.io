@@ -12,14 +12,15 @@ import {
   NavbarStart,
 } from "@/components/ui/navbar"
 import { SeasonSelect } from "@/components/season-select"
-import { ThemeSwitcher } from "@/components/theme-switcher"
-import { CURRENT_SEASON, withSeason } from "@/lib/season"
+import { ThemeSwitcher } from "@/components/theme/theme-switcher"
+import { paths } from "@/config/paths"
+import { CURRENT_SEASON } from "@/utils/season"
 
 const navItems = [
-  { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
-  { label: "Leaderboard", href: "/leaderboard" },
-  { label: "Methodology", href: "/methodology" },
+  { label: "Home", ...paths.home },
+  { label: "About", ...paths.about },
+  { label: "Leaderboard", ...paths.leaderboard },
+  { label: "Methodology", ...paths.methodology },
 ]
 
 /** The wordmark. The suffix is tinted so the brand reads as one word with an accent. */
@@ -45,10 +46,10 @@ export function AppNavbar() {
       {navItems.map((item) => (
         <NavbarItem
           isCurrent={
-            item.href === "/" ? pathname === "/" || pathname.startsWith("/teams/") : pathname === item.href
+            item.path === "/" ? pathname === "/" || pathname.startsWith("/teams/") : pathname === item.path
           }
-          key={item.href}
-          href={withSeason(item.href, season)}
+          key={item.path}
+          href={item.getHref(season)}
         >
           {item.label}
         </NavbarItem>

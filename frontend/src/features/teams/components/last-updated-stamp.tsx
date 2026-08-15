@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/graphql"
+import { formatDate } from "@/utils/format"
 
 /**
  * A small stamp pinned to the corner of the page. It answers the first question a visitor has

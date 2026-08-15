@@ -1,7 +1,7 @@
 "use client"
 
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { SEASONS } from "@/lib/season"
+import { SEASONS } from "@/utils/season"
 
 const seasonItems = SEASONS.map((season) => ({ id: season }))
 

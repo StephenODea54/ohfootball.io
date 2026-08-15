@@ -6,10 +6,10 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
-import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
-import { AppNavbar } from '@/app/navbar-01/app-navbar'
-import { ThemeProvider } from '@/components/theme-provider'
-import { validateSeasonSearch } from '@/lib/season'
+import TanStackQueryDevtools from '@/components/devtools'
+import { AppNavbar } from '@/components/layouts/app-navbar'
+import { ThemeProvider } from '@/components/theme/theme-provider'
+import { validateSeasonSearch } from '@/utils/season'
 
 import appCss from '../styles.css?url'
 
