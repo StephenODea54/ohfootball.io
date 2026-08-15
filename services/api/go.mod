@@ -5,6 +5,8 @@ go 1.25.0
 require (
 	github.com/99designs/gqlgen v0.17.64
 	github.com/StephenODea54/pkg/database v0.0.0
+	github.com/aws/aws-lambda-go v1.54.0
+	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/vektah/gqlparser/v2 v2.5.22
 	modernc.org/sqlite v1.56.0
