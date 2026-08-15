@@ -4,14 +4,38 @@ The AWS stacks for ohfootball.io, written with the CDK.
 
 ## What is where
 
-| Stack                 | Holds                                                          |
-| --------------------- | -------------------------------------------------------------- |
-| `OhfootballInfra`     | Network, Aurora Serverless v2 warehouse, raw and artifact buckets |
-| `OhfootballBackend`   | The API function, its function URL, and the distribution in front |
-| `OhfootballFrontend`  | The site bucket and the distribution in front of it              |
+| Stack                 | Holds                                                             |
+| --------------------- | ----------------------------------------------------------------- |
+| `OhfootballInfra`     | Network, Aurora Serverless v2 warehouse, raw and artifact buckets  |
+| `OhfootballBackend`   | The API function, its function URL, and the distribution in front  |
+| `OhfootballFrontend`  | The site bucket and the distribution in front of it                |
+| `OhfootballEtl`       | Registries, pipeline tasks, the weekly run, and its schedule       |
 
 `OhfootballInfra` is the only stack the others read from. Nothing crosses between the backend and
 the frontend, so each carries its own distribution and its own name.
+
+The pipeline changes the API and the site, and reads the name of each from a parameter that stack
+publishes rather than through a stack reference. A reference has to be undone before either side
+can change, and a parameter does not. The names are read when the pipeline stack is deployed, so a
+function or a distribution that is replaced needs `OhfootballEtl` deployed again to be seen.
+
+## The weekly run
+
+    Scrape -> Transform -> Rate -> Package -> PublishApi -> BuildSite -> ClearCache
+
+Each of the first four and the sixth is a container the pipeline waits for. `PublishApi` and
+`ClearCache` call the service directly, so neither needs a container of its own.
+
+Each container has a registry of its own under `ohfootball/`. The code pipeline pushes to them.
+The images are built from `services/scraper/Dockerfile`, `analytics/Dockerfile`,
+`services/predictor/Dockerfile`, `services/api/cmd/snapshot/Dockerfile`, and `frontend/Dockerfile`.
+
+`Package` writes the snapshot from the warehouse, fetches the binary the code pipeline last built,
+and puts the two together. That split keeps a weekly data run from needing a Go toolchain, and
+keeps a code change from needing the warehouse.
+
+Only the password reaches a task from Secrets Manager. Everything else about the connection is
+plain, and the connection string carries no password, so the tasks read it the way libpq does.
 
 ## Two decisions that carry the cost
 

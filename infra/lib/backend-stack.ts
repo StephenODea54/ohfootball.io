@@ -4,6 +4,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as logs from 'aws-cdk-lib/aws-logs'
 import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
 import { SiteDomain, domainSettings, pointDomainAt } from './site-domain'
 
@@ -88,6 +89,20 @@ export class BackendStack extends cdk.Stack {
     })
 
     pointDomainAt(this, this.distribution, props.domain)
+
+    // The pipeline replaces the code of this function every week. It reads the name from here
+    // rather than through a stack reference, because a reference has to be undone before either
+    // stack can change.
+    new ssm.StringParameter(this, 'ApiFunctionNameParameter', {
+      parameterName: '/ohfootball/api/function-name',
+      stringValue: api.functionName,
+    })
+
+    // The site is built against this address, so the build reads it from here.
+    new ssm.StringParameter(this, 'ApiUrlParameter', {
+      parameterName: '/ohfootball/api/url',
+      stringValue: `https://${props.domain?.domainName ?? this.distribution.distributionDomainName}/graphql`,
+    })
 
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: `https://${props.domain?.domainName ?? this.distribution.distributionDomainName}`,

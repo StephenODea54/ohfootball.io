@@ -8,6 +8,22 @@ import { Construct } from 'constructs'
 const AUTO_PAUSE = cdk.Duration.minutes(5)
 
 /**
+ * Owner of the warehouse. It is named here rather than left to a default, because the default the
+ * library picks is a word Postgres reserves and the cluster would refuse it.
+ */
+export const WAREHOUSE_USERNAME = 'ohfootball'
+
+/** Database the pipeline builds and the snapshot is written from. */
+export const WAREHOUSE_DATABASE = 'ohfootball'
+
+/**
+ * Port the warehouse answers on. It is set rather than left to the default so that the rule
+ * letting the pipeline reach it can name a number. A rule built from the endpoint of the cluster
+ * carries a value nothing can check until the stack is deployed.
+ */
+export const WAREHOUSE_PORT = 5432
+
+/**
  * The parts every other stack builds on: the network, the warehouse, and the buckets.
  *
  * The network carries no NAT gateway. A NAT gateway costs more per month than everything else here
@@ -49,7 +65,9 @@ export class InfraStack extends cdk.Stack {
       serverlessV2AutoPauseDuration: AUTO_PAUSE,
       vpc: this.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      defaultDatabaseName: 'ohfootball',
+      port: WAREHOUSE_PORT,
+      credentials: rds.Credentials.fromGeneratedSecret(WAREHOUSE_USERNAME),
+      defaultDatabaseName: WAREHOUSE_DATABASE,
       storageEncrypted: true,
       deletionProtection: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,

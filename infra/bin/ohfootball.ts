@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib'
 import { BackendStack } from '../lib/backend-stack'
+import { EtlStack } from '../lib/etl-stack'
 import { FrontendStack } from '../lib/frontend-stack'
 import { InfraStack } from '../lib/infra-stack'
 import { domainFromContext } from '../lib/site-domain'
@@ -14,6 +15,8 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 }
 
+const apiCodeKey = String(app.node.tryGetContext('apiCodeKey') ?? 'api/bootstrap.zip')
+
 const siteDomain = domainFromContext(app, 'site')
 const apiDomain = domainFromContext(app, 'api')
 
@@ -24,11 +27,23 @@ new FrontendStack(app, 'OhfootballFrontend', { env, domain: siteDomain })
 new BackendStack(app, 'OhfootballBackend', {
   env,
   artifacts: infra.artifacts,
-  codeKey: app.node.tryGetContext('apiCodeKey') ?? 'api/bootstrap.zip',
+  codeKey: apiCodeKey,
   // The API answers the built site. Without a domain the distribution name is not known until the
   // site stack is deployed, so the browser is told to expect any origin until one is set.
   siteOrigin: siteDomain ? `https://${siteDomain.domainName}` : '*',
   domain: apiDomain,
+})
+
+// The pipeline reads the API and the site through parameters those stacks publish, so it depends
+// on the shared base and on nothing else.
+new EtlStack(app, 'OhfootballEtl', {
+  env,
+  vpc: infra.vpc,
+  warehouse: infra.warehouse,
+  artifacts: infra.artifacts,
+  raw: infra.raw,
+  codeKey: apiCodeKey,
+  schedule: app.node.tryGetContext('pipelineSchedule'),
 })
 
 cdk.Tags.of(app).add('project', 'ohfootball.io')

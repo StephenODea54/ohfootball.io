@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib'
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront'
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins'
 import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
 import { SiteDomain, domainSettings, pointDomainAt } from './site-domain'
 
@@ -61,6 +62,17 @@ export class FrontendStack extends cdk.Stack {
     })
 
     pointDomainAt(this, this.distribution, props.domain)
+
+    // The pipeline writes the built site here and then clears the distribution. It reads both
+    // names from here rather than through a stack reference.
+    new ssm.StringParameter(this, 'SiteBucketParameter', {
+      parameterName: '/ohfootball/site/bucket-name',
+      stringValue: this.bucket.bucketName,
+    })
+    new ssm.StringParameter(this, 'SiteDistributionParameter', {
+      parameterName: '/ohfootball/site/distribution-id',
+      stringValue: this.distribution.distributionId,
+    })
 
     new cdk.CfnOutput(this, 'SiteBucket', { value: this.bucket.bucketName })
     new cdk.CfnOutput(this, 'SiteUrl', {
