@@ -16,6 +16,7 @@ func testOptions() Options {
 		Timeout:           2 * time.Second,
 		MaxRetries:        3,
 		UserAgent:         "test-agent",
+		Accept:            "text/html,application/xhtml+xml",
 	}
 }
 
@@ -48,6 +49,25 @@ func TestGetReturnsBodyAndSetsHeaders(t *testing.T) {
 	}
 	if accept != "text/html,application/xhtml+xml" {
 		t.Errorf("Accept is %q", accept)
+	}
+}
+
+func TestGetSendsNoAcceptHeaderWhenNoneIsAsked(t *testing.T) {
+	var sent string
+	var present bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sent, present = r.Header.Get("Accept"), len(r.Header.Values("Accept")) > 0
+		w.Write([]byte("hello"))
+	}))
+	defer server.Close()
+
+	options := testOptions()
+	options.Accept = ""
+	if _, err := New(options).Get(context.Background(), server.URL); err != nil {
+		t.Fatalf("Get returned %v", err)
+	}
+	if present {
+		t.Errorf("Get sent the Accept header %q, want none at all", sent)
 	}
 }
 

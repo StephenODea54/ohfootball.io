@@ -237,9 +237,16 @@ func parseGame(row []cell, start int, sheet string, season int) (GameRow, error)
 }
 
 // checkDate reads the date of one game. An empty date is allowed, because some
-// rows carry none. A date that disagrees with the season of its own row is an
-// error, because a rigid grid that disagrees with itself means the columns
-// moved.
+// rows carry none.
+//
+// The check covers the shape of the date and the day it names. It does not
+// require the two digit year to agree with the season of its own row. The site
+// is kept by hand and holds a few rows whose year is a slip of the keyboard,
+// such as 10/30/90 in the season of 1992. One such row is a wrong digit, not a
+// sign that the columns moved, because moved columns put text that is no date
+// at all in this cell and do so on every row of the sheet. A later layer builds
+// the date of a game from the season and the day of the month, so a wrong year
+// changes nothing downstream.
 func checkDate(value string, season int) error {
 	if value == "" {
 		return nil
@@ -251,10 +258,6 @@ func checkDate(value string, season int) error {
 
 	month, _ := strconv.Atoi(parts[1])
 	day, _ := strconv.Atoi(parts[2])
-	year, _ := strconv.Atoi(parts[3])
-	if year != season%100 {
-		return fmt.Errorf("the date %q does not fall in season %d", value, season)
-	}
 
 	date := time.Date(season, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 	if int(date.Month()) != month || date.Day() != day {

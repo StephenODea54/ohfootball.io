@@ -246,12 +246,6 @@ func TestParseSheetRejectsAPageItCannotRead(t *testing.T) {
 			want: "is not in the form M/D/YY",
 		},
 		{
-			name: "the date falls in another season",
-			markup: buildSheet(valid, headings(),
-				gameCells("1972", "1", "9/8/73", "Fri", "A", "Bluffton", "33", "0", "", "W")),
-			want: "does not fall in season 1972",
-		},
-		{
 			name: "the date names no day",
 			markup: buildSheet(valid, headings(),
 				gameCells("1972", "1", "2/30/72", "Fri", "A", "Bluffton", "33", "0", "", "W")),
@@ -276,6 +270,22 @@ func TestParseSheetReportsAnEmptyGameLogWithASentinel(t *testing.T) {
 	markup := buildSheet([]string{"100", "Ada", "Main Table"}, headings())
 	if _, _, _, err := ParseSheet(document(t, markup), "sheet002"); !errors.Is(err, ErrNoGameRows) {
 		t.Fatalf("ParseSheet returned %v, want ErrNoGameRows", err)
+	}
+}
+
+// The site is kept by hand, and a few rows carry a year that is a slip of the
+// keyboard. One wrong digit must not stop the run.
+func TestParseSheetKeepsADateWhoseYearDisagreesWithItsSeason(t *testing.T) {
+	markup := buildSheet(
+		[]string{"100", "Ada", "Main Table"}, headings(),
+		gameCells("1992", "9", "10/30/90", "Fri", "A", "Bluffton", "33", "0", "", "W"),
+	)
+	_, games, _, err := ParseSheet(document(t, markup), "sheet104")
+	if err != nil {
+		t.Fatalf("ParseSheet returned %v", err)
+	}
+	if len(games) != 1 || games[0].Season != 1992 || games[0].GameDate != "10/30/90" {
+		t.Errorf("the games are %+v", games)
 	}
 }
 

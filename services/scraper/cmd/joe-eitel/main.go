@@ -68,6 +68,7 @@ func run() error {
 			Timeout:           configuration.RequestTimeout,
 			MaxRetries:        configuration.MaxRetries,
 			UserAgent:         configuration.UserAgent,
+			Accept:            "text/html,application/xhtml+xml",
 		}),
 		Workers: configuration.Workers,
 		BaseURL: configuration.BaseURL,

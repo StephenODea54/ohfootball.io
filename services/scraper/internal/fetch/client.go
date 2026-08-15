@@ -25,6 +25,14 @@ type Options struct {
 	MaxRetries        int
 	UserAgent         string
 
+	// Accept is the value of the Accept header. An empty value sends no such
+	// header at all.
+	//
+	// The header is a preference, and a server may answer without it. One host
+	// that this scraper reads refuses every request that carries the header,
+	// and answers the same request without it, so the caller decides.
+	Accept string
+
 	// AcceptBody reads a body that arrived with a success status, and reports
 	// whether it is the page that was asked for. A non-nil error rejects the
 	// body, and the client retries as it does after a server error. A nil
@@ -73,7 +81,9 @@ func (c *Client) Get(ctx context.Context, pageURL string) ([]byte, error) {
 			return nil, err
 		}
 		request.Header.Set("User-Agent", c.options.UserAgent)
-		request.Header.Set("Accept", "text/html,application/xhtml+xml")
+		if c.options.Accept != "" {
+			request.Header.Set("Accept", c.options.Accept)
+		}
 
 		response, err := c.client.Do(request)
 		if err != nil {
