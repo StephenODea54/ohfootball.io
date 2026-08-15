@@ -7,10 +7,10 @@ import (
 	"math"
 	"time"
 
+	"github.com/StephenODea54/pkg/database"
 	"github.com/StephenODea54/services/api/graph/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -23,38 +23,35 @@ type PredictionConfig struct {
 	RatingScale   float64
 }
 
+// Postgres reads the marts through the shared database client. The client owns the connection
+// pool, so every service of this repository connects in the same way.
 type Postgres struct {
-	pool       *pgxpool.Pool
+	client     *database.Client
 	prediction PredictionConfig
 }
 
 func Open(ctx context.Context, databaseURL string, prediction PredictionConfig) (*Postgres, error) {
-	pool, err := pgxpool.New(ctx, databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("configure postgres: %w", err)
-	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("connect to postgres: %w", err)
-	}
 	if prediction.RatingScale <= 0 {
-		pool.Close()
 		return nil, errors.New("Elo rating scale must be greater than zero")
 	}
-	return &Postgres{pool: pool, prediction: prediction}, nil
+	client, err := database.Open(ctx, databaseURL)
+	if err != nil {
+		return nil, err
+	}
+	return &Postgres{client: client, prediction: prediction}, nil
 }
 
 func (store *Postgres) Close() {
-	store.pool.Close()
+	store.client.Close()
 }
 
 func (store *Postgres) Ping(ctx context.Context) error {
-	return store.pool.Ping(ctx)
+	return store.client.Ping(ctx)
 }
 
 func (store *Postgres) CurrentSeason(ctx context.Context) (int, error) {
 	var season int
-	err := store.pool.QueryRow(ctx, `
+	err := store.client.QueryRow(ctx, `
 		SELECT MAX(season)
 		FROM ohfootball_marts.dim_teams
 		WHERE is_current
@@ -92,7 +89,7 @@ func (store *Postgres) ListTeams(
 		limit = max(1, min(*limitArgument, maxLimit))
 	}
 
-	rows, err := store.pool.Query(
+	rows, err := store.client.Query(
 		ctx,
 		listTeamsSQL,
 		season,
@@ -127,7 +124,7 @@ func (store *Postgres) ListTeams(
 func (store *Postgres) Team(ctx context.Context, id string, season *int) (*model.Team, error) {
 	var sourceID string
 	var keySeason int
-	if err := store.pool.QueryRow(ctx, `
+	if err := store.client.QueryRow(ctx, `
 		SELECT source_id, season
 		FROM ohfootball_marts.dim_teams
 		WHERE is_current AND team_key = $1::uuid
@@ -142,7 +139,7 @@ func (store *Postgres) Team(ctx context.Context, id string, season *int) (*model
 		requestedSeason = *season
 	}
 
-	row := store.pool.QueryRow(ctx, teamSQL, requestedSeason, sourceID)
+	row := store.client.QueryRow(ctx, teamSQL, requestedSeason, sourceID)
 	team, err := scanTeam(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -237,7 +234,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 }
 
 func (store *Postgres) ratingHistory(ctx context.Context, sourceID string) ([]*model.EloRating, error) {
-	rows, err := store.pool.Query(ctx, ratingHistorySQL, sourceID)
+	rows, err := store.client.Query(ctx, ratingHistorySQL, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("select rating history: %w", err)
 	}
@@ -259,7 +256,7 @@ func (store *Postgres) ratingHistory(ctx context.Context, sourceID string) ([]*m
 }
 
 func (store *Postgres) schedule(ctx context.Context, teamID string, season int) ([]*model.Game, error) {
-	rows, err := store.pool.Query(ctx, scheduleSQL, teamID, season)
+	rows, err := store.client.Query(ctx, scheduleSQL, teamID, season)
 	if err != nil {
 		return nil, fmt.Errorf("select schedule: %w", err)
 	}

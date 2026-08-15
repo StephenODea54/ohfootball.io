@@ -26,6 +26,10 @@ func TestScrapeQueries(t *testing.T) {
 	}
 	defer client.Close()
 
+	if err := client.Ping(ctx); err != nil {
+		t.Fatal(err)
+	}
+
 	transaction, err := client.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -78,5 +82,52 @@ func TestScrapeQueries(t *testing.T) {
 	}
 	if teamCount != 1 {
 		t.Fatalf("stored %d teams, want 1", teamCount)
+	}
+}
+
+// TestHandWrittenStatements runs the statement methods that readers of the dbt
+// marts use. Those tables are absent from the migrations, so sqlc cannot
+// generate their queries. The statements below read no table, because the test
+// checks the connection path and not the warehouse.
+func TestHandWrittenStatements(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	ctx := context.Background()
+	client, err := database.Open(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	var one int
+	if err := client.QueryRow(ctx, "SELECT $1::int", 1).Scan(&one); err != nil {
+		t.Fatal(err)
+	}
+	if one != 1 {
+		t.Fatalf("read %d, want 1", one)
+	}
+
+	rows, err := client.Query(ctx, "SELECT value FROM generate_series(1, $1) AS value", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+
+	total := 0
+	for rows.Next() {
+		var value int
+		if err := rows.Scan(&value); err != nil {
+			t.Fatal(err)
+		}
+		total += value
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if total != 6 {
+		t.Fatalf("summed %d, want 6", total)
 	}
 }

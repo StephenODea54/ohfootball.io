@@ -33,3 +33,20 @@ func (client *Client) Close() {
 func (client *Client) Begin(ctx context.Context) (pgx.Tx, error) {
 	return client.pool.Begin(ctx)
 }
+
+// Ping reports whether the database answers. A service that publishes a readiness check calls it.
+func (client *Client) Ping(ctx context.Context) error {
+	return client.pool.Ping(ctx)
+}
+
+// Query runs a statement that sqlc did not generate. The read side of the warehouse is built by
+// dbt, so its tables are absent from the migrations that sqlc reads and it cannot type a query
+// against them. A reader of those tables holds its own SQL and runs it on this pool.
+func (client *Client) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return client.pool.Query(ctx, sql, args...)
+}
+
+// QueryRow runs a statement that returns at most one row. See [Client.Query].
+func (client *Client) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return client.pool.QueryRow(ctx, sql, args...)
+}
