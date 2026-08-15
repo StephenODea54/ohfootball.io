@@ -37,11 +37,32 @@ names AS (
     GROUP BY sheet
 ),
 
+-- The identifier that each of these sheets should carry.
+--
+-- The site holds a wrong digit on five sheets, and each wrong digit names a
+-- school that already exists, so a join on the identifier alone would attach
+-- ten schools to five identifiers. A sheet with no identifier here belongs to a
+-- school that closed before joeeitel.com began, and it takes a minted one.
+--
+-- Naming a sheet is what corrects it. The value may be absent, so the presence
+-- of the row decides and not what it holds.
 overrides AS (
-    SELECT
-        sheet,
-        NULLIF(TRIM(team_id), '') AS team_id
-    FROM {{ ref('ohhsfbdb_team_overrides') }}
+    SELECT * FROM (
+        VALUES
+            -- The sheet says 1032, which belongs to Mifflin. This is New Bremen.
+            ('sheet432', '1092'),
+            -- The sheet says 192, which belongs to Belmont. This is the Dunbar
+            -- of Dayton, and not the one of Washington.
+            ('sheet183', '476'),
+            -- The sheet says 194, which belongs to Belpre. This is Trimble.
+            ('sheet608', '1540'),
+            -- The sheet says 1744, which belongs to Wyoming. This is Wynford.
+            ('sheet700', '1742'),
+            -- Warren Western Reserve and West Tech both say 1692, and both
+            -- closed before joeeitel.com began, so both take a minted one.
+            ('sheet805', NULL),
+            ('sheet807', NULL)
+    ) AS given (sheet, team_id)
 ),
 
 resolved AS (
@@ -53,7 +74,7 @@ resolved AS (
             ELSE COALESCE(teams.team_number, '{{ var("ohhsfbdb_minted_prefix", "ohhsfbdb:") }}' || teams.sheet)
         END AS team_id,
         teams.team_number AS team_number_on_the_sheet,
-        overrides.sheet IS NOT NULL AS is_corrected_by_seed,
+        overrides.sheet IS NOT NULL AS is_corrected,
         teams.team_number IS NULL AS names_no_identifier,
         COALESCE(names.display_name, teams.short_name) AS name,
         teams.short_name

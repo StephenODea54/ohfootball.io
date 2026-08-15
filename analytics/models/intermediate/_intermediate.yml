@@ -85,9 +85,9 @@ models:
   - name: int_ohhsfbdb_sheet_teams
     description: >
       One row for each sheet of ohhsfbdb.net, with the identifier of its school.
-      The identifier comes from the sheet itself, from the override seed where
-      the sheet holds a wrong digit, or is minted where joeeitel.com never named
-      the school.
+      The identifier comes from the sheet itself, from the list of corrections
+      in the model where the sheet holds a wrong digit, or is minted where
+      joeeitel.com never named the school.
     columns:
       - name: sheet
         data_tests:
