@@ -43,6 +43,86 @@ type InsertGamesParams struct {
 	Playoff        pgtype.Text
 }
 
+type InsertOhhsfbdbGamesParams struct {
+	ScrapeRunID        pgtype.UUID
+	Sheet              string
+	Season             int32
+	Week               pgtype.Text
+	GameDate           pgtype.Text
+	DayOfWeek          pgtype.Text
+	HomeAway           pgtype.Text
+	OpponentName       pgtype.Text
+	OpponentSheet      pgtype.Text
+	TeamScore          pgtype.Text
+	OpponentScore      pgtype.Text
+	Overtime           pgtype.Text
+	Result             pgtype.Text
+	OpponentConference pgtype.Text
+	OpponentDivision   pgtype.Text
+	OpponentRegion     pgtype.Text
+	PlayoffRound       pgtype.Text
+	TeamSeed           pgtype.Text
+	OpponentSeed       pgtype.Text
+	Stadium            pgtype.Text
+	Location           pgtype.Text
+}
+
+type InsertOhhsfbdbIndexEntriesParams struct {
+	ScrapeRunID pgtype.UUID
+	Position    int32
+	SchoolName  string
+	Sheet       string
+}
+
+type InsertOhhsfbdbSeasonSummariesParams struct {
+	ScrapeRunID      pgtype.UUID
+	Sheet            string
+	Season           int32
+	Conference       pgtype.Text
+	RegularWins      pgtype.Text
+	RegularLosses    pgtype.Text
+	RegularTies      pgtype.Text
+	ConferenceWins   pgtype.Text
+	ConferenceLosses pgtype.Text
+	ConferenceTies   pgtype.Text
+	PlayoffWins      pgtype.Text
+	PlayoffLosses    pgtype.Text
+	Division         pgtype.Text
+	Region           pgtype.Text
+	Rank             pgtype.Text
+}
+
+const insertOhhsfbdbTeam = `-- name: InsertOhhsfbdbTeam :exec
+INSERT INTO ohfootball_raw.ohhsfbdb_teams (
+    scrape_run_id,
+    sheet,
+    team_number,
+    short_name
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
+`
+
+type InsertOhhsfbdbTeamParams struct {
+	ScrapeRunID pgtype.UUID
+	Sheet       string
+	TeamNumber  pgtype.Text
+	ShortName   pgtype.Text
+}
+
+func (q *Queries) InsertOhhsfbdbTeam(ctx context.Context, arg InsertOhhsfbdbTeamParams) error {
+	_, err := q.db.Exec(ctx, insertOhhsfbdbTeam,
+		arg.ScrapeRunID,
+		arg.Sheet,
+		arg.TeamNumber,
+		arg.ShortName,
+	)
+	return err
+}
+
 const insertTeam = `-- name: InsertTeam :exec
 INSERT INTO ohfootball_raw.teams (
     scrape_run_id,
