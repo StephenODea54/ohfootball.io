@@ -1,4 +1,5 @@
-.PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs db-migrate \
+.PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs \
+	infra-install infra-test infra-synth infra-diff db-migrate \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	predictor-build predictor-test mlflow-up mlflow-down elo-run elo-sweep
 
@@ -95,3 +96,17 @@ elo-run:
 
 elo-sweep:
 	docker compose run --rm predictor sweep $(ARGS)
+
+# The stacks keep their own dependencies, so they are not part of the top level test target. A
+# synth reads no account and no network, so it runs without credentials.
+infra-install:
+	cd infra && pnpm install
+
+infra-test:
+	cd infra && pnpm test
+
+infra-synth:
+	cd infra && pnpm synth
+
+infra-diff:
+	cd infra && pnpm diff

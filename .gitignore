@@ -5,7 +5,13 @@
 !*/
 
 # but still exclude generated folders
-*bin
+*.output
+*.tanstack
+services/*/bin
+*node_modules
+
+# CDK writes its templates here on every synth
+infra/cdk.out
 
 # And permit certain files
 !.githooks/*
