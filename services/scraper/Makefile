@@ -3,6 +3,7 @@
 build:
 	mkdir -p bin
 	go build -o bin/joe-eitel ./cmd/joe-eitel
+	go build -o bin/ohhsfbdb ./cmd/ohhsfbdb
 
 test:
 	go test ./...
