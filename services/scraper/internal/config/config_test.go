@@ -73,6 +73,133 @@ func TestLoadReadsEveryOverride(t *testing.T) {
 	}
 }
 
+func TestLoadOhhsfbdbAppliesTheDefaults(t *testing.T) {
+	config, err := LoadOhhsfbdb(env(map[string]string{
+		"DATABASE_URL": "postgres://localhost/test",
+	}))
+	if err != nil {
+		t.Fatalf("LoadOhhsfbdb returned %v", err)
+	}
+
+	if config.DatabaseURL != "postgres://localhost/test" {
+		t.Errorf("DatabaseURL is %q", config.DatabaseURL)
+	}
+	if config.BaseURL != "https://ohhsfbdb.net" {
+		t.Errorf("BaseURL is %q", config.BaseURL)
+	}
+	if config.Workers != 3 {
+		t.Errorf("Workers is %d, want 3", config.Workers)
+	}
+	if config.RequestsPerSecond != 2 {
+		t.Errorf("RequestsPerSecond is %v, want 2", config.RequestsPerSecond)
+	}
+	if config.RequestTimeout != 30*time.Second {
+		t.Errorf("RequestTimeout is %v, want 30s", config.RequestTimeout)
+	}
+	if config.MaxRetries != 5 {
+		t.Errorf("MaxRetries is %d, want 5", config.MaxRetries)
+	}
+	if config.UserAgent == "" {
+		t.Error("UserAgent is empty")
+	}
+}
+
+func TestLoadOhhsfbdbReadsEveryOverride(t *testing.T) {
+	config, err := LoadOhhsfbdb(env(map[string]string{
+		"DATABASE_URL":       "postgres://localhost/test",
+		"SCRAPER_BASE_URL":   "https://example.com",
+		"SCRAPER_USER_AGENT": "custom-agent",
+		"SCRAPER_WORKERS":    "8",
+		"SCRAPER_RATE":       "0.5",
+		"SCRAPER_TIMEOUT":    "90s",
+		"SCRAPER_RETRIES":    "0",
+	}))
+	if err != nil {
+		t.Fatalf("LoadOhhsfbdb returned %v", err)
+	}
+
+	if config.BaseURL != "https://example.com" || config.UserAgent != "custom-agent" {
+		t.Errorf("BaseURL is %q and UserAgent is %q", config.BaseURL, config.UserAgent)
+	}
+	if config.Workers != 8 || config.RequestsPerSecond != 0.5 {
+		t.Errorf("Workers is %d and RequestsPerSecond is %v", config.Workers, config.RequestsPerSecond)
+	}
+	if config.RequestTimeout != 90*time.Second || config.MaxRetries != 0 {
+		t.Errorf("RequestTimeout is %v and MaxRetries is %d", config.RequestTimeout, config.MaxRetries)
+	}
+}
+
+func TestLoadOhhsfbdbRejectsBadInput(t *testing.T) {
+	base := map[string]string{"DATABASE_URL": "postgres://localhost/test"}
+
+	tests := []struct {
+		name    string
+		changes map[string]string
+		want    string
+	}{
+		{
+			name:    "no database URL",
+			changes: map[string]string{"DATABASE_URL": ""},
+			want:    "DATABASE_URL is required",
+		},
+		{
+			name:    "one season",
+			changes: map[string]string{"SCRAPER_SEASON": "1985"},
+			want:    "SCRAPER_SEASON does not apply to this command",
+		},
+		{
+			name:    "all seasons",
+			changes: map[string]string{"SCRAPER_ALL_SEASONS": "true"},
+			want:    "SCRAPER_ALL_SEASONS does not apply to this command",
+		},
+		{
+			name:    "base URL is not a URL",
+			changes: map[string]string{"SCRAPER_BASE_URL": "not a url"},
+			want:    "SCRAPER_BASE_URL is not a URL",
+		},
+		{
+			name:    "workers is zero",
+			changes: map[string]string{"SCRAPER_WORKERS": "0"},
+			want:    "SCRAPER_WORKERS must be at least 1",
+		},
+		{
+			name:    "rate is not a number",
+			changes: map[string]string{"SCRAPER_RATE": "fast"},
+			want:    "SCRAPER_RATE is not a number",
+		},
+		{
+			name:    "timeout is zero",
+			changes: map[string]string{"SCRAPER_TIMEOUT": "0s"},
+			want:    "SCRAPER_TIMEOUT must be more than 0",
+		},
+		{
+			name:    "retries is negative",
+			changes: map[string]string{"SCRAPER_RETRIES": "-1"},
+			want:    "SCRAPER_RETRIES cannot be negative",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			values := make(map[string]string, len(base)+len(test.changes))
+			for name, value := range base {
+				values[name] = value
+			}
+			for name, value := range test.changes {
+				values[name] = value
+			}
+
+			config, err := LoadOhhsfbdb(env(values))
+			if err == nil {
+				t.Fatalf("LoadOhhsfbdb returned no error, and gave %+v", config)
+			}
+			if !strings.Contains(err.Error(), test.want) {
+				t.Errorf("error is %q, want it to contain %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestLoadRejectsBadInput(t *testing.T) {
 	base := map[string]string{
 		"DATABASE_URL":   "postgres://localhost/test",

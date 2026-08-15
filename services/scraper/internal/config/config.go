@@ -1,6 +1,10 @@
 // Package config reads and checks every input of the scraper. All validation
 // happens here, one time, before the program opens a connection of any kind.
 // No other package checks these values again.
+//
+// Each command has its own loader, because each command reads a different
+// site and chooses its work in a different way. The settings of the HTTP layer
+// are the same for every command, so one type and one loader hold them.
 package config
 
 import (
@@ -11,15 +15,13 @@ import (
 	"time"
 )
 
-// Config holds the checked input of one run.
-type Config struct {
-	DatabaseURL string
-	BaseURL     string
+// defaultUserAgent names the project in every request, so the owner of a site
+// can see who reads it.
+const defaultUserAgent = "ohfootball.io scraper/1.0 (+https://ohfootball.io)"
 
-	// AllSeasons and Season are exclusive. Exactly one of them is set.
-	AllSeasons bool
-	Season     int
-
+// HTTP holds the settings of the HTTP layer. Every command shares them.
+type HTTP struct {
+	BaseURL           string
 	Workers           int
 	RequestsPerSecond float64
 	RequestTimeout    time.Duration
@@ -27,63 +29,137 @@ type Config struct {
 	UserAgent         string
 }
 
-// Load reads the environment through getenv and returns a checked Config.
-// Tests supply their own getenv, so they do not change the process
-// environment.
+// Config holds the checked input of one run of the joe-eitel command.
+type Config struct {
+	DatabaseURL string
+	HTTP
+
+	// AllSeasons and Season are exclusive. Exactly one of them is set.
+	AllSeasons bool
+	Season     int
+}
+
+// Ohhsfbdb holds the checked input of one run of the ohhsfbdb command.
+//
+// It names no season. That command reads one workbook that holds every season
+// at once, and the seasons it keeps are a property of the backfill, not of the
+// run. See the season constants of the ohhsfbdb package.
+type Ohhsfbdb struct {
+	DatabaseURL string
+	HTTP
+}
+
+// Load reads the environment through getenv and returns the checked input of
+// the joe-eitel command. Tests supply their own getenv, so they do not change
+// the process environment.
 func Load(getenv func(string) string) (Config, error) {
-	config := Config{
+	databaseURL, err := databaseURL(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+
+	settings, err := loadHTTP(getenv, HTTP{
 		BaseURL:           "https://joeeitel.com",
 		Workers:           6,
 		RequestsPerSecond: 3,
 		RequestTimeout:    20 * time.Second,
 		MaxRetries:        3,
-		UserAgent:         "ohfootball.io scraper/1.0 (+https://ohfootball.io)",
+		UserAgent:         defaultUserAgent,
+	})
+	if err != nil {
+		return Config{}, err
 	}
 
-	config.DatabaseURL = getenv("DATABASE_URL")
-	if config.DatabaseURL == "" {
-		return Config{}, errors.New("DATABASE_URL is required")
-	}
-	if value := getenv("SCRAPER_BASE_URL"); value != "" {
-		config.BaseURL = value
-	}
-	if value := getenv("SCRAPER_USER_AGENT"); value != "" {
-		config.UserAgent = value
-	}
-
-	var err error
+	config := Config{DatabaseURL: databaseURL, HTTP: settings}
 	if config.AllSeasons, config.Season, err = loadSeasons(getenv); err != nil {
 		return Config{}, err
 	}
-	if config.Workers, err = intVar(getenv, "SCRAPER_WORKERS", config.Workers); err != nil {
-		return Config{}, err
+	return config, nil
+}
+
+// LoadOhhsfbdb reads the environment through getenv and returns the checked
+// input of the ohhsfbdb command.
+//
+// The command reads a fixed range of seasons, so it refuses the season
+// variables of the other command. An operator who keeps SCRAPER_SEASON in the
+// environment would otherwise believe that it chose the seasons of this run.
+func LoadOhhsfbdb(getenv func(string) string) (Ohhsfbdb, error) {
+	databaseURL, err := databaseURL(getenv)
+	if err != nil {
+		return Ohhsfbdb{}, err
 	}
-	if config.RequestsPerSecond, err = floatVar(getenv, "SCRAPER_RATE", config.RequestsPerSecond); err != nil {
-		return Config{}, err
-	}
-	if config.RequestTimeout, err = durationVar(getenv, "SCRAPER_TIMEOUT", config.RequestTimeout); err != nil {
-		return Config{}, err
-	}
-	if config.MaxRetries, err = intVar(getenv, "SCRAPER_RETRIES", config.MaxRetries); err != nil {
-		return Config{}, err
+	for _, name := range []string{"SCRAPER_SEASON", "SCRAPER_ALL_SEASONS"} {
+		if getenv(name) != "" {
+			return Ohhsfbdb{}, fmt.Errorf(
+				"%s does not apply to this command, because it always reads the seasons of the backfill", name)
+		}
 	}
 
-	if _, err := url.ParseRequestURI(config.BaseURL); err != nil {
-		return Config{}, fmt.Errorf("SCRAPER_BASE_URL is not a URL: %w", err)
+	settings, err := loadHTTP(getenv, HTTP{
+		BaseURL:           "https://ohhsfbdb.net",
+		Workers:           3,
+		RequestsPerSecond: 2,
+		RequestTimeout:    30 * time.Second,
+		MaxRetries:        5,
+		UserAgent:         defaultUserAgent,
+	})
+	if err != nil {
+		return Ohhsfbdb{}, err
 	}
-	if config.Workers < 1 {
-		return Config{}, errors.New("SCRAPER_WORKERS must be at least 1")
+
+	return Ohhsfbdb{DatabaseURL: databaseURL, HTTP: settings}, nil
+}
+
+// databaseURL reads the one variable that every command requires.
+func databaseURL(getenv func(string) string) (string, error) {
+	value := getenv("DATABASE_URL")
+	if value == "" {
+		return "", errors.New("DATABASE_URL is required")
 	}
-	if config.RequestsPerSecond <= 0 {
-		return Config{}, errors.New("SCRAPER_RATE must be more than 0")
+	return value, nil
+}
+
+// loadHTTP reads the settings of the HTTP layer. The caller supplies the
+// default of each one, because the right rate for one site is the wrong rate
+// for another.
+func loadHTTP(getenv func(string) string, settings HTTP) (HTTP, error) {
+	if value := getenv("SCRAPER_BASE_URL"); value != "" {
+		settings.BaseURL = value
 	}
-	if config.RequestTimeout <= 0 {
-		return Config{}, errors.New("SCRAPER_TIMEOUT must be more than 0")
+	if value := getenv("SCRAPER_USER_AGENT"); value != "" {
+		settings.UserAgent = value
 	}
-	if config.MaxRetries < 0 {
-		return Config{}, errors.New("SCRAPER_RETRIES cannot be negative")
+
+	var err error
+	if settings.Workers, err = intVar(getenv, "SCRAPER_WORKERS", settings.Workers); err != nil {
+		return HTTP{}, err
 	}
-	return config, nil
+	if settings.RequestsPerSecond, err = floatVar(getenv, "SCRAPER_RATE", settings.RequestsPerSecond); err != nil {
+		return HTTP{}, err
+	}
+	if settings.RequestTimeout, err = durationVar(getenv, "SCRAPER_TIMEOUT", settings.RequestTimeout); err != nil {
+		return HTTP{}, err
+	}
+	if settings.MaxRetries, err = intVar(getenv, "SCRAPER_RETRIES", settings.MaxRetries); err != nil {
+		return HTTP{}, err
+	}
+
+	if _, err := url.ParseRequestURI(settings.BaseURL); err != nil {
+		return HTTP{}, fmt.Errorf("SCRAPER_BASE_URL is not a URL: %w", err)
+	}
+	if settings.Workers < 1 {
+		return HTTP{}, errors.New("SCRAPER_WORKERS must be at least 1")
+	}
+	if settings.RequestsPerSecond <= 0 {
+		return HTTP{}, errors.New("SCRAPER_RATE must be more than 0")
+	}
+	if settings.RequestTimeout <= 0 {
+		return HTTP{}, errors.New("SCRAPER_TIMEOUT must be more than 0")
+	}
+	if settings.MaxRetries < 0 {
+		return HTTP{}, errors.New("SCRAPER_RETRIES cannot be negative")
+	}
+	return settings, nil
 }
 
 // loadSeasons applies the season selection rule. The run reads one named
