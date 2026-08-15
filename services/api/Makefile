@@ -1,4 +1,4 @@
-.PHONY: build bootstrap generate test vet fmt
+.PHONY: build bootstrap snapshot generate test vet fmt
 
 build: generate
 	mkdir -p bin
@@ -13,6 +13,12 @@ bootstrap: generate
 		-ldflags="-s -w" \
 		-o bin/bootstrap \
 		./cmd/lambda
+
+# Writes the snapshot the deployed API reads. It needs the warehouse, so it runs where the
+# warehouse is reachable.
+snapshot: generate
+	mkdir -p bin
+	go run ./cmd/snapshot -out bin/ohfootball.db
 
 generate:
 	go generate ./...
