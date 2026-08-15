@@ -1,20 +1,19 @@
+// Command server runs the API as a long lived HTTP server backed by Postgres. It is what local
+// development and the compose stack use.
 package main
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/StephenODea54/services/api/graph"
+	"github.com/StephenODea54/services/api/internal/config"
+	"github.com/StephenODea54/services/api/internal/server"
 	"github.com/StephenODea54/services/api/internal/store"
 )
 
@@ -31,88 +30,56 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	prediction := store.PredictionConfig{
-		HomeAdvantage: envFloat("ELO_HOME_ADVANTAGE", 30),
-		RatingScale:   envFloat("ELO_RATING_SCALE", 400),
+	homeAdvantage, err := config.Float("ELO_HOME_ADVANTAGE", 30)
+	if err != nil {
+		return err
 	}
-	database, err := store.Open(ctx, env("DATABASE_URL", defaultDatabaseURL), prediction)
+	ratingScale, err := config.Float("ELO_RATING_SCALE", 400)
+	if err != nil {
+		return err
+	}
+	complexityLimit, err := config.Int("GRAPHQL_COMPLEXITY_LIMIT", server.DefaultComplexityLimit)
+	if err != nil {
+		return err
+	}
+
+	database, err := store.Open(
+		ctx,
+		config.String("DATABASE_URL", defaultDatabaseURL),
+		store.PredictionConfig{HomeAdvantage: homeAdvantage, RatingScale: ratingScale},
+	)
 	if err != nil {
 		return err
 	}
 	defer database.Close()
 
-	graphql := handler.NewDefaultServer(
-		graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Store: database}}),
-	)
-	mux := http.NewServeMux()
-	mux.Handle("/graphql", graphql)
-	mux.Handle("/", playground.Handler("ohfootball.io GraphQL", "/graphql"))
-	mux.HandleFunc("GET /healthz", func(writer http.ResponseWriter, _ *http.Request) {
-		writer.WriteHeader(http.StatusNoContent)
-	})
-	mux.HandleFunc("GET /readyz", func(writer http.ResponseWriter, request *http.Request) {
-		if err := database.Ping(request.Context()); err != nil {
-			http.Error(writer, "database unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		writer.WriteHeader(http.StatusNoContent)
+	handler := server.New(database, server.Options{
+		CORSOrigin:      config.String("CORS_ORIGIN", "http://localhost:3000"),
+		ComplexityLimit: complexityLimit,
 	})
 
-	server := &http.Server{
-		Addr:              env("HTTP_ADDR", ":8082"),
-		Handler:           cors(mux, env("CORS_ORIGIN", "http://localhost:3000")),
+	httpServer := &http.Server{
+		Addr:              config.String("HTTP_ADDR", ":8082"),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 
 	errChannel := make(chan error, 1)
 	go func() {
-		slog.Info("GraphQL server listening", "address", server.Addr)
-		errChannel <- server.ListenAndServe()
+		slog.Info("GraphQL server listening", "address", httpServer.Addr)
+		errChannel <- httpServer.ListenAndServe()
 	}()
 
 	select {
 	case <-ctx.Done():
 		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		return server.Shutdown(shutdownContext)
+		return httpServer.Shutdown(shutdownContext)
 	case err := <-errChannel:
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		return err
 	}
-}
-
-func cors(next http.Handler, origin string) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Access-Control-Allow-Origin", origin)
-		writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		writer.Header().Add("Vary", "Origin")
-		if request.Method == http.MethodOptions {
-			writer.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(writer, request)
-	})
-}
-
-func env(name, fallback string) string {
-	if value := os.Getenv(name); value != "" {
-		return value
-	}
-	return fallback
-}
-
-func envFloat(name string, fallback float64) float64 {
-	raw := os.Getenv(name)
-	if raw == "" {
-		return fallback
-	}
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		panic(fmt.Sprintf("invalid %s: %v", name, err))
-	}
-	return value
 }
