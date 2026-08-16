@@ -139,6 +139,24 @@ func TestSQLiteCurrentSeason(t *testing.T) {
 	}
 }
 
+// Avon plays in two seasons and the team from another state plays in a third. The list holds each
+// Ohio season once, newest first, and leaves the other state out.
+func TestSQLiteSeasons(t *testing.T) {
+	seasons, err := openFixture(t).Seasons(context.Background())
+	if err != nil {
+		t.Fatalf("Seasons = %v", err)
+	}
+	want := []int{2025, 2024}
+	if len(seasons) != len(want) {
+		t.Fatalf("Seasons = %v, want %v", seasons, want)
+	}
+	for index, season := range want {
+		if seasons[index] != season {
+			t.Fatalf("Seasons = %v, want %v", seasons, want)
+		}
+	}
+}
+
 func TestSQLiteListTeamsSortsByRatingAndPutsAnUnratedTeamLast(t *testing.T) {
 	teams, err := openFixture(t).ListTeams(context.Background(), nil, nil, nil, nil, nil, nil)
 	if err != nil {

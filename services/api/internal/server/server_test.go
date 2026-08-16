@@ -15,12 +15,15 @@ import (
 
 type fakeStore struct {
 	season  int
+	seasons []int
 	pingErr error
 }
 
 func (fake *fakeStore) Ping(context.Context) error { return fake.pingErr }
 
 func (fake *fakeStore) CurrentSeason(context.Context) (int, error) { return fake.season, nil }
+
+func (fake *fakeStore) Seasons(context.Context) ([]int, error) { return fake.seasons, nil }
 
 func (fake *fakeStore) ListTeams(
 	context.Context, *int, *string, *int, *int, *model.TeamSort, *int,

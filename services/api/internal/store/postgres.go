@@ -49,6 +49,35 @@ func (store *Postgres) Ping(ctx context.Context) error {
 	return store.client.Ping(ctx)
 }
 
+// Seasons lists every season the marts hold for Ohio, newest first. The season picker of the site
+// reads this list, so a season that has no teams never appears as a choice.
+func (store *Postgres) Seasons(ctx context.Context) ([]int, error) {
+	rows, err := store.client.Query(ctx, `
+		SELECT DISTINCT season
+		FROM ohfootball_marts.dim_teams
+		WHERE is_current
+		  AND state_code = 'OH'
+		ORDER BY season DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("select seasons: %w", err)
+	}
+	defer rows.Close()
+
+	seasons := make([]int, 0)
+	for rows.Next() {
+		var season int
+		if err := rows.Scan(&season); err != nil {
+			return nil, fmt.Errorf("scan season: %w", err)
+		}
+		seasons = append(seasons, season)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read seasons: %w", err)
+	}
+	return seasons, nil
+}
+
 func (store *Postgres) CurrentSeason(ctx context.Context) (int, error) {
 	var season int
 	err := store.client.QueryRow(ctx, `

@@ -71,6 +71,7 @@ type Team {
 
 type Query {
   currentSeason: Int!
+  seasons: [Int!]!
   teams(
     season: Int
     search: String

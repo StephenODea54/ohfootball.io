@@ -57,6 +57,34 @@ func (store *SQLite) Ping(ctx context.Context) error {
 	return store.db.PingContext(ctx)
 }
 
+// Seasons lists every season the snapshot holds for Ohio, newest first. The season picker of the
+// site reads this list, so a season that has no teams never appears as a choice.
+func (store *SQLite) Seasons(ctx context.Context) ([]int, error) {
+	rows, err := store.db.QueryContext(ctx, `
+		SELECT DISTINCT season
+		FROM dim_teams
+		WHERE state_code = 'OH'
+		ORDER BY season DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("select seasons: %w", err)
+	}
+	defer rows.Close()
+
+	seasons := make([]int, 0)
+	for rows.Next() {
+		var season int
+		if err := rows.Scan(&season); err != nil {
+			return nil, fmt.Errorf("scan season: %w", err)
+		}
+		seasons = append(seasons, season)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read seasons: %w", err)
+	}
+	return seasons, nil
+}
+
 func (store *SQLite) CurrentSeason(ctx context.Context) (int, error) {
 	var season sql.NullInt64
 	err := store.db.QueryRowContext(ctx, `
