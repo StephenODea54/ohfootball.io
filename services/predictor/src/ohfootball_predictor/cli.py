@@ -277,41 +277,63 @@ def _sweep(arguments: argparse.Namespace) -> None:
 
 def _publish(arguments: argparse.Namespace) -> None:
     config = _config(arguments)
-    season = arguments.season or arguments.as_of_date.year
+    current_season = arguments.season or arguments.as_of_date.year
     games = load_games(arguments.database_url, marts_schema=arguments.marts_schema)
     training_games = _completed_games(games, arguments.as_of_date)
     result = backtest(training_games, config)
-    teams = load_team_seasons(
-        arguments.database_url,
-        season=season,
-        marts_schema=arguments.marts_schema,
-    )
-    if not teams:
-        raise SystemExit(f"no Ohio teams exist for season {season}")
 
-    snapshots = tuple(
-        RatingSnapshot(
-            team_key=team.team_key,
+    # One backtest walks the whole record and keeps the rating of every team in
+    # every season, so every season is published from that one pass. A season
+    # of the past keeps the rating it ended with, dated the last day of its own
+    # year. The season in progress is dated the day of the run.
+    #
+    # The publisher replaces one season and date at a time, so each season is
+    # its own call. The reading of the games and the backtest are the costly
+    # part, and they happen once.
+    published = 0
+    published_seasons = 0
+    for season in sorted({game.season for game in games} | {current_season}):
+        if season > current_season:
+            continue
+        teams = load_team_seasons(
+            arguments.database_url,
             season=season,
-            as_of_date=arguments.as_of_date,
-            rating=result.ratings.get(
-                (season, team.team_key),
-                initial_team_rating(
-                    season=season,
-                    program_id=team.program_id,
-                    division=team.division,
-                    program_ratings=result.program_ratings,
-                    config=config,
-                ),
-            ),
+            marts_schema=arguments.marts_schema,
         )
-        for team in teams
-    )
-    published = publish_ratings(
-        arguments.database_url,
-        snapshots,
-        marts_schema=arguments.marts_schema,
-    )
+        if not teams:
+            continue
+
+        snapshots = tuple(
+            RatingSnapshot(
+                team_key=team.team_key,
+                season=season,
+                as_of_date=(
+                    arguments.as_of_date
+                    if season >= current_season
+                    else date(season, 12, 31)
+                ),
+                rating=result.ratings.get(
+                    (season, team.team_key),
+                    initial_team_rating(
+                        season=season,
+                        program_id=team.program_id,
+                        division=team.division,
+                        program_ratings=result.program_ratings,
+                        config=config,
+                    ),
+                ),
+            )
+            for team in teams
+        )
+        published += publish_ratings(
+            arguments.database_url,
+            snapshots,
+            marts_schema=arguments.marts_schema,
+        )
+        published_seasons += 1
+
+    if published_seasons == 0:
+        raise SystemExit("no Ohio teams exist in any season")
     # The backtest already produced a pregame prediction for every completed game. Storing them
     # lets a team page show what was expected before a game rather than recomputing it.
     published_predictions = publish_predictions(
@@ -337,7 +359,8 @@ def _publish(arguments: argparse.Namespace) -> None:
                 "as_of_date": arguments.as_of_date.isoformat(),
                 "published_predictions": published_predictions,
                 "published_ratings": published,
-                "season": season,
+                "published_seasons": published_seasons,
+                "season": current_season,
             },
             indent=2,
             sort_keys=True,
