@@ -5,9 +5,11 @@
 !*/
 
 # but still exclude generated folders
+*.nitro
 *.output
 *.tanstack
-services/*/bin
+*/bin
+*dist
 *node_modules
 
 # CDK writes its templates here on every synth
@@ -40,6 +42,9 @@ infra/cdk.out
 !*.tsx
 !*.yaml
 !*.yml
+
+# The router writes this file while the dev server runs
+todos.json
 
 # dbt-generated artifacts
 analytics/.user.yml
