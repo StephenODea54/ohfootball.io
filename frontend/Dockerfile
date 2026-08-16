@@ -3,9 +3,9 @@
 # The build runs after the API has been published, so the pages it draws carry the ratings of the
 # run that just finished. Nothing here serves anything. It writes files and exits.
 #
-# This expects a build that writes finished pages. The Vite configuration currently builds a server
-# bundle instead, which puts no HTML under .output/public, and the check below stops the run rather
-# than publishing a site with assets and no pages.
+# The build draws every page ahead of time, including one page for each season a program has
+# played. It reads them from the API, so VITE_GRAPHQL_URL has to point at the API that was
+# published just before this runs.
 #
 # Build from the repository root:
 #   docker build -f frontend/Dockerfile -t ohfootball/site .
@@ -38,7 +38,7 @@ output=.output/public
 # pages. Publishing that gives a site where every address answers with nothing.
 if [ -z "$(find "$output" -name '*.html' -print -quit 2>/dev/null)" ]; then
     echo "the build wrote no pages to ${output}" >&2
-    echo "turn on prerendering in frontend/vite.config.ts before publishing" >&2
+    echo "check the prerender settings in frontend/vite.config.ts" >&2
     exit 1
 fi
 

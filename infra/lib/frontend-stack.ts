@@ -41,18 +41,20 @@ export class FrontendStack extends cdk.Stack {
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         compress: true,
       },
-      // The router draws a page the build did not write, so a path the bucket does not hold is
-      // answered with the application rather than with an error from the bucket.
+      // Every page the site has is written as a file, so an address the bucket does not hold is an
+      // address the site does not have. The reply carries the application, which draws its own not
+      // found page, and it carries 404 so that a crawler is told the truth. A closed bucket answers
+      // a missing key with 403, so that is answered the same way.
       errorResponses: [
         {
           httpStatus: 403,
-          responseHttpStatus: 200,
+          responseHttpStatus: 404,
           responsePagePath: '/index.html',
           ttl: cdk.Duration.minutes(5),
         },
         {
           httpStatus: 404,
-          responseHttpStatus: 200,
+          responseHttpStatus: 404,
           responsePagePath: '/index.html',
           ttl: cdk.Duration.minutes(5),
         },

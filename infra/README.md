@@ -37,6 +37,20 @@ keeps a code change from needing the warehouse.
 Only the password reaches a task from Secrets Manager. Everything else about the connection is
 plain, and the connection string carries no password, so the tasks read it the way libpq does.
 
+## The size of the site
+
+Every page is drawn ahead of time, including one for each season a program has played. That is
+about 39,500 team pages plus the four fixed routes, drawn from 55 seasons.
+
+Measured against the current data, the build draws about 55 pages a second, so the whole site takes
+roughly twelve minutes on a laptop and longer against an API across a network. The step is allowed
+two hours. A team page is about 110 KB and the whole site is about 4 GB, which costs around ten
+cents a month to hold and twenty cents to write in full. The upload only sends what changed, so a
+week that adds one round of games sends very little.
+
+The leaderboard page is 3.5 MB, because it carries every team of the season twice, once as markup
+and once as the data behind it. It is served compressed, but it is worth trimming.
+
 ## Two decisions that carry the cost
 
 The network holds **no NAT gateway**. A NAT gateway costs more per month than the rest of this put
