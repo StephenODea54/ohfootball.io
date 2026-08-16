@@ -17,7 +17,7 @@ import {
 import type { Team } from "@/types/api"
 
 /** Every rated school for a season, ranked, with the filters that narrow the list. */
-export function LeaderboardTable({ season, teams }: { season: number; teams: Team[] }) {
+export function LeaderboardTable({ season, teams }: { season: number | undefined; teams: Team[] }) {
   const [filters, setFilters] = useState<TeamFilterState>(EMPTY_TEAM_FILTERS)
   const ratedTeams = useMemo(
     () => filterTeams(teams, filters).filter((team) => team.rating),
@@ -40,7 +40,7 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
       {ratedTeams.length > 0 ? (
         <Card className="mt-8 gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
           <CardContent>
-            <Table aria-label={`${season} Rating Leaderboard`} bleed>
+            <Table aria-label={season ? `${season} Rating Leaderboard` : "Rating Leaderboard"} bleed>
               <TableHeader className="bg-muted/70 text-xs/5 uppercase tracking-wide">
                 <TableColumn isRowHeader className="w-16">Rank</TableColumn>
                 <TableColumn>School</TableColumn>

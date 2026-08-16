@@ -14,7 +14,8 @@ import {
 import { SeasonSelect } from "@/components/season-select"
 import { ThemeSwitcher } from "@/components/theme/theme-switcher"
 import { paths } from "@/config/paths"
-import { CURRENT_SEASON } from "@/utils/season"
+import { useSeasons } from "@/hooks/use-seasons"
+import type { SeasonSearch } from "@/utils/season"
 
 const navItems = [
   { label: "Home", ...paths.home },
@@ -38,8 +39,9 @@ export function AppNavbar() {
     select: (state) => state.location.pathname,
   })
   const season = useRouterState({
-    select: (state) => (state.location.search as { season?: number }).season ?? CURRENT_SEASON,
+    select: (state) => (state.location.search as SeasonSearch).season,
   })
+  const seasons = useSeasons()
 
   const navigation = (
     <NavbarSection className="flex flex-row items-center gap-1 sm:gap-2.5">
@@ -63,7 +65,8 @@ export function AppNavbar() {
       onSeasonChange={(nextSeason) =>
         navigate({ to: ".", search: (previous) => ({ ...previous, season: nextSeason }) })
       }
-      season={season}
+      season={season ?? seasons.at(0)}
+      seasons={seasons}
     />
   )
 

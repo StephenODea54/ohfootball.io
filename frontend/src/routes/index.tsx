@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Container } from '@/components/ui/container'
 import { Heading } from '@/components/ui/heading'
 import { Text } from '@/components/ui/text'
+import { useSelectedSeason } from '@/hooks/use-seasons'
 import { getTeamsQueryOptions } from '@/features/teams/api/get-teams'
 import { LastUpdatedStamp } from '@/features/teams/components/last-updated-stamp'
 import { TeamBrowser } from '@/features/teams/components/team-browser'
@@ -27,6 +28,7 @@ export const Route = createFileRoute('/')({
 function Home() {
   const teams = Route.useLoaderData()
   const { season } = Route.useSearch()
+  const selectedSeason = useSelectedSeason(season)
   const navigate = Route.useNavigate()
 
   const selectTeam = (teamId: string) =>
@@ -49,7 +51,7 @@ function Home() {
         <TeamBrowser
           className="mt-12"
           onSelectTeam={selectTeam}
-          season={season}
+          season={selectedSeason}
           teams={teams}
         />
       </Container>

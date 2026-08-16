@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Container } from '@/components/ui/container'
 import { Heading } from '@/components/ui/heading'
 import { Text } from '@/components/ui/text'
+import { useSelectedSeason } from '@/hooks/use-seasons'
 import { getTeamsQueryOptions } from '@/features/teams/api/get-teams'
 import { LastUpdatedStamp } from '@/features/teams/components/last-updated-stamp'
 import { LeaderboardTable } from '@/features/teams/components/leaderboard-table'
@@ -26,6 +27,7 @@ export const Route = createFileRoute('/leaderboard')({
 function LeaderboardRoute() {
   const teams = Route.useLoaderData()
   const { season } = Route.useSearch()
+  const selectedSeason = useSelectedSeason(season)
 
   return (
     <main>
@@ -35,7 +37,7 @@ function LeaderboardRoute() {
           <Text className="mt-3 text-base/7 sm:text-base/7">Schools listed by rating.</Text>
         </header>
 
-        <LeaderboardTable season={season} teams={teams} />
+        <LeaderboardTable season={selectedSeason} teams={teams} />
       </Container>
 
       <LastUpdatedStamp isoDate={lastUpdated(teams)} />

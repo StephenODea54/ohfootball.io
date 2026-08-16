@@ -21,7 +21,7 @@ const UNFILTERED_TILES = 24
 interface TeamBrowserProps {
   className?: string
   onSelectTeam: (teamId: string) => void
-  season: number
+  season: number | undefined
   teams: Team[]
 }
 
@@ -48,8 +48,8 @@ export function TeamBrowser({ className, onSelectTeam, season, teams }: TeamBrow
           </Heading>
           <Text className="mt-1 text-sm/6">
             {isFiltered
-              ? `${tiles.length.toLocaleString()} schools in ${season}.`
-              : `The ${UNFILTERED_TILES} best schools in ${season}. Pick a region or division to see more.`}
+              ? `${tiles.length.toLocaleString()} schools${season ? ` in ${season}` : ""}.`
+              : `The ${UNFILTERED_TILES} best schools${season ? ` in ${season}` : ""}. Pick a region or division to see more.`}
           </Text>
         </div>
         <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:grid-cols-[11rem_11rem]">

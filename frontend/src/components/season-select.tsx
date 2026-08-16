@@ -1,18 +1,18 @@
 "use client"
 
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { SEASONS } from "@/utils/season"
-
-const seasonItems = SEASONS.map((season) => ({ id: season }))
 
 interface SeasonSelectProps {
   className?: string
   onSeasonChange: (season: number) => void
-  season: number
+  season: number | undefined
+  seasons: number[]
 }
 
 /** Season picker shown in the navbar. It drives every season-aware page. */
-export function SeasonSelect({ className, onSeasonChange, season }: SeasonSelectProps) {
+export function SeasonSelect({ className, onSeasonChange, season, seasons }: SeasonSelectProps) {
+  const items = seasons.map((value) => ({ id: value }))
+
   return (
     <Select
       aria-label="Season"
@@ -23,7 +23,7 @@ export function SeasonSelect({ className, onSeasonChange, season }: SeasonSelect
       value={season}
     >
       <SelectTrigger />
-      <SelectContent items={seasonItems}>
+      <SelectContent items={items}>
         {(item) => (
           <SelectItem id={item.id} textValue={item.id.toString()}>
             {item.id.toString()}

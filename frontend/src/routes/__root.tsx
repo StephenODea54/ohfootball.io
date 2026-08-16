@@ -9,6 +9,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import TanStackQueryDevtools from '@/components/devtools'
 import { AppNavbar } from '@/components/layouts/app-navbar'
 import { ThemeProvider } from '@/components/theme/theme-provider'
+import { getSeasonsQueryOptions } from '@/features/seasons/api/get-seasons'
 import { validateSeasonSearch } from '@/utils/season'
 
 import appCss from '../styles.css?url'
@@ -21,6 +22,9 @@ interface MyRouterContext {
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   validateSearch: validateSeasonSearch,
+  loader: async ({ context }) => ({
+    seasons: await context.queryClient.ensureQueryData(getSeasonsQueryOptions()),
+  }),
   head: () => ({
     meta: [
       {
