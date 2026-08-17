@@ -1,0 +1,72 @@
+name: checks
+
+# Runs the same gates the pre-commit hook runs, on every change proposed to main. The hook can be
+# skipped and only guards the machine it runs on, so this is what actually holds the line.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: |
+            services/api/go.sum
+            services/scraper/go.sum
+            pkg/database/go.sum
+      - name: format
+        run: |
+          unformatted=$(gofmt -l $(git ls-files '*.go'))
+          if [ -n "$unformatted" ]; then
+            printf 'These files are not formatted:\n%s\n' "$unformatted" >&2
+            exit 1
+          fi
+      - run: make -C services/api vet
+      - run: make -C services/api test
+      - run: make -C services/scraper vet
+      - run: make -C services/scraper test
+      - run: go -C pkg/database vet ./...
+      - run: go -C pkg/database test ./...
+
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: make -C services/predictor vet
+      - run: make -C services/predictor test
+
+  infra:
+    name: infra
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: infra/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: infra
+      - run: npx tsc --noEmit
+        working-directory: infra
+      - run: pnpm test
+        working-directory: infra
+      # A synth reads no account and no network, so it proves the stacks build without credentials.
+      - run: pnpm synth
+        working-directory: infra

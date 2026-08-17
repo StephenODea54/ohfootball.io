@@ -71,28 +71,61 @@ check at `/healthz` on the API rather than `/readyz`, because `/readyz` reads th
 It reads a SQLite snapshot that ships inside its own package, so it has no subnet, no security
 group, and no network interface to build before it can answer.
 
+## What deploys what
+
+Two workflows publish code. Neither touches the data.
+
+`checks.yml` runs the format, vet, and test gates for Go, Python, and the stacks on every pull
+request. The pre-commit hook runs the same things, but it can be skipped and it only guards the
+machine it runs on.
+
+`deploy.yml` publishes on a merge to main. It builds the six images and pushes them, builds the
+arm64 binary and writes it to the artifact bucket, then deploys the four stacks. The weekly run
+cannot do any of this itself: a task pulls its image before it starts, so it cannot build the image
+it runs on, and it cannot build the binary it packs with the snapshot.
+
+`migrate.yml` applies the migrations. It never connects to the warehouse, because nothing outside
+the network can. It starts a task inside the network through the AWS API and waits for it. Every
+migration is written to be applied again without harm, so the task applies all of them every time
+and keeps no record of what ran. A migration that cannot be repeated needs a table recording what
+has been applied, and `postgres/Dockerfile` would have to read it.
+
+The workflows take on a role by presenting a token GitHub signed, so no key is stored anywhere.
+The trust accepts that token only from this repository. Set `AWS_ACCOUNT_ID` as a repository secret
+and `githubRepository` in context if the repository is renamed or moved.
+
 ## Deploying the first time
 
 The stack reads the API package from a fixed key in the artifact bucket, and deliberately does not
 record which version. The pipeline replaces the code once a week, and a recorded version would let
 the next deployment of the stack put the older package back. Both settle on one object instead.
 
-That leaves an ordering to respect. The object has to exist before `OhfootballBackend` is deployed
-for the first time:
+That leaves a circle to break. `OhfootballBackend` needs the package before it can deploy, and the
+run that writes the package needs the API to exist. The way through uses the data already on the
+machine you develop on.
 
 ```sh
-make -C ../services/api bootstrap      # builds bin/bootstrap for arm64
-make -C ../services/api snapshot       # writes bin/ohfootball.db from the warehouse
-cd ../services/api/bin && zip -9 bootstrap.zip bootstrap ohfootball.db
-aws s3 cp bootstrap.zip "s3://$ARTIFACT_BUCKET/api/bootstrap.zip"
-```
-
-Then deploy in order, because the backend reads the artifact bucket from the infra stack:
-
-```sh
+# 1. Bootstrap the account and raise the shared base.
+npx cdk bootstrap
 npx cdk deploy OhfootballInfra
+
+# 2. Build a package from the local warehouse, and put it where the API stack reads.
+make -C ../services/api bootstrap
+make -C ../services/api snapshot
+cd ../services/api/bin && zip -9 bootstrap.zip bootstrap ohfootball.db
+bucket=$(aws ssm get-parameter --name /ohfootball/artifacts/bucket-name \
+  --query Parameter.Value --output text)
+aws s3 cp bootstrap.zip "s3://${bucket}/api/bootstrap.zip"
+
+# 3. Raise the API and the site. Both publish names the pipeline reads.
 npx cdk deploy OhfootballBackend OhfootballFrontend
+
+# 4. Push the images, then raise the pipeline, then migrate and run it once.
+#    Merging to main does the pushing. The pipeline can be started by hand from the console.
+npx cdk deploy OhfootballEtl
 ```
+
+After that the workflows own it, and the only step done by hand is starting a run out of turn.
 
 ## Names
 

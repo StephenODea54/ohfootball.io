@@ -160,3 +160,55 @@ describe('a domain', () => {
     })
   })
 })
+
+describe('the deployment role', () => {
+  // Without the condition on the subject, a workflow in any repository anywhere could take this
+  // role on and deploy into the account.
+  test('is narrowed to one repository', () => {
+    build().infra.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'ohfootball-deploy',
+      AssumeRolePolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'sts:AssumeRoleWithWebIdentity',
+            Condition: Match.objectLike({
+              StringEquals: {
+                'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+              },
+              StringLike: {
+                'token.actions.githubusercontent.com:sub': 'repo:StephenODea54/ohfootball.io:*',
+              },
+            }),
+          }),
+        ]),
+      }),
+    })
+  })
+
+  test('names a different repository when the context sets one', () => {
+    const stacks = build({ githubRepository: 'someone/else' })
+    stacks.infra.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'ohfootball-deploy',
+      AssumeRolePolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Condition: Match.objectLike({
+              StringLike: {
+                'token.actions.githubusercontent.com:sub': 'repo:someone/else:*',
+              },
+            }),
+          }),
+        ]),
+      }),
+    })
+  })
+
+  // The workflow publishes code. It has no reason to read the warehouse, and the warehouse answers
+  // only from inside the network in any case.
+  test('is given no way to read the warehouse or its password', () => {
+    const policies = JSON.stringify(build().infra.findResources('AWS::IAM::Policy'))
+    expect(policies).not.toContain('secretsmanager:')
+    expect(policies).not.toContain('rds-db:connect')
+    expect(policies).not.toContain('rds:')
+  })
+})

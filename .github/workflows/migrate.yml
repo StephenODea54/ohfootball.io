@@ -1,0 +1,84 @@
+name: migrate
+
+# Applies every migration to the warehouse.
+#
+# The warehouse sits in an isolated subnet and answers only from inside the network, so this
+# workflow never connects to it. It starts a task inside the network through the AWS API and waits
+# for that task to finish. Nothing outside the network holds a route to the database.
+#
+# Every migration is written to be applied again without harm, so the task applies all of them
+# every time and keeps no record of what ran.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "postgres/migrations/**"
+      - "postgres/Dockerfile"
+  workflow_dispatch:
+
+concurrency:
+  # Two migrations at once would race on the same tables.
+  group: migrate
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  migrate:
+    name: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/ohfootball-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: read where the task runs
+        id: where
+        run: |
+          set -euo pipefail
+          read_parameter() {
+            aws ssm get-parameter --name "/ohfootball/pipeline/$1" \
+              --query Parameter.Value --output text
+          }
+          {
+            echo "cluster=$(read_parameter cluster-arn)"
+            echo "task=$(read_parameter migrate-task-arn)"
+            echo "subnets=$(read_parameter subnet-ids)"
+            echo "security_group=$(read_parameter security-group-id)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: apply the migrations
+        run: |
+          set -euo pipefail
+
+          # A public address is what lets the task pull its image without a NAT gateway. It still
+          # reaches the warehouse over the network rather than over the internet.
+          arn=$(aws ecs run-task \
+            --cluster '${{ steps.where.outputs.cluster }}' \
+            --task-definition '${{ steps.where.outputs.task }}' \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.where.outputs.subnets }}],securityGroups=[${{ steps.where.outputs.security_group }}],assignPublicIp=ENABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+
+          echo "started $arn"
+          aws ecs wait tasks-stopped --cluster '${{ steps.where.outputs.cluster }}' --tasks "$arn"
+
+          # A task that stops is not a task that worked. The exit code of the container is what
+          # says whether every migration applied.
+          code=$(aws ecs describe-tasks --cluster '${{ steps.where.outputs.cluster }}' --tasks "$arn" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          reason=$(aws ecs describe-tasks --cluster '${{ steps.where.outputs.cluster }}' --tasks "$arn" \
+            --query 'tasks[0].stoppedReason' --output text)
+
+          echo "exit code ${code}, stopped because ${reason}"
+          if [ "$code" != "0" ]; then
+            echo "the migrations did not apply. The task log holds the statement that failed." >&2
+            exit 1
+          fi

@@ -177,6 +177,27 @@ export class EtlStack extends cdk.Stack {
       },
     })
 
+    // The warehouse answers only from inside the network. A migration therefore runs as a task
+    // here, and the deployment workflow starts it through the AWS API rather than by reaching the
+    // database. Nothing outside the network ever needs a route to it.
+    const migrate = this.taskDefinition('Migrate', 'migrate', {})
+
+    // What the workflow has to name to start that task. They are published rather than printed,
+    // because a workflow can read a parameter without being told the name of a stack.
+    const subnets = props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PUBLIC })
+    const handles: Record<string, string> = {
+      'cluster-arn': this.cluster.clusterArn,
+      'migrate-task-arn': migrate.taskDefinitionArn,
+      'subnet-ids': subnets.subnetIds.join(','),
+      'security-group-id': this.taskSecurityGroup.securityGroupId,
+    }
+    for (const [name, value] of Object.entries(handles)) {
+      new ssm.StringParameter(this, `Pipeline${name}`, {
+        parameterName: `/ohfootball/pipeline/${name}`,
+        stringValue: value,
+      })
+    }
+
     new cdk.CfnOutput(this, 'PipelineArn', { value: this.stateMachine.stateMachineArn })
     for (const [name, repository] of Object.entries(this.repositories)) {
       new cdk.CfnOutput(this, `${name}RepositoryUri`, { value: repository.repositoryUri })
@@ -193,6 +214,32 @@ export class EtlStack extends cdk.Stack {
     environment: Record<string, string>,
     command?: string[],
   ): tasks.EcsRunTask {
+    const definition = this.taskDefinition(id, image, environment, command)
+    return new tasks.EcsRunTask(this, id, {
+      cluster: this.cluster,
+      taskDefinition: definition,
+      launchTarget: new tasks.EcsFargateLaunchTarget({
+        platformVersion: ecs.FargatePlatformVersion.LATEST,
+      }),
+      // A public address is what replaces a NAT gateway. Without it a task in a public subnet
+      // cannot pull its image or reach anything outside the network.
+      assignPublicIp: true,
+      subnets: { subnetType: ec2.SubnetType.PUBLIC },
+      securityGroups: [this.taskSecurityGroup],
+      // The pipeline waits for the task to finish rather than starting it and moving on.
+      integrationPattern: sfn.IntegrationPattern.RUN_JOB,
+      taskTimeout: sfn.Timeout.duration(STEP_TIMEOUT),
+      resultPath: sfn.JsonPath.DISCARD,
+    })
+  }
+
+  /** Builds a registry to push an image to, and the task that runs it. */
+  private taskDefinition(
+    id: string,
+    image: string,
+    environment: Record<string, string>,
+    command?: string[],
+  ): ecs.FargateTaskDefinition {
     const repository = new ecr.Repository(this, `${id}Repository`, {
       repositoryName: `ohfootball/${image}`,
       imageScanOnPush: true,
@@ -231,22 +278,7 @@ export class EtlStack extends cdk.Stack {
     this.props.artifacts.grantReadWrite(definition.taskRole)
     this.props.raw.grantReadWrite(definition.taskRole)
 
-    return new tasks.EcsRunTask(this, id, {
-      cluster: this.cluster,
-      taskDefinition: definition,
-      launchTarget: new tasks.EcsFargateLaunchTarget({
-        platformVersion: ecs.FargatePlatformVersion.LATEST,
-      }),
-      // A public address is what replaces a NAT gateway. Without it a task in a public subnet
-      // cannot pull its image or reach anything outside the network.
-      assignPublicIp: true,
-      subnets: { subnetType: ec2.SubnetType.PUBLIC },
-      securityGroups: [this.taskSecurityGroup],
-      // The pipeline waits for the task to finish rather than starting it and moving on.
-      integrationPattern: sfn.IntegrationPattern.RUN_JOB,
-      taskTimeout: sfn.Timeout.duration(STEP_TIMEOUT),
-      resultPath: sfn.JsonPath.DISCARD,
-    })
+    return definition
   }
 
   /** The parts of the connection every task needs, with the password left out. */

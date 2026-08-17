@@ -1,7 +1,9 @@
 import * as cdk from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import * as iam from 'aws-cdk-lib/aws-iam'
 import * as rds from 'aws-cdk-lib/aws-rds'
 import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
 
 /** Aurora pauses after this long without work. Five minutes is the shortest the service allows. */
@@ -23,6 +25,12 @@ export const WAREHOUSE_DATABASE = 'ohfootball'
  */
 export const WAREHOUSE_PORT = 5432
 
+/** Repository the deployment workflow runs from, as owner/name. */
+const DEFAULT_REPOSITORY = 'StephenODea54/ohfootball.io'
+
+/** Where GitHub signs the token a workflow presents. */
+const GITHUB_ISSUER = 'token.actions.githubusercontent.com'
+
 /**
  * The parts every other stack builds on: the network, the warehouse, and the buckets.
  *
@@ -38,6 +46,8 @@ export class InfraStack extends cdk.Stack {
   readonly artifacts: s3.Bucket
   /** Holds what the scraper collects, which is the record the warehouse is rebuilt from. */
   readonly raw: s3.Bucket
+  /** Assumed by the deployment workflow. No key is stored anywhere for it. */
+  readonly deployRole: iam.Role
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
@@ -95,6 +105,16 @@ export class InfraStack extends cdk.Stack {
       lifecycleRules: [{ noncurrentVersionExpiration: cdk.Duration.days(30) }],
     })
 
+    // The deployment workflow writes the binary here. It reads the name from a parameter rather
+    // than from a stack output, so the workflow never has to know the name of a stack.
+    new ssm.StringParameter(this, 'ArtifactsBucketParameter', {
+      parameterName: '/ohfootball/artifacts/bucket-name',
+      stringValue: this.artifacts.bucketName,
+    })
+
+    this.deployRole = this.buildDeployRole()
+
+    new cdk.CfnOutput(this, 'DeployRoleArn', { value: this.deployRole.roleArn })
     new cdk.CfnOutput(this, 'WarehouseEndpoint', {
       value: this.warehouse.clusterEndpoint.hostname,
     })
@@ -103,5 +123,107 @@ export class InfraStack extends cdk.Stack {
     })
     new cdk.CfnOutput(this, 'ArtifactsBucket', { value: this.artifacts.bucketName })
     new cdk.CfnOutput(this, 'RawBucket', { value: this.raw.bucketName })
+  }
+
+  /**
+   * The role the deployment workflow takes on.
+   *
+   * The workflow presents a token GitHub signed, and the trust below accepts it only for this
+   * repository. No key is stored in the repository or anywhere else, so there is nothing to leak
+   * and nothing to rotate.
+   *
+   * The permissions are narrow because the CDK does the heavy work through roles of its own,
+   * created when the account was bootstrapped. This role may take those on, push the images the
+   * pipeline runs, write the binary the API is built from, and start the migration task. It cannot
+   * reach the warehouse, which answers only from inside the network.
+   */
+  private buildDeployRole(): iam.Role {
+    const repository = this.node.tryGetContext('githubRepository') ?? DEFAULT_REPOSITORY
+
+    // An account holds one provider for GitHub. Pass the ARN of an existing one to share it rather
+    // than trying to create a second, which the account refuses.
+    const existing = this.node.tryGetContext('githubOidcProviderArn')
+    const provider = existing
+      ? iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(this, 'GitHubProvider', existing)
+      : new iam.OpenIdConnectProvider(this, 'GitHubProvider', {
+          url: `https://${GITHUB_ISSUER}`,
+          clientIds: ['sts.amazonaws.com'],
+        })
+
+    const role = new iam.Role(this, 'DeployRole', {
+      roleName: 'ohfootball-deploy',
+      assumedBy: new iam.WebIdentityPrincipal(provider.openIdConnectProviderArn, {
+        StringEquals: { [`${GITHUB_ISSUER}:aud`]: 'sts.amazonaws.com' },
+        // Narrowed to one repository. Without this, a workflow in any repository anywhere could
+        // take this role on.
+        StringLike: { [`${GITHUB_ISSUER}:sub`]: `repo:${repository}:*` },
+      }),
+      description: 'Assumed by the deployment workflow of ohfootball.io',
+      maxSessionDuration: cdk.Duration.hours(1),
+    })
+
+    // The CDK deploys through roles the account bootstrap created. Taking them on is what lets the
+    // workflow deploy without holding those rights itself.
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['sts:AssumeRole'],
+        resources: [
+          cdk.Arn.format({ region: '', service: 'iam', resource: 'role', resourceName: 'cdk-*' }, this),
+        ],
+      }),
+    )
+
+    // Pushing the images the pipeline tasks run. The token call names no repository, because the
+    // registry gives one token for the whole account.
+    role.addToPolicy(
+      new iam.PolicyStatement({ actions: ['ecr:GetAuthorizationToken'], resources: ['*'] }),
+    )
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'ecr:BatchCheckLayerAvailability',
+          'ecr:CompleteLayerUpload',
+          'ecr:InitiateLayerUpload',
+          'ecr:PutImage',
+          'ecr:UploadLayerPart',
+          'ecr:BatchGetImage',
+          'ecr:GetDownloadUrlForLayer',
+        ],
+        resources: [
+          cdk.Arn.format({ service: 'ecr', resource: 'repository', resourceName: 'ohfootball/*' }, this),
+        ],
+      }),
+    )
+
+    // Writing the binary the pipeline packs together with the snapshot.
+    this.artifacts.grantReadWrite(role)
+
+    // Starting the migration task and waiting for it. Passing a role is what lets a task run as
+    // the role its definition names, and the call is refused without it.
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['ecs:RunTask', 'ecs:DescribeTasks', 'ecs:ListTasks'],
+        resources: ['*'],
+      }),
+    )
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['iam:PassRole'],
+        resources: ['*'],
+        conditions: { StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' } },
+      }),
+    )
+
+    // Reading the names the workflow needs in order to start that task.
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter', 'ssm:GetParameters'],
+        resources: [
+          cdk.Arn.format({ service: 'ssm', resource: 'parameter', resourceName: 'ohfootball/*' }, this),
+        ],
+      }),
+    )
+
+    return role
   }
 }

@@ -76,7 +76,8 @@ describe('the pipeline tasks', () => {
   })
 
   test('have a registry each to be pushed to', () => {
-    build().template.resourceCountIs('AWS::ECR::Repository', 5)
+    // Five for the run, plus the one the migration task uses.
+    build().template.resourceCountIs('AWS::ECR::Repository', 6)
   })
 })
 
@@ -147,6 +148,34 @@ describe('the things the run changes', () => {
     const { definition } = build()
     expect(definition).toContain('lambda:updateFunctionCode')
     expect(definition).toContain('cloudfront:createInvalidation')
+  })
+})
+
+// The warehouse answers only from inside the network, so nothing outside can migrate it. The task
+// runs inside, and the deployment workflow starts it through the AWS API.
+describe('the migration task', () => {
+  test('exists as a task rather than as a step of the run', () => {
+    const { template, definition } = build()
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Image: Match.objectLike({
+            'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp('.*')])]),
+          }),
+        }),
+      ]),
+    })
+    // The weekly run rebuilds data. It does not change the shape of the warehouse.
+    expect(definition).not.toContain('Migrate')
+  })
+
+  test('publishes what the workflow needs to start it', () => {
+    const { template } = build()
+    for (const name of ['cluster-arn', 'migrate-task-arn', 'subnet-ids', 'security-group-id']) {
+      template.hasResourceProperties('AWS::SSM::Parameter', {
+        Name: `/ohfootball/pipeline/${name}`,
+      })
+    }
   })
 })
 
