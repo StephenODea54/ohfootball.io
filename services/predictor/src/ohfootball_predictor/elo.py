@@ -1,13 +1,11 @@
-"""A small, deterministic implementation of configurable Elo."""
-
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from itertools import groupby
 from math import log1p
-from typing import Iterable, Mapping
 
 from .games import Game, chronological
 
@@ -81,7 +79,6 @@ class BacktestResult:
 def win_probability(
     rating_a: float,
     rating_b: float,
-    *,
     rating_scale: float = 400.0,
 ) -> float:
     """Return team A's expected score against team B."""
@@ -92,10 +89,6 @@ def win_probability(
 
 def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
     """Predict completed games, then update ratings after each game day.
-
-    All games on the same date use the ratings available at the start of that
-    date. This prevents input order from creating false precision when kickoff
-    times are not available.
     """
     completed_games = chronological(game for game in games if game.is_rateable)
     ratings: dict[RatingKey, float] = {}
@@ -144,7 +137,7 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
                 rating_scale=config.rating_scale,
             )
             actual_a = game.rateable_score
-            assert actual_a is not None  # The games were filtered on is_rateable.
+            assert actual_a is not None
             team_a_games_played = games_played[team_a]
             team_b_games_played = games_played[team_b]
             update_multiplier = rating_update_multiplier(
