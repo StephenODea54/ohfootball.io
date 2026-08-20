@@ -11,6 +11,12 @@ make hooks
 It points Git at `.githooks`. The pre-commit hook then checks the format of the Go files,
 runs `make vet`, and runs `make test` before each commit.
 
+## How it fits together
+
+[docs/architecture.md](docs/architecture.md) describes the two pipelines, what each step of the
+weekly run touches, and what a visitor reaches. [infra/README.md](infra/README.md) covers the
+stacks and the order to deploy them the first time.
+
 # TODO
 
 Need to have check in repo root that checks for installation of required technologies
