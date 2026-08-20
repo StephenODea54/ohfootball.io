@@ -1,9 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Formula,
+  FormulaLine,
+  Frac,
+  Group,
+  InlineMath,
+  Name,
+  Op,
+  Pow,
+  Var,
+} from "@/components/formula"
+import { Card, CardContent } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
-import { Code, Text, TextLink } from "@/components/ui/text"
+import { Text, TextLink } from "@/components/ui/text"
 
 export const Route = createFileRoute('/methodology')({
   head: () => ({
@@ -79,7 +90,7 @@ const parameters = [
 const limits = [
   {
     title: "Margin of victory is ignored",
-    body: "A one point win and a forty point win move a rating by exactly the same amount. This keeps the model resistant to running up the score, and it costs real information.",
+    body: "A one point win and a forty point win move a rating by exactly the same amount. This keeps the model resistant to running up the score.",
   },
   {
     title: "Ratings are zero sum inside a season",
@@ -99,15 +110,15 @@ const limits = [
   },
   {
     title: "Program continuity can break",
-    body: "Carryover follows a program identifier across seasons, so a program that misses a season keeps the rating it last earned. Co-ops, mergers, and renames can still split one program into two histories, which resets a team to its prior.",
+    body: "Carryover follows a program identifier across seasons, so a program that misses a season keeps the rating it last earned. Co-ops, mergers, and renames can still split one program into two histories, which resets a team to its prior. This will cause really awful predictions for brand new schools.",
   },
   {
     title: "The model knows nothing about football",
-    body: "There is no roster, no injury report, no weather, no travel distance, and no notion of matchup style. It sees who played, who won, and where.",
+    body: "There is no roster, no injury report, no weather, no travel distance, and no notion of matchup style. It simply looks at who played and what the result was.",
   },
   {
     title: "Source data can be wrong",
-    body: "Results are scraped from a public site. A missing or mistyped score flows straight through to a rating.",
+    body: "Results are scraped from a public sites. While these sites are awesome, any errors will flow straight to this model.",
   },
 ]
 
@@ -134,18 +145,69 @@ function MethodologyRoute() {
             Before a game, each team has a rating. The expected score for team A against team B is a
             logistic function of the gap between them:
           </Text>
-          <pre className="mt-4 overflow-x-auto rounded-lg border bg-muted/60 px-4 py-3 text-sm/6 text-fg">
-            <code>{"E_a = 1 / (1 + 10 ^ ((R_b - R_a) / 400))"}</code>
-          </pre>
+          <Formula
+            className="mt-4"
+            label="E sub a equals 1 divided by 1 plus 10 raised to the power of R sub b minus R sub a, all divided by 400."
+          >
+            <FormulaLine>
+              <Var sub="a">E</Var>
+              <Op>=</Op>
+              <Frac
+                num={<span>1</span>}
+                den={
+                  <>
+                    <span>1</span>
+                    <Op>+</Op>
+                    <Pow
+                      base={<span>10</span>}
+                      exp={
+                        <>
+                          <Group>
+                            <Var sub="b">R</Var>
+                            <Op>&minus;</Op>
+                            <Var sub="a">R</Var>
+                          </Group>
+                          <Op>/</Op>
+                          <span>400</span>
+                        </>
+                      }
+                    />
+                  </>
+                }
+              />
+            </FormulaLine>
+          </Formula>
           <Text className="mt-4 text-base/7 sm:text-base/7">
             After the game, the rating moves by the difference between what happened and what was
             expected, scaled by the K factor and by a per game multiplier:
           </Text>
-          <pre className="mt-4 overflow-x-auto rounded-lg border bg-muted/60 px-4 py-3 text-sm/6 text-fg">
-            <code>{"R_a' = R_a + K * m * (S_a - E_a)"}</code>
-          </pre>
+          <Formula
+            className="mt-4"
+            label="The new R sub a equals R sub a plus K times m times S sub a minus E sub a."
+          >
+            <FormulaLine>
+              <Var prime sub="a">
+                R
+              </Var>
+              <Op>=</Op>
+              <Var sub="a">R</Var>
+              <Op>+</Op>
+              <Var>K</Var>
+              <Op>&middot;</Op>
+              <Var>m</Var>
+              <Op>&middot;</Op>
+              <Group>
+                <Var sub="a">S</Var>
+                <Op>&minus;</Op>
+                <Var sub="a">E</Var>
+              </Group>
+            </FormulaLine>
+          </Formula>
           <Text className="mt-4 text-base/7 sm:text-base/7">
-            <Code>S_a</Code> is 1 for a win and 0 for a loss. Team B receives the exact opposite
+            <InlineMath label="S sub a">
+              <Var sub="a">S</Var>
+            </InlineMath>{" "}
+            is 1 for a win and 0 for a loss. Team B receives the exact opposite
             change.
           </Text>
         </section>
@@ -155,7 +217,8 @@ function MethodologyRoute() {
             Production Parameters
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
-            These values are used for the published snapshots. Each parameter was tuned independently using the 2000–2023 seasons as the training/validation set, with final performance evaluated on the 2024–2025 seasons as the test set.
+            These values are used for the published snapshots. Each parameter was tuned independently
+            using the 2000–2023 seasons as the training/validation set, with final performance evaluated on the 2024–2025 seasons as the test set.
           </Text>
           <Card className="mt-5 gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
             <CardContent>
@@ -189,11 +252,37 @@ function MethodologyRoute() {
             A team's preseason rating is built from its division, then pulled toward what the program
             finished with in the most recent season it played:
           </Text>
-          <pre className="mt-4 overflow-x-auto rounded-lg border bg-muted/60 px-4 py-3 text-sm/6 text-fg">
-            <code>
-              {"prior = 1500 + 140 * (4 - division)\nstart = prior + 0.85 * (last_played_rating - prior)"}
-            </code>
-          </pre>
+          <Formula
+            className="mt-4"
+            label="The prior equals 1500 plus 140 times 4 minus the division. The starting rating equals the prior plus 0.85 times the last played rating minus the prior."
+          >
+            <FormulaLine>
+              <Name>prior</Name>
+              <Op>=</Op>
+              <span>1500</span>
+              <Op>+</Op>
+              <span>140</span>
+              <Op>&middot;</Op>
+              <Group>
+                <span>4</span>
+                <Op>&minus;</Op>
+                <Name>division</Name>
+              </Group>
+            </FormulaLine>
+            <FormulaLine>
+              <Name>start</Name>
+              <Op>=</Op>
+              <Name>prior</Name>
+              <Op>+</Op>
+              <span>0.85</span>
+              <Op>&middot;</Op>
+              <Group>
+                <Name>last played rating</Name>
+                <Op>&minus;</Op>
+                <Name>prior</Name>
+              </Group>
+            </FormulaLine>
+          </Formula>
           <Text className="mt-4 text-base/7 sm:text-base/7">
             Division I sits 420 points above the baseline and Division VII sits 420 below it, with
             Division IV at the baseline. Independent teams get no division adjustment. A program that
@@ -214,44 +303,21 @@ function MethodologyRoute() {
           <Text className="mt-3 text-base/7 sm:text-base/7">
             For a team's first three games, the K factor is multiplied by a boost that starts at 1.6
             and decays linearly to 1.0. Both teams in a game share one multiplier, taken from
-            whichever team is further from settled. Sharing it matters: giving each team its own
-            boost would let one side gain more than the other side lost, which would leak points into
-            the pool.
+            whichever team is further from settled. This is an attempt to reduce the amount of
+            variance in early season matchups since the model doesn't take into account things like
+            roster changes, injuries, coaching changes, etc.
           </Text>
         </section>
 
         <section className="mt-12" aria-labelledby="mechanics-heading">
           <Heading id="mechanics-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-            Timing And Exclusions
+            What Counts
           </Heading>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <Card className="gap-3 shadow-none [--gutter:--spacing(5)]">
-              <CardHeader>
-                <CardTitle className="text-lg/7">Games Settle By Date</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Text className="m-0 text-sm/6">
-                  Every game on the same date is predicted from the ratings as they stood at the
-                  start of that date. All of the day's changes are applied together. Kickoff times
-                  are not available, so ordering games inside a day would invent precision the data
-                  does not have.
-                </Text>
-              </CardContent>
-            </Card>
-            <Card className="gap-3 shadow-none [--gutter:--spacing(5)]">
-              <CardHeader>
-                <CardTitle className="text-lg/7">What Counts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Text className="m-0 text-sm/6">
-                  A win, a loss, and a tie all move ratings, with a tie counted as half a win for
-                  both teams. A forfeit never moves a rating, because no team played the game.
-                  Cancellations are excluded for the same reason. Upcoming games get a probability
-                  but never change a rating.
-                </Text>
-              </CardContent>
-            </Card>
-          </div>
+          <Text className="mt-3 text-base/7 sm:text-base/7">
+            A win, a loss, and a tie all move ratings, with a tie counted as half a win for both teams.
+            A forfeit never moves a rating, because no team played the game. Cancellations are excluded
+            for the same reason. Upcoming games get a probability but never change a rating.
+          </Text>
         </section>
 
         <section className="mt-12" aria-labelledby="evaluation-heading">
@@ -263,8 +329,7 @@ function MethodologyRoute() {
             prediction that was made before the result was known. Three numbers are tracked: Brier
             score, log loss, and straight accuracy on games with a decided result. Brier score and
             log loss both reward calibration, so a model that says 90% needs to be right about 90% of
-            the time, not merely on the correct side. Runs are logged to MLflow so a parameter change
-            can be compared against every earlier run.
+            the time, not merely on the correct side.
           </Text>
         </section>
 
@@ -273,11 +338,19 @@ function MethodologyRoute() {
             Where The Data Comes From
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
-            Schedules and results are scraped from publicly posted Ohio high school football results
-            and stored in Postgres. dbt models turn the raw rows into analytics tables. The predictor
-            reads those tables, replays the season, and writes a dated rating snapshot. A GraphQL API
-            serves the snapshot to this site. Each snapshot is stored with the date it was
-            calculated, which is the date shown on a team page.
+            The data is sourced from a combination of <TextLink href="https://joeeitel.com/hsfoot">Joe Eitel</TextLink> and the
+            {" "}<TextLink href="https://ohhsfbdb.net/">Ohio Highschool Football Database</TextLink>.
+          </Text>
+        </section>
+
+        <section className="mt-12" aria-labelledby="pipeline-heading">
+          <Heading id="pipeline-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+            Are The Predictions Any Good?
+          </Heading>
+          <Text className="mt-3 text-base/7 sm:text-base/7">
+            Idk. Historical accuracy sits around 80%, so it's better than a coin flip. I think a
+            definition of "good" would be when it's able to consistently outpredict humans. An example might be
+            checking if the model's predictions are better than <TextLink href="https://www.wfmj.com/sports/local-sports/dana-s-2026-high-school-football-predictions/article_9bd3f21d-8129-415a-b822-e6127661f01a.html">WFMJ's predictions</TextLink>.
           </Text>
         </section>
 
@@ -285,9 +358,6 @@ function MethodologyRoute() {
           <Heading id="limits-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
             Known Limits
           </Heading>
-          <Text className="mt-3 text-base/7 sm:text-base/7">
-            These are real weaknesses, not disclaimers. Read a rating with them in mind.
-          </Text>
           <dl className="mt-5 space-y-4">
             {limits.map(({ body, title }) => (
               <div key={title} className="rounded-xl border bg-card px-5 py-5">
