@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterable, Literal
+from typing import Literal
 
 Result = Literal["W", "L", "T", "C", "unknown"]
 

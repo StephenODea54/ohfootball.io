@@ -61,10 +61,6 @@ func (modernParser) Parse(doc *goquery.Document, base *url.URL, ref joeeitel.Tea
 			}
 		}
 
-		playoff := ""
-		if row.Find(".playoff").Length() > 0 {
-			playoff = joeeitel.CleanText(row.Find(".playoff").First().Text())
-		}
 		rows = append(rows, joeeitel.TeamScheduleRow{
 			Season:         ref.Season,
 			SourceTeamID:   ref.TeamID,
@@ -74,7 +70,7 @@ func (modernParser) Parse(doc *goquery.Document, base *url.URL, ref joeeitel.Tea
 			Result:         cellText(row, ".result"),
 			Score:          cellText(row, ".score"),
 			Notes:          cellText(row, ".resultNote"),
-			Playoff:        playoff,
+			Playoff:        cellText(row, ".playoff"),
 		})
 	})
 
@@ -117,9 +113,6 @@ func styleColors(header *goquery.Selection) (primary, secondary string) {
 }
 
 func textWithoutClasses(selection *goquery.Selection, excluded ...string) string {
-	if selection.Length() == 0 {
-		return ""
-	}
 	clone := selection.Clone()
 	for _, class := range excluded {
 		clone.Find("." + class).Remove()

@@ -79,7 +79,7 @@ func newRunner(t *testing.T, replace map[string][]byte) (*Runner, *pages, *recor
 	ada := fixture(t, "sheet_ada.htm")
 
 	bodies := map[string][]byte{IndexURL(testBase): index}
-	doc, _, err := NewDocument(index, IndexURL(testBase))
+	doc, _, err := newDocument(index, IndexURL(testBase))
 	if err != nil {
 		t.Fatalf("parse the index: %v", err)
 	}

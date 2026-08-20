@@ -98,15 +98,15 @@ export class BackendStack extends cdk.Stack {
       stringValue: api.functionName,
     })
 
+    const apiUrl = `https://${props.domain?.domainName ?? this.distribution.distributionDomainName}`
+
     // The site is built against this address, so the build reads it from here.
     new ssm.StringParameter(this, 'ApiUrlParameter', {
       parameterName: '/ohfootball/api/url',
-      stringValue: `https://${props.domain?.domainName ?? this.distribution.distributionDomainName}/graphql`,
+      stringValue: `${apiUrl}/graphql`,
     })
 
-    new cdk.CfnOutput(this, 'ApiUrl', {
-      value: `https://${props.domain?.domainName ?? this.distribution.distributionDomainName}`,
-    })
+    new cdk.CfnOutput(this, 'ApiUrl', { value: apiUrl })
     new cdk.CfnOutput(this, 'ApiFunctionName', { value: api.functionName })
   }
 }

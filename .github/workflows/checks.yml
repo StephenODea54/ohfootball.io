@@ -47,8 +47,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: make -C services/predictor vet
-      - run: make -C services/predictor test
+      - run: make -C services/elo vet
+      - run: make -C services/elo test
+      - run: make -C services/dataset vet
+      - run: make -C services/dataset test
 
   infra:
     name: infra

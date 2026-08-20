@@ -1,4 +1,4 @@
-select *
-from {{ ref('stg_games') }}
-where (result = 'C' or notes = 'forfeit')
-    and (source_team_score is not null or opponent_score is not null)
+SELECT *
+FROM {{ ref('stg_games') }}
+WHERE (result = 'C' OR notes = 'forfeit')
+    AND (source_team_score IS NOT NULL OR opponent_score IS NOT NULL)

@@ -1,5 +1,3 @@
--- One row for each sheet of ohhsfbdb.net, with the identifier of its school.
---
 -- The first row of a sheet holds the identifier that joeeitel.com gives the
 -- same school, so the two sources join without matching names. That matters,
 -- because a name is not a key on either side. The site calls sheet175 "Delphos
@@ -8,10 +6,11 @@
 --
 -- Three things can happen to a sheet:
 --
---   1. The seed names it. The seed wins, because the site holds a wrong digit
---      on five sheets. A seed row with an empty identifier asks for a minted
---      one, which is why the presence of the row decides and not its value.
---   2. The sheet carries an identifier and no seed row names it. That
+--   1. The override list names it. The list wins, because the site holds a
+--      wrong digit on five sheets. A list row with an empty identifier asks
+--      for a minted one, which is why the presence of the row decides and not
+--      its value.
+--   2. The sheet carries an identifier and no list row names it. That
 --      identifier stands.
 --   3. The sheet carries none. Every such school closed before joeeitel.com
 --      began, so the warehouse mints an identifier from the name of the sheet,
@@ -38,14 +37,6 @@ names AS (
 ),
 
 -- The identifier that each of these sheets should carry.
---
--- The site holds a wrong digit on five sheets, and each wrong digit names a
--- school that already exists, so a join on the identifier alone would attach
--- ten schools to five identifiers. A sheet with no identifier here belongs to a
--- school that closed before joeeitel.com began, and it takes a minted one.
---
--- Naming a sheet is what corrects it. The value may be absent, so the presence
--- of the row decides and not what it holds.
 overrides AS (
     SELECT * FROM (
         VALUES

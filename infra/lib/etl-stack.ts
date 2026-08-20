@@ -7,9 +7,10 @@ import * as logs from 'aws-cdk-lib/aws-logs'
 import * as rds from 'aws-cdk-lib/aws-rds'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as scheduler from 'aws-cdk-lib/aws-scheduler'
+import * as ssm from 'aws-cdk-lib/aws-ssm'
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions'
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks'
-import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
 import { WAREHOUSE_DATABASE, WAREHOUSE_PORT, WAREHOUSE_USERNAME } from './infra-stack'
 
@@ -28,6 +29,22 @@ export interface EtlStackProps extends cdk.StackProps {
 const STEP_TIMEOUT = cdk.Duration.hours(2)
 
 /**
+ * The parameter naming the secret that holds the Kaggle account which owns the published dataset.
+ *
+ * The secret is created by hand rather than by this stack, because it holds a credential and a
+ * template is readable by anyone who can read the stack. It holds the keys username, key, and
+ * dataset.
+ *
+ * What is read here is a parameter holding the whole ARN of that secret, suffix and all. A task
+ * reads one key out of the secret, and reading one key needs the whole ARN. The suffix is minted
+ * when the secret is created, so it cannot be written here.
+ *
+ * A run whose secret or parameter is missing fails before the container starts, so both have to
+ * exist before the pipeline is deployed.
+ */
+const KAGGLE_SECRET_PARAMETER = '/ohfootball/kaggle/secret-arn'
+
+/**
  * The weekly run that collects, rebuilds, and publishes.
  *
  * Every task runs in a public subnet with a public address. That is what lets a task reach the
@@ -41,8 +58,8 @@ const STEP_TIMEOUT = cdk.Duration.hours(2)
  */
 export class EtlStack extends cdk.Stack {
   readonly stateMachine: sfn.StateMachine
-  readonly repositories: Record<string, ecr.Repository> = {}
 
+  private readonly repositories: Record<string, ecr.Repository> = {}
   private readonly cluster: ecs.Cluster
   private readonly taskSecurityGroup: ec2.SecurityGroup
   private readonly logGroup: logs.LogGroup
@@ -52,7 +69,10 @@ export class EtlStack extends cdk.Stack {
     super(scope, id, props)
     this.props = props
 
-    this.cluster = new ecs.Cluster(this, 'Cluster', { vpc: props.vpc, containerInsightsV2: ecs.ContainerInsights.DISABLED })
+    this.cluster = new ecs.Cluster(this, 'Cluster', {
+      vpc: props.vpc,
+      containerInsightsV2: ecs.ContainerInsights.DISABLED,
+    })
 
     this.logGroup = new logs.LogGroup(this, 'PipelineLogs', {
       retention: logs.RetentionDays.ONE_MONTH,
@@ -94,7 +114,7 @@ export class EtlStack extends cdk.Stack {
     // then rate every team from the rebuilt marts.
     const scrape = this.runTask('Scrape', 'scraper', { RAW_BUCKET: props.raw.bucketName })
     const transform = this.runTask('Transform', 'analytics', {}, ['build'])
-    const rate = this.runTask('Rate', 'predictor', {}, ['run'])
+    const rate = this.runTask('Rate', 'elo', {}, ['run'])
 
     // Write the snapshot the API reads, fetch the binary the code pipeline built, and put the two
     // together as the package the function runs.
@@ -145,13 +165,44 @@ export class EtlStack extends cdk.Stack {
       ],
     })
 
+    // The dataset is published last, out of the same marts the site was built from. It is last
+    // because nothing else in the run reads it, so a Kaggle outage costs the publication of the
+    // dataset and not the publication of the site.
+    const kaggleSecret = secretsmanager.Secret.fromSecretCompleteArn(
+      this,
+      'KaggleSecret',
+      ssm.StringParameter.valueForStringParameter(this, KAGGLE_SECRET_PARAMETER),
+    )
+    const publishDataset = this.runTask('PublishDataset', 'dataset', {}, ['publish'], {
+      KAGGLE_USERNAME: ecs.Secret.fromSecretsManager(kaggleSecret, 'username'),
+      KAGGLE_KEY: ecs.Secret.fromSecretsManager(kaggleSecret, 'key'),
+      // The dataset is named in the secret rather than here, so the account and the thing it owns
+      // are set in one place and neither reaches the template.
+      KAGGLE_DATASET: ecs.Secret.fromSecretsManager(kaggleSecret, 'dataset'),
+    })
+    // Kaggle refusing once is usually Kaggle refusing once. A retry runs the whole task again,
+    // which exports the marts again, so the run pays for the attempt in full.
+    publishDataset.addRetry({
+      errors: ['States.TaskFailed'],
+      maxAttempts: 2,
+      interval: cdk.Duration.minutes(1),
+      backoffRate: 2,
+    })
+
     this.stateMachine = new sfn.StateMachine(this, 'Pipeline', {
       stateMachineType: sfn.StateMachineType.STANDARD,
       // A run wakes the warehouse, scrapes a site politely, and rebuilds every mart. Hours is the
       // right unit for the whole of it.
       timeout: cdk.Duration.hours(6),
       definitionBody: sfn.DefinitionBody.fromChainable(
-        scrape.next(transform).next(rate).next(pack).next(publishApi).next(buildSite).next(clearCache),
+        scrape
+          .next(transform)
+          .next(rate)
+          .next(pack)
+          .next(publishApi)
+          .next(buildSite)
+          .next(clearCache)
+          .next(publishDataset),
       ),
       logs: {
         destination: new logs.LogGroup(this, 'PipelineStateLogs', {
@@ -213,8 +264,9 @@ export class EtlStack extends cdk.Stack {
     image: string,
     environment: Record<string, string>,
     command?: string[],
+    secrets?: Record<string, ecs.Secret>,
   ): tasks.EcsRunTask {
-    const definition = this.taskDefinition(id, image, environment, command)
+    const definition = this.taskDefinition(id, image, environment, command, secrets)
     return new tasks.EcsRunTask(this, id, {
       cluster: this.cluster,
       taskDefinition: definition,
@@ -239,6 +291,7 @@ export class EtlStack extends cdk.Stack {
     image: string,
     environment: Record<string, string>,
     command?: string[],
+    secrets?: Record<string, ecs.Secret>,
   ): ecs.FargateTaskDefinition {
     const repository = new ecr.Repository(this, `${id}Repository`, {
       repositoryName: `ohfootball/${image}`,
@@ -266,11 +319,13 @@ export class EtlStack extends cdk.Stack {
         ...this.warehouseEnvironment(),
         ...environment,
       },
-      // The password is the only part that has to stay out of the template. Everything reading it
-      // takes it the way libpq does, so the connection string beside it carries no password.
+      // The warehouse password has to stay out of the template. Everything reading it takes it the
+      // way libpq does, so the connection string beside it carries no password. A step that reads
+      // something else out of a secret names it here, and reads the warehouse the same way.
       secrets: {
         PGPASSWORD: ecs.Secret.fromSecretsManager(secret, 'password'),
         DBT_PASSWORD: ecs.Secret.fromSecretsManager(secret, 'password'),
+        ...secrets,
       },
       command,
     })

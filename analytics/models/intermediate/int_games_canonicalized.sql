@@ -90,27 +90,21 @@ canonicalized AS (
         game_date,
         team_a_id,
         team_b_id
-),
-
-with_state AS (
-    SELECT
-        *,
-        MD5(JSONB_BUILD_ARRAY(
-            team_a_score,
-            team_b_score,
-            team_a_result,
-            is_team_a_home,
-            is_team_b_home,
-            notes,
-            is_playoff_game
-        )::TEXT) AS state_hash
-    FROM canonicalized
 )
 
--- The warehouse reads two sites. Each one has its own raw tables and its own
--- staging models, and they meet here. The seasons do not overlap, so no game
--- comes from both.
-SELECT * FROM with_state
+-- The two sites cover different seasons, so no game comes from both.
+SELECT
+    *,
+    MD5(JSONB_BUILD_ARRAY(
+        team_a_score,
+        team_b_score,
+        team_a_result,
+        is_team_a_home,
+        is_team_b_home,
+        notes,
+        is_playoff_game
+    )::TEXT) AS state_hash
+FROM canonicalized
 
 UNION ALL
 

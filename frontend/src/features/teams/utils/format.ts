@@ -6,6 +6,13 @@ export function formatRecord(record: TeamRecord) {
     : `${record.wins}–${record.losses}`
 }
 
+/** The city, region, and division of a school, joined for one line of text. */
+export function teamMeta(team: Team) {
+  return [team.city, team.region ? `Region ${team.region}` : null, formatDivision(team.division)]
+    .filter(Boolean)
+    .join(" · ")
+}
+
 export function formatDivision(division: number | null) {
   return division ? `D-${toRoman(division)}` : "Independent"
 }

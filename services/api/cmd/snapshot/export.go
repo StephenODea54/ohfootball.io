@@ -17,8 +17,7 @@ import (
 // a flag as 0 or 1. The casts keep the copy free of type conversion, so a column is read and
 // written as it stands.
 //
-// The order of columns has to match the order the query selects. exportedColumnsMatchTheSchema
-// checks the names against the snapshot schema.
+// The order of columns has to match the order the query selects.
 type table struct {
 	name    string
 	columns []string
@@ -145,12 +144,6 @@ func copyTable(ctx context.Context, warehouse *pgx.Conn, snapshot *sql.DB, sourc
 		values, err := rows.Values()
 		if err != nil {
 			return 0, fmt.Errorf("read a %s row: %w", source.name, err)
-		}
-		if len(values) != len(source.columns) {
-			return 0, fmt.Errorf(
-				"%s selects %d columns but the snapshot holds %d",
-				source.name, len(values), len(source.columns),
-			)
 		}
 		if _, err := statement.ExecContext(ctx, values...); err != nil {
 			return 0, fmt.Errorf("write a %s row: %w", source.name, err)

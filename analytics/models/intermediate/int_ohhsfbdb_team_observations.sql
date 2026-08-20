@@ -1,5 +1,3 @@
--- One observation of one school in one season, from ohhsfbdb.net.
---
 -- The set of team and season pairs comes from the games that resolved, on both
 -- sides. Building it from the sheets alone would miss the schools that have no
 -- sheet, such as an opponent from another state, and every game names two
@@ -101,20 +99,7 @@ observations AS (
 )
 
 SELECT
-    team_key,
-    scrape_run_id,
-    observed_at,
-    season,
-    team_id,
-    name,
-    mascot,
-    city,
-    state_code,
-    county,
-    primary_color_hex,
-    secondary_color_hex,
-    division,
-    region,
+    *,
     MD5(JSONB_BUILD_ARRAY(
         name,
         mascot,

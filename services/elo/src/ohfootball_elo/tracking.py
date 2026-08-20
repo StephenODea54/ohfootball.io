@@ -6,11 +6,11 @@ import csv
 import hashlib
 import json
 from collections import defaultdict
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, fields
 from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Iterable, Mapping
 
 from .elo import EloConfig, Prediction, RatingKey
 from .games import Game
@@ -50,8 +50,7 @@ def track_run(
             "uses_season_carryover": str(config.season_carryover > 0).lower(),
             "uses_division_prior": str(config.division_rating_step > 0).lower(),
             "uses_provisional_k": str(
-                config.provisional_games > 0
-                and config.provisional_k_multiplier > 1
+                config.provisional_games > 0 and config.provisional_k_multiplier > 1
             ).lower(),
             "team_population": "ohsaa-only",
             "uses_model_registry": "false",

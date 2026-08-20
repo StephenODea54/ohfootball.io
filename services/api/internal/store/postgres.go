@@ -32,7 +32,7 @@ type Postgres struct {
 
 func Open(ctx context.Context, databaseURL string, prediction PredictionConfig) (*Postgres, error) {
 	if prediction.RatingScale <= 0 {
-		return nil, errors.New("Elo rating scale must be greater than zero")
+		return nil, errors.New("the Elo rating scale must be more than 0")
 	}
 	client, err := database.Open(ctx, databaseURL)
 	if err != nil {
@@ -105,18 +105,7 @@ func (store *Postgres) ListTeams(
 	if err != nil {
 		return nil, err
 	}
-	search := ""
-	if searchArgument != nil {
-		search = *searchArgument
-	}
-	sort := model.TeamSortElo
-	if sortArgument != nil {
-		sort = *sortArgument
-	}
-	limit := defaultLimit
-	if limitArgument != nil {
-		limit = max(1, min(*limitArgument, maxLimit))
-	}
+	search, sort, limit := listTeamsArguments(searchArgument, sortArgument, limitArgument)
 
 	rows, err := store.client.Query(
 		ctx,
@@ -125,7 +114,7 @@ func (store *Postgres) ListTeams(
 		search,
 		regionArgument,
 		divisionArgument,
-		string(sort),
+		sort,
 		limit,
 	)
 	if err != nil {
@@ -201,6 +190,34 @@ type rowScanner interface {
 	Scan(...any) error
 }
 
+// optional returns a pointer to the value, or nil when the column held no value. A nullable field
+// of the schema carries a pointer, so a missing value stays missing.
+func optional[T any](valid bool, value T) *T {
+	if !valid {
+		return nil
+	}
+	return &value
+}
+
+// listTeamsArguments applies the defaults of the teams query. A nil argument carries no value, so
+// the default takes its place. Both stores read the same defaults, so the same query answers the
+// same way against the warehouse and against a snapshot.
+func listTeamsArguments(search *string, sort *model.TeamSort, limit *int) (string, string, int) {
+	searchTerm := ""
+	if search != nil {
+		searchTerm = *search
+	}
+	sortOrder := model.TeamSortElo
+	if sort != nil {
+		sortOrder = *sort
+	}
+	rowLimit := defaultLimit
+	if limit != nil {
+		rowLimit = max(1, min(*limit, maxLimit))
+	}
+	return searchTerm, string(sortOrder), rowLimit
+}
+
 func scanTeam(row rowScanner) (*model.Team, error) {
 	var team model.Team
 	var mascot, city, primaryColor, secondaryColor pgtype.Text
@@ -228,26 +245,12 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	); err != nil {
 		return nil, err
 	}
-	if mascot.Valid {
-		team.Mascot = &mascot.String
-	}
-	if city.Valid {
-		team.City = &city.String
-	}
-	if division.Valid {
-		value := int(division.Int16)
-		team.Division = &value
-	}
-	if region.Valid {
-		value := int(region.Int16)
-		team.Region = &value
-	}
-	if primaryColor.Valid {
-		team.PrimaryColor = &primaryColor.String
-	}
-	if secondaryColor.Valid {
-		team.SecondaryColor = &secondaryColor.String
-	}
+	team.Mascot = optional(mascot.Valid, mascot.String)
+	team.City = optional(city.Valid, city.String)
+	team.Division = optional(division.Valid, int(division.Int16))
+	team.Region = optional(region.Valid, int(region.Int16))
+	team.PrimaryColor = optional(primaryColor.Valid, primaryColor.String)
+	team.SecondaryColor = optional(secondaryColor.Valid, secondaryColor.String)
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
 	team.EloHistory = []*model.EloRating{}
 	team.Schedule = []*model.Game{}
@@ -327,17 +330,9 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 		game.Date = gameDate.Format(time.DateOnly)
 		game.Location = model.GameLocation(rawLocation)
 		game.Result = result(rawResult)
-		if teamScore.Valid {
-			value := int(teamScore.Int16)
-			game.TeamScore = &value
-		}
-		if opponentScore.Valid {
-			value := int(opponentScore.Int16)
-			game.OpponentScore = &value
-		}
-		if notes.Valid {
-			game.Notes = &notes.String
-		}
+		game.TeamScore = optional(teamScore.Valid, int(teamScore.Int16))
+		game.OpponentScore = optional(opponentScore.Valid, int(opponentScore.Int16))
+		game.Notes = optional(notes.Valid, notes.String)
 		switch {
 		// A played game keeps the prediction that was made from the ratings both teams carried
 		// into it, so the page shows what was expected rather than hindsight.
@@ -346,7 +341,7 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 				pregameProbability.Float64,
 				pregameTeamRating.Float64,
 				pregameOpponentRating.Float64,
-				pregameDate.Time,
+				pregameDate.Time.Format(time.DateOnly),
 			)
 		// An unplayed game has no stored prediction, so it is estimated from the latest ratings.
 		case game.Result == model.GameResultUnknown && teamRating.Valid && opponentRating.Valid && ratingDate.Valid:
@@ -359,7 +354,7 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 				),
 				teamRating.Float64,
 				opponentRating.Float64,
-				ratingDate.Time,
+				ratingDate.Time.Format(time.DateOnly),
 			)
 		}
 		games = append(games, &game)
@@ -382,7 +377,7 @@ func result(raw string) model.GameResult {
 	}
 }
 
-func buildPrediction(probability, teamRating, opponentRating float64, asOf time.Time) *model.GamePrediction {
+func buildPrediction(probability, teamRating, opponentRating float64, asOf string) *model.GamePrediction {
 	predictedResult := model.GameResultLoss
 	if probability >= 0.5 {
 		predictedResult = model.GameResultWin
@@ -392,7 +387,7 @@ func buildPrediction(probability, teamRating, opponentRating float64, asOf time.
 		PredictedResult: predictedResult,
 		TeamRating:      teamRating,
 		OpponentRating:  opponentRating,
-		AsOf:            asOf.Format(time.DateOnly),
+		AsOf:            asOf,
 	}
 }
 

@@ -1,11 +1,11 @@
-select *
-from {{ ref('stg_games') }}
-where notes is null
-    and result in ('W', 'L', 'T')
-    and source_team_score is not null
-    and opponent_score is not null
-    and (
-        (result = 'W' and source_team_score <= opponent_score)
-        or (result = 'L' and source_team_score >= opponent_score)
-        or (result = 'T' and source_team_score != opponent_score)
+SELECT *
+FROM {{ ref('stg_games') }}
+WHERE notes IS NULL
+    AND result IN ('W', 'L', 'T')
+    AND source_team_score IS NOT NULL
+    AND opponent_score IS NOT NULL
+    AND (
+        (result = 'W' AND source_team_score <= opponent_score)
+        OR (result = 'L' AND source_team_score >= opponent_score)
+        OR (result = 'T' AND source_team_score <> opponent_score)
     )

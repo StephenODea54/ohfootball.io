@@ -6,7 +6,7 @@ import { QueryClient } from "@tanstack/react-query"
  */
 const ONE_HOUR = 60 * 60 * 1000
 
-export const queryConfig = {
+const queryConfig = {
   queries: {
     staleTime: ONE_HOUR,
   },

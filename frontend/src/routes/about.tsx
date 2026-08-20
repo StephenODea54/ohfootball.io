@@ -13,8 +13,7 @@ export const Route = createFileRoute('/about')({
       { title: 'About — ohfootball.io' },
       {
         name: 'description',
-        content:
-          'What the ratings mean, how to find your school, and when the numbers change.',
+        content: 'What the ratings mean, how to find your school, and when the numbers change.',
       },
     ],
   }),
@@ -24,7 +23,7 @@ export const Route = createFileRoute('/about')({
 const questions = [
   {
     question: 'What Is A Rating?',
-    answer: 'One number per school. Average is about 1500. Higher is better.',
+    answer: 'A rating is meant to be a measure of how good a team is. The higher the better.',
   },
   {
     question: 'My Team Won. Why Did The Rating Barely Move?',
@@ -32,11 +31,11 @@ const questions = [
   },
   {
     question: 'What Does A 68% Win Chance Mean?',
-    answer: 'The favorite wins about 68 games out of 100. The other 32 are real. Upsets happen.',
+    answer: 'The favorite wins about 68 games out of 100, on average.',
   },
   {
     question: 'When Do Ratings Change?',
-    answer: 'After a game is played and the score is posted.',
+    answer: 'After a game is played and the score is posted, normally on a weekly basis.',
   },
   {
     question: 'Why Is My School Missing?',
@@ -44,7 +43,7 @@ const questions = [
   },
   {
     question: 'Does This Set Playoff Seeding?',
-    answer: 'No. The OHSAA does that with its own system. Nothing here affects it.',
+    answer: 'No. The OHSAA does that with its own system. This is not affiliated with the OHSAA.',
   },
 ]
 
@@ -56,8 +55,10 @@ function AboutRoute() {
       <Container className="max-w-3xl py-12 sm:py-16 lg:py-20">
         <Heading className="text-4xl/none sm:text-5xl/none">About</Heading>
         <Text className="mt-4 text-base/7 sm:text-lg/8">
-          This site rates every Ohio high school football team and guesses who wins the games that
-          have not been played yet. No math needed.
+          This site is an incredibly nerdy attempt at rating and making predictions
+          for Ohio high school football teams. The ratings and predictions are solely based on historical win and loss
+          results, and predictions are made using a statistical model. The current accuracy
+          of the predictions hover around 80%.
         </Text>
 
         <div className="mt-8 flex flex-wrap gap-3">
@@ -94,9 +95,9 @@ function AboutRoute() {
             Fine Print
           </Heading>
           <ul className="mt-4 space-y-3 text-muted-fg text-sm/6">
-            <li>Not affiliated with the OHSAA, any school, or Joe Eitel.</li>
+            <li>Not affiliated with the OHSAA, any school, Joe Eitel, or any other entity.</li>
             <li>A prediction is a guess, not a promise.</li>
-            <li>Scores come from public results. Bad data in, bad data out.</li>
+            <li>Scores come from public results. Predictions are a reflection of that, whether right or wrong.</li>
           </ul>
           <Text className="mt-6 text-sm/6">
             Want the math? Read the{' '}

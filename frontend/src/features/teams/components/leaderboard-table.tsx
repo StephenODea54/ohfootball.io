@@ -8,25 +8,27 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { Text } from "@/components/ui/text"
 import { paths } from "@/config/paths"
 import { TeamFilterControls } from "@/features/teams/components/team-filter-controls"
-import { formatDivision, formatRecord } from "@/features/teams/utils/format"
+import { formatRecord, teamMeta } from "@/features/teams/utils/format"
 import {
   EMPTY_TEAM_FILTERS,
   filterTeams,
   type TeamFilterState,
 } from "@/features/teams/utils/filter-teams"
-import type { Team } from "@/types/api"
+import type { Team, TeamRating } from "@/types/api"
+
+type RatedTeam = Team & { rating: TeamRating }
 
 /** Every rated school for a season, ranked, with the filters that narrow the list. */
 export function LeaderboardTable({ season, teams }: { season: number | undefined; teams: Team[] }) {
   const [filters, setFilters] = useState<TeamFilterState>(EMPTY_TEAM_FILTERS)
   const ratedTeams = useMemo(
-    () => filterTeams(teams, filters).filter((team) => team.rating),
+    () => filterTeams(teams, filters).filter((team): team is RatedTeam => team.rating !== null),
     [teams, filters],
   )
 
   // The bar in each row is drawn against the range of the teams currently on screen, so a narrow
   // filter still spreads its teams across the full width instead of bunching them together.
-  const ratings = ratedTeams.map((team) => team.rating!.value)
+  const ratings = ratedTeams.map((team) => team.rating.value)
   const highestRating = ratings.length > 0 ? Math.max(...ratings) : 0
   const ratingFloor = ratings.length > 0 ? Math.min(...ratings) : 0
   const ratingRange = highestRating - ratingFloor
@@ -49,7 +51,7 @@ export function LeaderboardTable({ season, teams }: { season: number | undefined
               </TableHeader>
               <TableBody items={ratedTeams}>
                 {(team) => {
-                  const rating = team.rating!.value
+                  const rating = team.rating.value
                   const progress = ratingRange === 0
                     ? 100
                     : ((rating - ratingFloor) / ratingRange) * 100
@@ -57,7 +59,7 @@ export function LeaderboardTable({ season, teams }: { season: number | undefined
                   return (
                     <TableRow id={team.id}>
                       <TableCell className="font-semibold text-lg/6 text-muted-fg">
-                        {team.rating!.rank}
+                        {team.rating.rank}
                       </TableCell>
                       <TableCell>
                         <div className="py-1">
@@ -67,13 +69,7 @@ export function LeaderboardTable({ season, teams }: { season: number | undefined
                           >
                             {team.name}
                           </Link>
-                          <p className="text-muted-fg text-sm/5">
-                            {[
-                              team.city,
-                              team.region ? `Region ${team.region}` : null,
-                              formatDivision(team.division),
-                            ].filter(Boolean).join(" · ")}
-                          </p>
+                          <p className="text-muted-fg text-sm/5">{teamMeta(team)}</p>
                         </div>
                       </TableCell>
                       <TableCell className="text-end font-medium text-fg">

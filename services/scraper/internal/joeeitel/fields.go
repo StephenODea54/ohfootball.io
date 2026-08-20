@@ -10,11 +10,6 @@ import (
 
 var divisionPattern = regexp.MustCompile(`(?i)(?:OHSAA\s+)?Division\s+([IVXLC]+|\d+)(?:\s*,\s*Region\s+(\d+))?`)
 
-// This file holds the field extractors that every page format shares. The
-// markup of the site changed over the years, but these fields read the same
-// way in each generation. A format-specific extractor belongs with its format,
-// not here.
-
 // ParseMascot returns the part of the display name that follows the school
 // name. The site writes the two together, as in "Ada Bulldogs". It returns an
 // empty string when the display name does not begin with the school name.

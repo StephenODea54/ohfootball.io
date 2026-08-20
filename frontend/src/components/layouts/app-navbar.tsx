@@ -82,13 +82,7 @@ export function AppNavbar() {
   )
 
   return (
-    <NavbarProvider
-      style={
-        {
-          "--navbar": "var(--color-bg)",
-        } as React.CSSProperties
-      }
-    >
+    <NavbarProvider style={{ "--navbar": "var(--color-bg)" } as React.CSSProperties}>
       <Navbar intent="default" isSticky>
         <NavbarStart>
           <Wordmark className="font-semibold" />

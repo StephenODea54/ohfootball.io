@@ -3,6 +3,7 @@ package ohhsfbdb
 import (
 	"errors"
 	"html"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -68,7 +69,7 @@ func TestParseSheetReadsTheSavedSheet(t *testing.T) {
 	for _, game := range games {
 		seasons = append(seasons, game.Season)
 	}
-	if !contains(seasons, 2015) {
+	if !slices.Contains(seasons, 2015) {
 		t.Errorf("the seasons are %v, want them to include 2015", seasons)
 	}
 
@@ -321,13 +322,4 @@ func TestParseSheetReadsARowThatStopsEarly(t *testing.T) {
 	if len(summaries) != 0 {
 		t.Errorf("ParseSheet returned %d season summaries, want 0", len(summaries))
 	}
-}
-
-func contains(values []int, want int) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
 }

@@ -1,9 +1,9 @@
-import { env } from "@/config/env"
-
 /**
  * The single place the front end talks to the API. Every feature goes through this function, so
  * the transport can be swapped without touching the code that asks for data.
  */
+
+import { env } from "@/config/env"
 
 const DEFAULT_URL = "http://localhost:8082/graphql"
 

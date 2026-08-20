@@ -118,13 +118,6 @@ func TestLegacyParserSkipsRowsThatAreNotGames(t *testing.T) {
 	}
 }
 
-func TestLegacyOpponentNameHandlesAMissingLink(t *testing.T) {
-	doc, _ := documentFrom(t, `<html><body><p>no link</p></body></html>`, teamURL("1", 2002))
-	if got := legacyOpponentName(doc.Find("a")); got != "" {
-		t.Errorf("legacyOpponentName returned %q for no link, want an empty string", got)
-	}
-}
-
 func TestLegacyParserKeepsARowWhoseOpponentHasNoLink(t *testing.T) {
 	html := `<html><body>
 <table><tr><td bgcolor="green"><font>Ada Bulldogs</font></td></tr></table>

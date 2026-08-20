@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from ohfootball_predictor.publisher import (
+from ohfootball_elo.publisher import (
     GamePredictionRow,
     RatingSnapshot,
     publish_predictions,

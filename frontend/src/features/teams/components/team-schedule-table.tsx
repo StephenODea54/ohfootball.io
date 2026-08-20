@@ -1,10 +1,10 @@
 "use client"
 
+import { twJoin } from "tailwind-merge"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ProgressBar, ProgressBarTrack } from "@/components/ui/progress-bar"
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
-import { Text } from "@/components/ui/text"
 import { formatDayAndMonth } from "@/utils/format"
 import type { Game, Team } from "@/types/api"
 
@@ -65,11 +65,6 @@ export function TeamScheduleTable({ team }: { team: Team }) {
           </Table>
         </CardContent>
       </Card>
-      <Text className="mt-3 text-xs/5">
-        A played game shows the probability calculated from the ratings both teams carried into it.
-        An upcoming game uses the latest published ratings. Opponents outside the rated Ohio
-        population show as not rated.
-      </Text>
     </>
   )
 }
@@ -92,7 +87,7 @@ function GameResult({ game }: { game: Game }) {
       ? "text-danger-subtle-fg"
       : "text-muted-fg"
 
-  return <p className={`font-semibold text-sm/5 ${color}`}>{label}{score}</p>
+  return <p className={twJoin("font-semibold text-sm/5", color)}>{label}{score}</p>
 }
 
 function locationLabel(game: Game) {

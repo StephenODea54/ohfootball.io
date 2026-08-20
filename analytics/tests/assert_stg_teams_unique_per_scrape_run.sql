@@ -1,7 +1,7 @@
-select
+SELECT
     scrape_run_id,
     team_id,
-    count(*) as record_count
-from {{ ref('stg_teams') }}
-group by scrape_run_id, team_id
-having count(*) > 1
+    COUNT(*) AS record_count
+FROM {{ ref('stg_teams') }}
+GROUP BY scrape_run_id, team_id
+HAVING COUNT(*) > 1

@@ -23,8 +23,8 @@ staged AS (
                 'YYYY/MM/DD'
             )
         END AS game_date,
-        -- H, A, and N. A game on neither ground leaves both flags false, which
-        -- is how the other source records the same thing.
+        -- A game on neither ground leaves both flags false, which is how the
+        -- other source records the same thing.
         COALESCE(UPPER(NULLIF(TRIM(home_away), '')) = 'H', FALSE) AS is_source_team_home,
         COALESCE(UPPER(NULLIF(TRIM(home_away), '')) = 'A', FALSE) AS is_opponent_team_home,
         NULLIF(TRIM(opponent_name), '') AS opponent_name,

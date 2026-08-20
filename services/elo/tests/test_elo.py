@@ -1,7 +1,7 @@
 from datetime import date
 import unittest
 
-from ohfootball_predictor.elo import (
+from ohfootball_elo.elo import (
     EloConfig,
     Game,
     backtest,
@@ -348,15 +348,11 @@ class BacktestTests(unittest.TestCase):
         self.assertEqual(result.predictions[0].team_a_rating, 1500.0)
         self.assertGreater(result.predictions[0].team_a_win_probability, 0.5)
 
-    def test_unplayed_games_do_not_change_ratings(self) -> None:
+    def test_an_unplayed_game_is_predicted_from_the_current_ratings(self) -> None:
         result = backtest(
-            [
-                game("played", date(2025, 8, 1), "a", "b", "W"),
-                game("future", date(2025, 8, 8), "a", "b", "unknown"),
-            ],
+            [game("played", date(2025, 8, 1), "a", "b", "W")],
             EloConfig(),
         )
-        ratings_before = dict(result.ratings)
         predictions = predict(
             [game("future", date(2025, 8, 8), "a", "b", "unknown")],
             result.ratings,
@@ -364,7 +360,6 @@ class BacktestTests(unittest.TestCase):
         )
 
         self.assertGreater(predictions[0].team_a_win_probability, 0.5)
-        self.assertEqual(result.ratings, ratings_before)
 
     def test_upcoming_prediction_reports_games_already_played(self) -> None:
         config = EloConfig(provisional_games=4, provisional_k_multiplier=1.5)

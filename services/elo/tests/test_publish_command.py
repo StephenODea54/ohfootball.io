@@ -9,9 +9,9 @@ from contextlib import redirect_stdout
 from datetime import date
 from unittest.mock import patch
 
-from ohfootball_predictor import cli
-from ohfootball_predictor.games import Game
-from ohfootball_predictor.publisher import TeamSeason
+from ohfootball_elo import cli
+from ohfootball_elo.games import Game
+from ohfootball_elo.publisher import TeamSeason
 
 
 def game(season: int, day: date, team_a: str, team_b: str) -> Game:

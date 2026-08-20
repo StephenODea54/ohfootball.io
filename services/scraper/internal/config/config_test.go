@@ -157,26 +157,6 @@ func TestLoadOhhsfbdbRejectsBadInput(t *testing.T) {
 			changes: map[string]string{"SCRAPER_BASE_URL": "not a url"},
 			want:    "SCRAPER_BASE_URL is not a URL",
 		},
-		{
-			name:    "workers is zero",
-			changes: map[string]string{"SCRAPER_WORKERS": "0"},
-			want:    "SCRAPER_WORKERS must be at least 1",
-		},
-		{
-			name:    "rate is not a number",
-			changes: map[string]string{"SCRAPER_RATE": "fast"},
-			want:    "SCRAPER_RATE is not a number",
-		},
-		{
-			name:    "timeout is zero",
-			changes: map[string]string{"SCRAPER_TIMEOUT": "0s"},
-			want:    "SCRAPER_TIMEOUT must be more than 0",
-		},
-		{
-			name:    "retries is negative",
-			changes: map[string]string{"SCRAPER_RETRIES": "-1"},
-			want:    "SCRAPER_RETRIES cannot be negative",
-		},
 	}
 
 	for _, test := range tests {

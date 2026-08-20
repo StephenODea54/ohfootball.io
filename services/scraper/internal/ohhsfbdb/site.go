@@ -52,11 +52,6 @@ func newDocument(body []byte, pageURL string) (*goquery.Document, *url.URL, erro
 	return doc, base, nil
 }
 
-// NewDocument parses a page body for a caller outside this package.
-func NewDocument(body []byte, pageURL string) (*goquery.Document, *url.URL, error) {
-	return newDocument(body, pageURL)
-}
-
 // sheetOf returns the sheet that a link points to. The second result is false
 // when the link points elsewhere.
 //

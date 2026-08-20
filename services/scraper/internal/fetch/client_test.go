@@ -455,8 +455,12 @@ func TestWaitForRetryHonorsAnHTTPDate(t *testing.T) {
 	if err := waitForRetry(context.Background(), 0, retryAt); err != nil {
 		t.Fatalf("waitForRetry returned %v", err)
 	}
-	if elapsed := time.Since(start); elapsed < 500*time.Millisecond {
-		t.Errorf("waitForRetry waited %v, want at least 500ms from the HTTP date", elapsed)
+	// An HTTP date names a whole second, so the format drops the part of the
+	// second that start holds. The wait is therefore between 100ms and 1100ms.
+	// The backoff of this test is one millisecond, so a longer wait can only
+	// come from the date.
+	if elapsed := time.Since(start); elapsed < 50*time.Millisecond {
+		t.Errorf("waitForRetry waited %v, want the wait that the HTTP date names", elapsed)
 	}
 }
 

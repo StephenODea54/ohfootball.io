@@ -23,9 +23,6 @@ func (legacyParser) Name() string { return "legacy" }
 
 func (legacyParser) Matches(doc *goquery.Document) bool {
 	header := legacyHeader(doc)
-	if header.Length() == 0 {
-		return false
-	}
 	if _, hasColor := header.Attr("bgcolor"); hasColor {
 		return true
 	}
@@ -96,9 +93,6 @@ func legacyHeader(doc *goquery.Document) *goquery.Selection {
 // legacyOpponentName drops the win and loss record, which the page writes in a
 // font element inside the link.
 func legacyOpponentName(link *goquery.Selection) string {
-	if link.Length() == 0 {
-		return ""
-	}
 	clone := link.Clone()
 	clone.Find("font").Remove()
 	return joeeitel.CleanText(clone.Text())

@@ -5,9 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections.abc import Iterable
 from dataclasses import asdict, replace
 from datetime import date, datetime
-from typing import Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .elo import EloConfig, Prediction, backtest, initial_team_rating, predict
@@ -130,8 +130,6 @@ def _float_values(raw_values: str) -> tuple[float, ...]:
         values = tuple(float(value.strip()) for value in raw_values.split(","))
     except ValueError as error:
         raise argparse.ArgumentTypeError("values must be comma-separated numbers") from error
-    if not values:
-        raise argparse.ArgumentTypeError("at least one value is required")
     return values
 
 
@@ -283,18 +281,14 @@ def _publish(arguments: argparse.Namespace) -> None:
     result = backtest(training_games, config)
 
     # One backtest walks the whole record and keeps the rating of every team in
-    # every season, so every season is published from that one pass. A season
-    # of the past keeps the rating it ended with, dated the last day of its own
-    # year. The season in progress is dated the day of the run.
-    #
-    # The publisher replaces one season and date at a time, so each season is
-    # its own call. The reading of the games and the backtest are the costly
-    # part, and they happen once.
+    # every season. A season of the past keeps the rating it ended with, dated
+    # the last day of its own year. The season in progress is dated the day of
+    # the run. The publisher replaces one season and date at a time, so each
+    # season needs its own call.
     published = 0
     published_seasons = 0
-    for season in sorted({game.season for game in games} | {current_season}):
-        if season > current_season:
-            continue
+    seasons = {game.season for game in games if game.season <= current_season}
+    for season in sorted(seasons | {current_season}):
         teams = load_team_seasons(
             arguments.database_url,
             season=season,

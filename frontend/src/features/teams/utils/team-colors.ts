@@ -24,7 +24,7 @@ const NAMED_COLORS: Record<string, string> = {
 }
 
 /** Turns a scraped color into six-digit hex. Returns null when the value cannot be read. */
-export function normalizeColor(value: string | null | undefined): string | null {
+function normalizeColor(value: string | null | undefined): string | null {
   if (!value) return null
 
   const trimmed = value.trim()

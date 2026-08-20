@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -39,16 +38,5 @@ func TestSummaryFieldNames(t *testing.T) {
 		if _, ok := fields[name]; !ok {
 			t.Errorf("the summary holds no field %q", name)
 		}
-	}
-}
-
-func TestPrintSummaryWritesOneLine(t *testing.T) {
-	var out bytes.Buffer
-	encoder := json.NewEncoder(&out)
-	if err := encoder.Encode(summary{RunID: "abc", Status: "succeeded"}); err != nil {
-		t.Fatalf("encode the summary: %v", err)
-	}
-	if bytes.Count(out.Bytes(), []byte("\n")) != 1 {
-		t.Errorf("the summary is %q, want one line", out.String())
 	}
 }

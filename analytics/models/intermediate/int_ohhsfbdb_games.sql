@@ -1,6 +1,3 @@
--- One row for each game as one school recorded it, with the opponent resolved
--- to an identifier.
---
 -- The opponent cell holds a name, not an identifier, so the name must lead
 -- somewhere. Four things resolve it, in this order.
 --
@@ -64,11 +61,6 @@ sheet_aliases AS (
 ),
 
 -- The row of the other school, for the same game.
---
--- Two rows describe one game when they share the season, the day, and the
--- scores the other way about, and when the grounds agree. The last condition
--- is the one that matters: the other row must name this school. Without it,
--- two unrelated games with the same score on the same night would match.
 mirrors AS (
     SELECT
         a.game_record_id,
@@ -86,7 +78,6 @@ mirrors AS (
     INNER JOIN sheet_aliases AS alias
         ON alias.sheet = a.sheet
        AND alias.name = b.opponent_name
-    WHERE a.game_date IS NOT NULL
     GROUP BY a.game_record_id
 ),
 

@@ -1,6 +1,6 @@
 import unittest
 
-from ohfootball_predictor.repository import _build_query
+from ohfootball_elo.repository import _build_query
 
 
 class RepositoryContractTests(unittest.TestCase):

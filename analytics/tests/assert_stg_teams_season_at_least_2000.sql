@@ -1,3 +1,3 @@
-select *
-from {{ ref('stg_teams') }}
-where season < 2000
+SELECT *
+FROM {{ ref('stg_teams') }}
+WHERE season < 2000

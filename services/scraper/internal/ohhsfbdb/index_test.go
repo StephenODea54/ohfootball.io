@@ -2,6 +2,7 @@ package ohhsfbdb
 
 import (
 	"errors"
+	"slices"
 	"testing"
 )
 
@@ -87,14 +88,8 @@ func TestSheetsDropsRepeats(t *testing.T) {
 		{Position: 2, Name: "Ada", Sheet: "sheet002"},
 		{Position: 3, Name: "Dayton Roosevelt", Sheet: "sheet739"},
 	}
-	got := Sheets(entries)
 	want := []string{"sheet739", "sheet002"}
-	if len(got) != len(want) {
-		t.Fatalf("Sheets returned %v, want %v", got, want)
-	}
-	for number, sheet := range want {
-		if got[number] != sheet {
-			t.Errorf("Sheets returned %v, want %v", got, want)
-		}
+	if got := Sheets(entries); !slices.Equal(got, want) {
+		t.Errorf("Sheets returned %v, want %v", got, want)
 	}
 }

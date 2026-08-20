@@ -1,4 +1,4 @@
-# Elo predictor
+# Elo
 
 This service turns the canonical game history in `ohfootball_marts.fct_games`
 into pregame win probabilities. The first version intentionally implements a
@@ -65,7 +65,7 @@ represented by Elo's complementary, zero-sum result update.
 
 ## Running it
 
-Build the dbt marts, start MLflow, and run the predictor:
+Build the dbt marts, start MLflow, and run the model:
 
 ```bash
 make dbt-build

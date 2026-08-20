@@ -37,9 +37,8 @@ observations AS (
     INNER JOIN successful_runs AS runs USING (scrape_run_id)
 )
 
--- The warehouse reads two sites. Each one has its own raw tables and its own
--- staging models, and they meet here. The seasons do not overlap, so no team
--- and season pair comes from both.
+-- The two sites cover different seasons, so no team and season pair comes from
+-- both.
 SELECT * FROM observations
 
 UNION ALL

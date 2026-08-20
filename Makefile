@@ -1,7 +1,8 @@
 .PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs \
 	infra-install infra-test infra-synth infra-diff db-migrate \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
-	predictor-build predictor-test mlflow-up mlflow-down elo-run elo-sweep
+	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
+	dataset-build dataset-test dataset-export
 
 DBT := docker compose run --rm dbt
 
@@ -13,13 +14,15 @@ test:
 	$(MAKE) -C services/scraper test
 	go -C pkg/database test ./...
 	$(MAKE) -C services/api test
-	$(MAKE) -C services/predictor test
+	$(MAKE) -C services/elo test
+	$(MAKE) -C services/dataset test
 
 vet:
 	$(MAKE) -C services/scraper vet
 	go -C pkg/database vet ./...
 	$(MAKE) -C services/api vet
-	$(MAKE) -C services/predictor vet
+	$(MAKE) -C services/elo vet
+	$(MAKE) -C services/dataset vet
 
 fmt:
 	$(MAKE) -C services/scraper fmt
@@ -79,11 +82,11 @@ dbt-docs-generate:
 dbt-docs-serve:
 	docker compose run --rm --service-ports dbt docs serve --host 0.0.0.0 --port 8081
 
-predictor-build:
-	docker compose build predictor
+elo-build:
+	docker compose build elo
 
-predictor-test:
-	$(MAKE) -C services/predictor test
+elo-test:
+	$(MAKE) -C services/elo test
 
 mlflow-up:
 	docker compose --profile tools up -d --wait mlflow
@@ -92,10 +95,21 @@ mlflow-down:
 	docker compose --profile tools stop mlflow
 
 elo-run:
-	docker compose run --rm predictor run $(ARGS)
+	docker compose run --rm elo run $(ARGS)
 
 elo-sweep:
-	docker compose run --rm predictor sweep $(ARGS)
+	docker compose run --rm elo sweep $(ARGS)
+
+dataset-build:
+	docker compose build dataset
+
+dataset-test:
+	$(MAKE) -C services/dataset test
+
+# Writes the files a publication would send, and sends nothing. The files land in
+# services/dataset/export, which Git ignores.
+dataset-export:
+	docker compose run --rm dataset export --directory /export $(ARGS)
 
 # The stacks keep their own dependencies, so they are not part of the top level test target. A
 # synth reads no account and no network, so it runs without credentials.

@@ -15,7 +15,6 @@ import (
 
 type fakeStore struct {
 	season  int
-	seasons []int
 	pingErr error
 }
 
@@ -23,7 +22,7 @@ func (fake *fakeStore) Ping(context.Context) error { return fake.pingErr }
 
 func (fake *fakeStore) CurrentSeason(context.Context) (int, error) { return fake.season, nil }
 
-func (fake *fakeStore) Seasons(context.Context) ([]int, error) { return fake.seasons, nil }
+func (fake *fakeStore) Seasons(context.Context) ([]int, error) { return nil, nil }
 
 func (fake *fakeStore) ListTeams(
 	context.Context, *int, *string, *int, *int, *model.TeamSort, *int,
@@ -192,8 +191,8 @@ func TestCORS(t *testing.T) {
 	}
 }
 
-// TestWebsocketTransportIsNotAdvertised guards the transport list. A function that returns one
-// buffered response cannot hold a websocket open, so the transport must stay out.
+// A function that returns one buffered response cannot hold a websocket open, so the websocket
+// transport must stay out of the transport list.
 func TestWebsocketTransportIsNotAdvertised(t *testing.T) {
 	handler := New(&fakeStore{}, Options{})
 

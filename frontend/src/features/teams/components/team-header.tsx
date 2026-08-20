@@ -1,8 +1,9 @@
 "use client"
 
+import { twJoin } from "tailwind-merge"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
-import { formatDivision, formatRecord } from "@/features/teams/utils/format"
+import { formatRecord, teamMeta } from "@/features/teams/utils/format"
 import type { Team } from "@/types/api"
 
 /** The name of a school with the three numbers that summarize its season. */
@@ -12,14 +13,7 @@ export function TeamHeader({ team }: { team: Team }) {
   return (
     <header className="mt-6 grid gap-8 border-b pb-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
       <div>
-        <Text className="font-medium">
-          {[
-            team.city,
-            team.region ? `Region ${team.region}` : null,
-            formatDivision(team.division),
-            team.season,
-          ].filter(Boolean).join(" · ")}
-        </Text>
+        <Text className="font-medium">{`${teamMeta(team)} · ${team.season}`}</Text>
         <Heading className="mt-1 text-4xl/none sm:text-5xl/none">
           {team.name}{team.mascot && <span className="text-muted-fg"> {team.mascot}</span>}
         </Heading>
@@ -38,7 +32,7 @@ function TeamStat({ label, value, accent = false }: { label: string; value: stri
   return (
     <div>
       <dt className="text-xs/5 font-medium uppercase tracking-wide text-muted-fg">{label}</dt>
-      <dd className={`mt-0.5 text-2xl/7 font-semibold ${accent ? "text-success-subtle-fg" : "text-fg"}`}>{value}</dd>
+      <dd className={twJoin("mt-0.5 text-2xl/7 font-semibold", accent ? "text-success-subtle-fg" : "text-fg")}>{value}</dd>
     </div>
   )
 }

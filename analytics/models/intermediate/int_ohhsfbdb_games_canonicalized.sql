@@ -1,6 +1,3 @@
--- One row for each game of ohhsfbdb.net, built from the one or two schools
--- that recorded it.
---
 -- The shape matches int_games_canonicalized, because the two feed one fact
 -- table. Only the games whose opponent resolved take part. A game whose
 -- opponent did not resolve stays in int_ohhsfbdb_games with its flag, and it is

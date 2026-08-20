@@ -22,13 +22,15 @@ function or a distribution that is replaced needs `OhfootballEtl` deployed again
 ## The weekly run
 
     Scrape -> Transform -> Rate -> Package -> PublishApi -> BuildSite -> ClearCache
+      -> PublishDataset
 
-Each of the first four and the sixth is a container the pipeline waits for. `PublishApi` and
+Each step but `PublishApi` and `ClearCache` is a container the pipeline waits for. `PublishApi` and
 `ClearCache` call the service directly, so neither needs a container of its own.
 
 Each container has a registry of its own under `ohfootball/`. The code pipeline pushes to them.
 The images are built from `services/scraper/Dockerfile`, `analytics/Dockerfile`,
-`services/predictor/Dockerfile`, `services/api/cmd/snapshot/Dockerfile`, and `frontend/Dockerfile`.
+`services/elo/Dockerfile`, `services/api/cmd/snapshot/Dockerfile`, `frontend/Dockerfile`, and
+`services/dataset/Dockerfile`.
 
 `Package` writes the snapshot from the warehouse, fetches the binary the code pipeline last built,
 and puts the two together. That split keeps a weekly data run from needing a Go toolchain, and
@@ -36,6 +38,29 @@ keeps a code change from needing the warehouse.
 
 Only the password reaches a task from Secrets Manager. Everything else about the connection is
 plain, and the connection string carries no password, so the tasks read it the way libpq does.
+
+`PublishDataset` writes the marts out as CSV and publishes them to Kaggle as one dataset with a
+version per run. It is last because nothing else in the run reads what it writes, so Kaggle being
+down costs the publication of the dataset and not the publication of the site. It fails the
+execution when Kaggle refuses, after two retries, and no alarm is raised anywhere in this stack, so
+a failure shows in the history of the state machine and nowhere else.
+
+The Kaggle account, its token, and the name of the dataset are held in one secret created by hand.
+Reading one key out of a secret needs the whole ARN of that secret, including the suffix minted
+when it was created, so the ARN is read from `/ohfootball/kaggle/secret-arn` rather than written
+into the stack. Both the secret and the parameter have to exist before this stack is deployed. A
+task whose secret is missing fails before its container starts.
+
+```sh
+arn=$(aws secretsmanager create-secret --name ohfootball/kaggle \
+  --description 'Kaggle account that owns the published dataset' \
+  --secret-string '{"username":"...","key":"...","dataset":"owner/slug"}' \
+  --query ARN --output text)
+aws ssm put-parameter --name /ohfootball/kaggle/secret-arn --type String --value "$arn"
+```
+
+The dataset does not have to exist. The first run creates it, public, under CC0-1.0, and every run
+after that adds a version to it.
 
 ## The size of the site
 
@@ -79,7 +104,7 @@ Two workflows publish code. Neither touches the data.
 request. The pre-commit hook runs the same things, but it can be skipped and it only guards the
 machine it runs on.
 
-`deploy.yml` publishes on a merge to main. It builds the six images and pushes them, builds the
+`deploy.yml` publishes on a merge to main. It builds the seven images and pushes them, builds the
 arm64 binary and writes it to the artifact bucket, then deploys the four stacks. The weekly run
 cannot do any of this itself: a task pulls its image before it starts, so it cannot build the image
 it runs on, and it cannot build the binary it packs with the snapshot.
@@ -126,6 +151,11 @@ npx cdk deploy OhfootballEtl
 ```
 
 After that the workflows own it, and the only step done by hand is starting a run out of turn.
+
+A step added to the run needs its registry before its image can be pushed, and the registry is
+raised by this stack. So the stack is deployed first and the image is pushed after. Between the two
+the run holds a step pointing at an empty registry, and a scheduled run in that window fails on the
+image it cannot pull. Deploy the two together, and away from Tuesday morning.
 
 ## Names
 

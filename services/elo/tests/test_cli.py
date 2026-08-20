@@ -1,6 +1,7 @@
+import argparse
 import unittest
 
-from ohfootball_predictor.cli import build_parser
+from ohfootball_elo.cli import _float_values, _season_range, build_parser
 
 
 class CommandLineTests(unittest.TestCase):
@@ -23,6 +24,14 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(arguments.tuning_seasons, (2000, 2021))
         self.assertEqual(arguments.validation_seasons, (2022, 2023))
 
+    def test_rejects_malformed_sweep_arguments(self) -> None:
+        with self.assertRaises(argparse.ArgumentTypeError):
+            _float_values("16,many")
+        with self.assertRaises(argparse.ArgumentTypeError):
+            _season_range("2000")
+        with self.assertRaises(argparse.ArgumentTypeError):
+            _season_range("2021:2000")
+
     def test_every_rating_parameter_can_be_swept(self) -> None:
         # The rating scale sets how a rating difference becomes a probability,
         # so it must be tunable together with the K factor.
@@ -34,20 +43,6 @@ class CommandLineTests(unittest.TestCase):
 
                 self.assertEqual(arguments.parameter, parameter)
                 self.assertEqual(arguments.values, (1.5, 2.0))
-
-    def test_parses_provisional_strategy(self) -> None:
-        arguments = build_parser().parse_args(
-            [
-                "run",
-                "--provisional-games",
-                "4",
-                "--provisional-k-multiplier",
-                "1.5",
-            ]
-        )
-
-        self.assertEqual(arguments.provisional_games, 4)
-        self.assertEqual(arguments.provisional_k_multiplier, 1.5)
 
     def test_publish_uses_production_strategy(self) -> None:
         arguments = build_parser().parse_args(["publish", "--season", "2026"])

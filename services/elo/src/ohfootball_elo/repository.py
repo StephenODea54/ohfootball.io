@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from .games import Game
 
@@ -22,7 +21,7 @@ def load_games(database_url: str, *, marts_schema: str = "ohfootball_marts") -> 
     from psycopg.rows import dict_row
 
     with psycopg.connect(database_url, row_factory=dict_row) as connection:
-        rows: list[dict[str, Any]] = connection.execute(query).fetchall()
+        rows = connection.execute(query).fetchall()
 
     return tuple(
         Game(

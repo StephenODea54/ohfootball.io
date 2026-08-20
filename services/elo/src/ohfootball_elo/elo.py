@@ -82,14 +82,11 @@ def win_probability(
     rating_scale: float = 400.0,
 ) -> float:
     """Return team A's expected score against team B."""
-    if rating_scale <= 0:
-        raise ValueError("rating_scale must be greater than zero")
     return 1.0 / (1.0 + 10.0 ** ((rating_b - rating_a) / rating_scale))
 
 
 def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
-    """Predict completed games, then update ratings after each game day.
-    """
+    """Predict completed games, then update ratings after each game day."""
     completed_games = chronological(game for game in games if game.is_rateable)
     ratings: dict[RatingKey, float] = {}
     program_ratings: dict[str, tuple[int, float]] = {}
@@ -171,8 +168,8 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
             )
             ratings[team] = starting_rating + change
             program_ratings[daily_programs[team]] = (team[0], ratings[team])
-        for team, games in daily_game_counts.items():
-            games_played[team] += games
+        for team, count in daily_game_counts.items():
+            games_played[team] += count
 
     return BacktestResult(
         predictions=tuple(predictions),
@@ -341,9 +338,7 @@ def initial_team_rating(
     previous_season, previous_rating = previous
     if previous_season >= season:
         return prior_rating
-    return prior_rating + config.season_carryover * (
-        previous_rating - prior_rating
-    )
+    return prior_rating + config.season_carryover * (previous_rating - prior_rating)
 
 
 def _prediction(

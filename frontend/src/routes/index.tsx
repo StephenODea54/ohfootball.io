@@ -15,7 +15,7 @@ export const Route = createFileRoute('/')({
       { title: 'ohfootball.io — Ohio High School Football Ratings' },
       {
         name: 'description',
-        content: 'Look up any Ohio high school football team and see how good it is.',
+        content: 'Look up any Ohio high school football team and see their statistical ratings and game predictions',
       },
     ],
   }),
@@ -41,7 +41,7 @@ function Home() {
           ohfootball<span className="text-primary">.io</span>
         </Heading>
         <Text className="mt-4 text-base/7 sm:text-lg/8">
-          See how good your school's football team is.
+          Statistical ratings and game predictions for every Ohio high school football team.
         </Text>
 
         <div className="mt-8 max-w-2xl">

@@ -10,29 +10,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// TestScrapeQueries runs every query of one scrape run against the development
-// database. The whole test runs in one transaction, which it rolls back, so it
-// leaves no rows for the analytics models to read.
-func TestScrapeQueries(t *testing.T) {
+// openClient connects to the development database, or skips the test when no
+// DATABASE_URL is set.
+func openClient(t *testing.T) *database.Client {
+	t.Helper()
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("DATABASE_URL is not set")
 	}
 
-	ctx := context.Background()
-	client, err := database.Open(ctx, databaseURL)
+	client, err := database.Open(context.Background(), databaseURL)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Open returned %v", err)
 	}
-	defer client.Close()
+	t.Cleanup(client.Close)
+	return client
+}
+
+// TestScrapeQueries runs the queries of one scrape run against the development
+// database. The whole test runs in one transaction, which it rolls back, so it
+// leaves no rows for the analytics models to read.
+func TestScrapeQueries(t *testing.T) {
+	client := openClient(t)
+	ctx := context.Background()
 
 	if err := client.Ping(ctx); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Ping returned %v", err)
 	}
 
 	transaction, err := client.Begin(ctx)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Begin returned %v", err)
 	}
 	defer transaction.Rollback(ctx)
 	queries := client.WithTx(transaction)
@@ -42,7 +50,7 @@ func TestScrapeQueries(t *testing.T) {
 		RootUrl:        "https://example.com",
 	})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("StartScrapeRun returned %v", err)
 	}
 
 	if err := queries.InsertTeam(ctx, db.InsertTeamParams{
@@ -51,7 +59,7 @@ func TestScrapeQueries(t *testing.T) {
 		TeamID:      "test-team",
 		Name:        pgtype.Text{String: "Test Team", Valid: true},
 	}); err != nil {
-		t.Fatal(err)
+		t.Fatalf("InsertTeam returned %v", err)
 	}
 
 	gameCount, err := queries.InsertGames(ctx, []db.InsertGamesParams{{
@@ -61,7 +69,7 @@ func TestScrapeQueries(t *testing.T) {
 		OpponentTeamID: pgtype.Text{String: "test-opponent", Valid: true},
 	}})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("InsertGames returned %v", err)
 	}
 	if gameCount != 1 {
 		t.Fatalf("inserted %d games, want 1", gameCount)
@@ -71,14 +79,14 @@ func TestScrapeQueries(t *testing.T) {
 		ID:     runID,
 		Status: "succeeded",
 	}); err != nil {
-		t.Fatal(err)
+		t.Fatalf("FinishScrapeRun returned %v", err)
 	}
 
 	var teamCount int
 	row := transaction.QueryRow(ctx,
 		"SELECT count(*) FROM ohfootball_raw.teams WHERE scrape_run_id = $1", runID)
 	if err := row.Scan(&teamCount); err != nil {
-		t.Fatal(err)
+		t.Fatalf("count the stored teams: %v", err)
 	}
 	if teamCount != 1 {
 		t.Fatalf("stored %d teams, want 1", teamCount)
@@ -86,25 +94,15 @@ func TestScrapeQueries(t *testing.T) {
 }
 
 // TestHandWrittenStatements runs the statement methods that readers of the dbt
-// marts use. Those tables are absent from the migrations, so sqlc cannot
-// generate their queries. The statements below read no table, because the test
-// checks the connection path and not the warehouse.
+// marts use. The statements read no table, because the test checks the
+// connection path and not the warehouse.
 func TestHandWrittenStatements(t *testing.T) {
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		t.Skip("DATABASE_URL is not set")
-	}
-
+	client := openClient(t)
 	ctx := context.Background()
-	client, err := database.Open(ctx, databaseURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.Close()
 
 	var one int
 	if err := client.QueryRow(ctx, "SELECT $1::int", 1).Scan(&one); err != nil {
-		t.Fatal(err)
+		t.Fatalf("QueryRow returned %v", err)
 	}
 	if one != 1 {
 		t.Fatalf("read %d, want 1", one)
@@ -112,7 +110,7 @@ func TestHandWrittenStatements(t *testing.T) {
 
 	rows, err := client.Query(ctx, "SELECT value FROM generate_series(1, $1) AS value", 3)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Query returned %v", err)
 	}
 	defer rows.Close()
 
@@ -120,12 +118,12 @@ func TestHandWrittenStatements(t *testing.T) {
 	for rows.Next() {
 		var value int
 		if err := rows.Scan(&value); err != nil {
-			t.Fatal(err)
+			t.Fatalf("Scan returned %v", err)
 		}
 		total += value
 	}
 	if err := rows.Err(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Err returned %v", err)
 	}
 	if total != 6 {
 		t.Fatalf("summed %d, want 6", total)

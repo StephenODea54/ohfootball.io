@@ -118,9 +118,7 @@ export class InfraStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'WarehouseEndpoint', {
       value: this.warehouse.clusterEndpoint.hostname,
     })
-    new cdk.CfnOutput(this, 'WarehouseSecretArn', {
-      value: this.warehouse.secret?.secretArn ?? 'none',
-    })
+    new cdk.CfnOutput(this, 'WarehouseSecretArn', { value: this.warehouse.secret!.secretArn })
     new cdk.CfnOutput(this, 'ArtifactsBucket', { value: this.artifacts.bucketName })
     new cdk.CfnOutput(this, 'RawBucket', { value: this.raw.bucketName })
   }

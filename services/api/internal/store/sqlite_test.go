@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"math"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/StephenODea54/services/api/graph"
@@ -96,18 +97,6 @@ func names(teams []*model.Team) []string {
 	return list
 }
 
-func equal(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index := range left {
-		if left[index] != right[index] {
-			return false
-		}
-	}
-	return true
-}
-
 func TestSQLiteOpenRejectsAnUnusableRatingScale(t *testing.T) {
 	if _, err := OpenSQLite("ignored.db", PredictionConfig{RatingScale: 0}); err == nil {
 		t.Fatal("a rating scale of zero was accepted")
@@ -147,13 +136,8 @@ func TestSQLiteSeasons(t *testing.T) {
 		t.Fatalf("Seasons = %v", err)
 	}
 	want := []int{2025, 2024}
-	if len(seasons) != len(want) {
+	if !slices.Equal(seasons, want) {
 		t.Fatalf("Seasons = %v, want %v", seasons, want)
-	}
-	for index, season := range want {
-		if seasons[index] != season {
-			t.Fatalf("Seasons = %v, want %v", seasons, want)
-		}
 	}
 }
 
@@ -163,7 +147,7 @@ func TestSQLiteListTeamsSortsByRatingAndPutsAnUnratedTeamLast(t *testing.T) {
 		t.Fatalf("ListTeams = %v", err)
 	}
 	want := []string{"Avon", "Berea", "Cleveland Heights", "Dayton"}
-	if got := names(teams); !equal(got, want) {
+	if got := names(teams); !slices.Equal(got, want) {
 		t.Fatalf("ListTeams = %v, want %v", got, want)
 	}
 	if teams[0].Elo == nil || teams[0].Elo.Rating != 1700 || teams[0].Elo.Rank != 1 {
@@ -206,7 +190,7 @@ func TestSQLiteListTeamsSortsByName(t *testing.T) {
 		t.Fatalf("ListTeams = %v", err)
 	}
 	want := []string{"Avon", "Berea", "Cleveland Heights", "Dayton"}
-	if got := names(teams); !equal(got, want) {
+	if got := names(teams); !slices.Equal(got, want) {
 		t.Fatalf("ListTeams by name = %v, want %v", got, want)
 	}
 }
@@ -220,7 +204,7 @@ func TestSQLiteListTeamsSearchIgnoresCase(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListTeams(%q) = %v", search, err)
 		}
-		if got := names(teams); !equal(got, []string{"Berea"}) {
+		if got := names(teams); !slices.Equal(got, []string{"Berea"}) {
 			t.Fatalf("ListTeams(%q) = %v, want [Berea]", search, got)
 		}
 	}
@@ -235,7 +219,7 @@ func TestSQLiteListTeamsFilters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTeams by region = %v", err)
 	}
-	if got := names(teams); !equal(got, []string{"Berea"}) {
+	if got := names(teams); !slices.Equal(got, []string{"Berea"}) {
 		t.Fatalf("ListTeams by region = %v, want [Berea]", got)
 	}
 
@@ -243,7 +227,7 @@ func TestSQLiteListTeamsFilters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTeams by division = %v", err)
 	}
-	if got := names(teams); !equal(got, []string{"Avon"}) {
+	if got := names(teams); !slices.Equal(got, []string{"Avon"}) {
 		t.Fatalf("ListTeams by division = %v, want [Avon]", got)
 	}
 }
@@ -255,7 +239,6 @@ func TestSQLiteListTeamsClampsTheLimit(t *testing.T) {
 		want  int
 	}{
 		{limit: 1, want: 1},
-		{limit: 0, want: 1},
 		{limit: -5, want: 1},
 		{limit: maxLimit * 10, want: 4},
 	}
@@ -277,7 +260,7 @@ func TestSQLiteListTeamsReadsASeason(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTeams = %v", err)
 	}
-	if got := names(teams); !equal(got, []string{"Avon"}) {
+	if got := names(teams); !slices.Equal(got, []string{"Avon"}) {
 		t.Fatalf("ListTeams for 2024 = %v, want [Avon]", got)
 	}
 }

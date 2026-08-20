@@ -2,7 +2,7 @@
 --
 -- The site holds a wrong digit in the identifier of five schools, and each
 -- wrong digit names a school that already exists. A join on the identifier
--- alone would attach ten schools to five identifiers. The override seed
+-- alone would attach ten schools to five identifiers. The override list
 -- corrects them, and this test reports any that it does not, by name, so an
 -- operator can add the row.
 SELECT

@@ -82,12 +82,11 @@ func TestParseTeamRef(t *testing.T) {
 			wantURL: "https://joeeitel.com/hsfoot/teams.jsp?teamID=99&year=2025",
 		},
 		{
-			name:   "a fragment is dropped",
-			href:   "teams.jsp?teamID=7#schedule",
-			season: 2025,
-			wantOK: true,
-			wantID: "7",
-
+			name:    "a fragment is dropped",
+			href:    "teams.jsp?teamID=7#schedule",
+			season:  2025,
+			wantOK:  true,
+			wantID:  "7",
 			wantURL: "https://joeeitel.com/hsfoot/teams.jsp?teamID=7&year=2025",
 		},
 		{

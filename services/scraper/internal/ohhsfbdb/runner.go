@@ -116,8 +116,8 @@ func (r *Runner) writeSheet(ctx context.Context, sheet string, sink Sink) (sheet
 		return sheetResult{}, err
 	}
 
-	games = gamesInRange(games)
-	summaries = summariesInRange(summaries)
+	games = inRange(games, func(row GameRow) int { return row.Season })
+	summaries = inRange(summaries, func(row SeasonSummaryRow) int { return row.Season })
 	if err := sink.WriteSheet(ctx, team, games, summaries); err != nil {
 		return sheetResult{}, fmt.Errorf("write sheet %s: %w", sheet, err)
 	}
@@ -128,25 +128,12 @@ func (r *Runner) writeSheet(ctx context.Context, sheet string, sink Sink) (sheet
 	}, nil
 }
 
-// inRange reports whether a season belongs to the backfill.
-func inRange(season int) bool {
-	return season >= FirstSeason && season <= LastSeason
-}
-
-func gamesInRange(rows []GameRow) []GameRow {
-	kept := make([]GameRow, 0, len(rows))
+// inRange keeps the rows whose season belongs to the backfill. Each row type
+// holds its season in its own field, so the caller reads it.
+func inRange[Row any](rows []Row, seasonOf func(Row) int) []Row {
+	kept := make([]Row, 0, len(rows))
 	for _, row := range rows {
-		if inRange(row.Season) {
-			kept = append(kept, row)
-		}
-	}
-	return kept
-}
-
-func summariesInRange(rows []SeasonSummaryRow) []SeasonSummaryRow {
-	kept := make([]SeasonSummaryRow, 0, len(rows))
-	for _, row := range rows {
-		if inRange(row.Season) {
+		if season := seasonOf(row); season >= FirstSeason && season <= LastSeason {
 			kept = append(kept, row)
 		}
 	}

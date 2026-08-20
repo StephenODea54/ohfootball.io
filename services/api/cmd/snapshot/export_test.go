@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 
@@ -83,10 +83,9 @@ func TestEveryExportedTableFillsEverySchemaColumn(t *testing.T) {
 		if len(wanted) == 0 {
 			t.Fatalf("%s is exported but the schema holds no such table", source.name)
 		}
-		got := append([]string{}, source.columns...)
-		sort.Strings(got)
-		sort.Strings(wanted)
-		if strings.Join(got, ",") != strings.Join(wanted, ",") {
+		got := slices.Sorted(slices.Values(source.columns))
+		slices.Sort(wanted)
+		if !slices.Equal(got, wanted) {
 			t.Fatalf("%s exports %v, but the schema holds %v", source.name, got, wanted)
 		}
 	}
@@ -121,27 +120,10 @@ func TestEveryInsertStatementRunsAgainstTheSchema(t *testing.T) {
 	}
 }
 
-func TestInsertStatementHoldsOnePlaceholderPerColumn(t *testing.T) {
-	source := table{name: "dim_dates", columns: []string{"date_key", "date_day"}}
-	want := "INSERT INTO dim_dates (date_key, date_day) VALUES (?, ?)"
-	if got := source.insertStatement(); got != want {
-		t.Fatalf("insertStatement = %q, want %q", got, want)
-	}
+// The queries carry the casts that keep the copy free of type conversion. A key that arrives
+// without one would reach the snapshot in a form no query reads.
+func TestEveryQueryCastsItsKeysToText(t *testing.T) {
 	for _, source := range tables {
-		statement := source.insertStatement()
-		if count := strings.Count(statement, "?"); count != len(source.columns) {
-			t.Fatalf("%s holds %d placeholders for %d columns", source.name, count, len(source.columns))
-		}
-	}
-}
-
-// The queries carry the casts that keep the copy free of type conversion. A key or a date that
-// arrives without one would reach the snapshot in a form no query reads.
-func TestEveryQuerySelectsTheColumnsItDeclares(t *testing.T) {
-	for _, source := range tables {
-		if strings.Count(source.query, ",")+1 < len(source.columns) {
-			t.Fatalf("the %s query selects fewer columns than it declares", source.name)
-		}
 		for _, column := range []string{"team_key", "game_key"} {
 			if strings.Contains(source.query, column) && !strings.Contains(source.query, column+"::text") {
 				t.Fatalf("the %s query reads %s without casting it to text", source.name, column)

@@ -9,11 +9,7 @@ import { InfraStack } from '../lib/infra-stack'
  */
 function definitionOf(template: Template): string {
   const machines = Object.values(template.findResources('AWS::StepFunctions::StateMachine'))
-  const body = machines[0].Properties.DefinitionString
-  if (typeof body === 'string') {
-    return body
-  }
-  const pieces = body['Fn::Join'][1] as unknown[]
+  const pieces: unknown[] = machines[0].Properties.DefinitionString['Fn::Join'][1]
   return pieces.map((piece) => (typeof piece === 'string' ? piece : JSON.stringify(piece))).join('')
 }
 
@@ -70,14 +66,14 @@ describe('the pipeline tasks', () => {
       const url = container.Environment.find(
         (each: { Name: string }) => each.Name === 'DATABASE_URL',
       )
-      expect(JSON.stringify(url)).not.toContain('PGPASSWORD')
+      expect(JSON.stringify(url)).not.toContain('resolve:secretsmanager')
       expect(JSON.stringify(url)).toContain('sslmode=require')
     }
   })
 
   test('have a registry each to be pushed to', () => {
-    // Five for the run, plus the one the migration task uses.
-    build().template.resourceCountIs('AWS::ECR::Repository', 6)
+    // Six for the run, plus the one the migration task uses.
+    build().template.resourceCountIs('AWS::ECR::Repository', 7)
   })
 })
 
@@ -94,9 +90,18 @@ describe('the warehouse rule', () => {
 })
 
 describe('the run', () => {
-  test('collects, rebuilds, rates, packages, publishes, builds, and clears in that order', () => {
+  test('collects, rebuilds, rates, packages, publishes, builds, clears, and shares in order', () => {
     const { definition } = build()
-    const order = ['Scrape', 'Transform', 'Rate', 'Package', 'PublishApi', 'BuildSite', 'ClearCache']
+    const order = [
+      'Scrape',
+      'Transform',
+      'Rate',
+      'Package',
+      'PublishApi',
+      'BuildSite',
+      'ClearCache',
+      'PublishDataset',
+    ]
     const positions = order.map((state) => definition.indexOf(`"${state}"`))
     expect(positions.every((position) => position >= 0)).toBe(true)
     expect([...positions].sort((left, right) => left - right)).toEqual(positions)
@@ -124,8 +129,6 @@ describe('the things the run changes', () => {
   // be undone before either side can change.
   test('are read from parameters rather than from another stack', () => {
     const { template, raw } = build()
-    // Each name arrives as a parameter the deployment reads from the parameter store, rather than
-    // as a value exported by the stack that owns it.
     for (const name of [
       '/ohfootball/api/function-name',
       '/ohfootball/site/bucket-name',
@@ -151,20 +154,102 @@ describe('the things the run changes', () => {
   })
 })
 
+// The dataset is published out of the same marts the site was built from, and it is published last
+// so a Kaggle outage costs the dataset and not the site.
+describe('the published dataset', () => {
+  // The image of a container is a reference to the registry it is pulled from rather than a name,
+  // so a container is found by the step that owns it.
+  function containersOf(template: Template, step: string): Record<string, any>[] {
+    return Object.entries(template.findResources('AWS::ECS::TaskDefinition'))
+      .filter(([id]) => id.startsWith(`${step}Task`))
+      .map(([, definition]) => definition.Properties.ContainerDefinitions[0])
+  }
+
+  function containerOf(template: Template, step: string): Record<string, any> {
+    const found = containersOf(template, step)
+    expect(found).toHaveLength(1)
+    return found[0]
+  }
+
+  test('is the last thing the run does', () => {
+    const { definition } = build()
+    const positions = ['ClearCache', 'PublishDataset'].map((state) =>
+      definition.indexOf(`"${state}"`),
+    )
+    expect(positions[0]).toBeGreaterThan(0)
+    expect(positions[1]).toBeGreaterThan(positions[0])
+  })
+
+  // The account, its token, and the name of the dataset are all read from the secret. None of the
+  // three may be written into the template, which anyone who can read the stack can read.
+  test('reads the Kaggle account from a secret and never from the template', () => {
+    const { template } = build()
+    const container = containerOf(template, 'PublishDataset')
+    const secrets = container.Secrets.map((each: { Name: string }) => each.Name)
+    const environment = container.Environment.map((each: { Name: string }) => each.Name)
+    for (const name of ['KAGGLE_USERNAME', 'KAGGLE_KEY', 'KAGGLE_DATASET']) {
+      expect(secrets).toContain(name)
+      expect(environment).not.toContain(name)
+    }
+  })
+
+  // A task reads one key out of the secret, and that needs the whole ARN including the suffix the
+  // secret was given when it was created. The suffix cannot be written here, so the ARN is read
+  // from a parameter, the same way the names of the API and the site are read.
+  test('is told which secret to read by a parameter', () => {
+    const { template, raw } = build()
+    template.hasParameter('*', {
+      Type: 'AWS::SSM::Parameter::Value<String>',
+      Default: '/ohfootball/kaggle/secret-arn',
+    })
+    // A grant on part of an ARN ends in the wildcard CDK adds for a secret it only knows by name.
+    expect(raw).not.toContain('-??????')
+  })
+
+  // The secret is created by hand, so nothing here may try to own it. A stack that created it
+  // would put the credential in a template.
+  test('reads a secret this stack does not create', () => {
+    build().template.resourceCountIs('AWS::SecretsManager::Secret', 0)
+  })
+
+  test('is published by a task that can still read the warehouse', () => {
+    const { template } = build()
+    const container = containerOf(template, 'PublishDataset')
+    const secrets = container.Secrets.map((each: { Name: string }) => each.Name)
+    expect(secrets).toContain('PGPASSWORD')
+    expect(container.Command).toEqual(['publish'])
+  })
+
+  // The extra secrets belong to the one step that asked for them.
+  test('leaves the Kaggle account out of every other task', () => {
+    const { template } = build()
+    const others = Object.entries(template.findResources('AWS::ECS::TaskDefinition'))
+      .filter(([id]) => !id.startsWith('PublishDatasetTask'))
+      .map(([, definition]) => definition.Properties.ContainerDefinitions[0])
+    expect(others).toHaveLength(6)
+    for (const container of others) {
+      const secrets = container.Secrets.map((each: { Name: string }) => each.Name)
+      expect(secrets).not.toContain('KAGGLE_KEY')
+      expect(secrets).not.toContain('KAGGLE_USERNAME')
+      expect(secrets).not.toContain('KAGGLE_DATASET')
+    }
+  })
+
+  test('is tried again when Kaggle refuses once', () => {
+    const { definition } = build()
+    const state = definition.slice(definition.indexOf('"PublishDataset"'))
+    expect(state).toContain('"MaxAttempts":2')
+    expect(state).toContain('"States.TaskFailed"')
+  })
+})
+
 // The warehouse answers only from inside the network, so nothing outside can migrate it. The task
 // runs inside, and the deployment workflow starts it through the AWS API.
 describe('the migration task', () => {
   test('exists as a task rather than as a step of the run', () => {
     const { template, definition } = build()
-    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
-      ContainerDefinitions: Match.arrayWith([
-        Match.objectLike({
-          Image: Match.objectLike({
-            'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp('.*')])]),
-          }),
-        }),
-      ]),
-    })
+    // Six tasks the run waits for, plus this one, which only the deployment workflow starts.
+    template.resourceCountIs('AWS::ECS::TaskDefinition', 7)
     // The weekly run rebuilds data. It does not change the shape of the warehouse.
     expect(definition).not.toContain('Migrate')
   })

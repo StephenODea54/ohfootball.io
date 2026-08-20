@@ -4,7 +4,6 @@ import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
 import { Code, Text, TextLink } from "@/components/ui/text"
-import { paths } from "@/config/paths"
 
 export const Route = createFileRoute('/methodology')({
   head: () => ({
@@ -113,8 +112,6 @@ const limits = [
 ]
 
 function MethodologyRoute() {
-  const { season } = Route.useSearch()
-
   return (
     <main>
       <Container className="max-w-4xl py-12 sm:py-16 lg:py-20">
@@ -124,11 +121,8 @@ function MethodologyRoute() {
           </p>
           <Heading className="mt-3 text-4xl/none sm:text-5xl/none">How The Ratings Work</Heading>
           <Text className="mt-5 text-base/7 sm:text-lg/8">
-            The rating is Elo, tuned for a sport with a ten game season and almost no crossover
-            between regions. This page is the full description, including the parts that do not
-            work well. If you only want to read the site, the{" "}
-            <TextLink href={paths.about.getHref(season)}>about page</TextLink> is the shorter
-            version.
+            The ratings are calculated using a modified <TextLink href="https://en.wikipedia.org/wiki/Elo_rating_system">elo</TextLink> system.
+            This page is meant to serve as an overview of the model, its parameters, and its known limits.
           </Text>
         </section>
 
@@ -152,8 +146,7 @@ function MethodologyRoute() {
           </pre>
           <Text className="mt-4 text-base/7 sm:text-base/7">
             <Code>S_a</Code> is 1 for a win and 0 for a loss. Team B receives the exact opposite
-            change, which is what keeps the rating pool closed. Home advantage is added to the home
-            team's rating inside <Code>E_a</Code> only. It is never stored.
+            change.
           </Text>
         </section>
 
@@ -162,10 +155,7 @@ function MethodologyRoute() {
             Production Parameters
           </Heading>
           <Text className="mt-3 text-base/7 sm:text-base/7">
-            These are the values used for the published snapshots. They were selected by sweeping one
-            parameter at a time on the 2000 through 2021 seasons and checking the result on 2022 and
-            2023. They were then checked again on the 2024 and 2025 seasons, which were held back
-            until the choices were fixed.
+            These values are used for the published snapshots. Each parameter was tuned independently using the 2000–2023 seasons as the training/validation set, with final performance evaluated on the 2024–2025 seasons as the test set.
           </Text>
           <Card className="mt-5 gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
             <CardContent>

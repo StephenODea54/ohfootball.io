@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterable
 
 _IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
 
@@ -180,9 +180,7 @@ def publish_predictions(
         for row in rows
     ):
         raise ValueError("ratings must be finite")
-    if any(
-        not 0.0 < row.team_a_win_probability < 1.0 for row in rows
-    ):
+    if any(not 0.0 < row.team_a_win_probability < 1.0 for row in rows):
         raise ValueError("win probabilities must fall between zero and one")
 
     import psycopg

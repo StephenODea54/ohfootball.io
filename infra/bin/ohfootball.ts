@@ -15,7 +15,7 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 }
 
-const apiCodeKey = String(app.node.tryGetContext('apiCodeKey') ?? 'api/bootstrap.zip')
+const apiCodeKey: string = app.node.tryGetContext('apiCodeKey')
 
 const siteDomain = domainFromContext(app, 'site')
 const apiDomain = domainFromContext(app, 'api')

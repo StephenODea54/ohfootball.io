@@ -35,7 +35,7 @@ type SQLite struct {
 // any journal beside it, while the store is open.
 func OpenSQLite(path string, prediction PredictionConfig) (*SQLite, error) {
 	if prediction.RatingScale <= 0 {
-		return nil, errors.New("Elo rating scale must be greater than zero")
+		return nil, errors.New("the Elo rating scale must be more than 0")
 	}
 	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro&immutable=1")
 	if err != nil {
@@ -114,18 +114,7 @@ func (store *SQLite) ListTeams(
 	if err != nil {
 		return nil, err
 	}
-	search := ""
-	if searchArgument != nil {
-		search = *searchArgument
-	}
-	sort := model.TeamSortElo
-	if sortArgument != nil {
-		sort = *sortArgument
-	}
-	limit := defaultLimit
-	if limitArgument != nil {
-		limit = max(1, min(*limitArgument, maxLimit))
-	}
+	search, sort, limit := listTeamsArguments(searchArgument, sortArgument, limitArgument)
 
 	rows, err := store.db.QueryContext(
 		ctx,
@@ -134,7 +123,7 @@ func (store *SQLite) ListTeams(
 		sql.Named("search", search),
 		sql.Named("region", regionArgument),
 		sql.Named("division", divisionArgument),
-		sql.Named("sort", string(sort)),
+		sql.Named("sort", sort),
 		sql.Named("limit", limit),
 	)
 	if err != nil {
@@ -237,26 +226,12 @@ func scanSQLiteTeam(row rowScanner) (*model.Team, error) {
 	); err != nil {
 		return nil, err
 	}
-	if mascot.Valid {
-		team.Mascot = &mascot.String
-	}
-	if city.Valid {
-		team.City = &city.String
-	}
-	if division.Valid {
-		value := int(division.Int64)
-		team.Division = &value
-	}
-	if region.Valid {
-		value := int(region.Int64)
-		team.Region = &value
-	}
-	if primaryColor.Valid {
-		team.PrimaryColor = &primaryColor.String
-	}
-	if secondaryColor.Valid {
-		team.SecondaryColor = &secondaryColor.String
-	}
+	team.Mascot = optional(mascot.Valid, mascot.String)
+	team.City = optional(city.Valid, city.String)
+	team.Division = optional(division.Valid, int(division.Int64))
+	team.Region = optional(region.Valid, int(region.Int64))
+	team.PrimaryColor = optional(primaryColor.Valid, primaryColor.String)
+	team.SecondaryColor = optional(secondaryColor.Valid, secondaryColor.String)
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
 	team.EloHistory = []*model.EloRating{}
 	team.Schedule = []*model.Game{}
@@ -343,22 +318,14 @@ func (store *SQLite) schedule(ctx context.Context, teamID string, season int) ([
 		game.Playoff = playoff != 0
 		game.Location = model.GameLocation(rawLocation)
 		game.Result = result(rawResult)
-		if teamScore.Valid {
-			value := int(teamScore.Int64)
-			game.TeamScore = &value
-		}
-		if opponentScore.Valid {
-			value := int(opponentScore.Int64)
-			game.OpponentScore = &value
-		}
-		if notes.Valid {
-			game.Notes = &notes.String
-		}
+		game.TeamScore = optional(teamScore.Valid, int(teamScore.Int64))
+		game.OpponentScore = optional(opponentScore.Valid, int(opponentScore.Int64))
+		game.Notes = optional(notes.Valid, notes.String)
 		switch {
 		// A played game keeps the prediction that was made from the ratings both teams carried
 		// into it, so the page shows what was expected rather than hindsight.
 		case pregameProbability.Valid && pregameTeamRating.Valid && pregameOpponentRating.Valid && pregameDate.Valid:
-			game.Prediction = buildSQLitePrediction(
+			game.Prediction = buildPrediction(
 				pregameProbability.Float64,
 				pregameTeamRating.Float64,
 				pregameOpponentRating.Float64,
@@ -366,7 +333,7 @@ func (store *SQLite) schedule(ctx context.Context, teamID string, season int) ([
 			)
 		// An unplayed game has no stored prediction, so it is estimated from the latest ratings.
 		case game.Result == model.GameResultUnknown && teamRating.Valid && opponentRating.Valid && ratingDate.Valid:
-			game.Prediction = buildSQLitePrediction(
+			game.Prediction = buildPrediction(
 				winProbability(
 					teamRating.Float64,
 					opponentRating.Float64,
@@ -381,22 +348,6 @@ func (store *SQLite) schedule(ctx context.Context, teamID string, season int) ([
 		games = append(games, &game)
 	}
 	return games, rows.Err()
-}
-
-// buildSQLitePrediction mirrors buildPrediction. Dates already arrive in the form the schema
-// returns, so no date is formatted here.
-func buildSQLitePrediction(probability, teamRating, opponentRating float64, asOf string) *model.GamePrediction {
-	predictedResult := model.GameResultLoss
-	if probability >= 0.5 {
-		predictedResult = model.GameResultWin
-	}
-	return &model.GamePrediction{
-		WinProbability:  probability,
-		PredictedResult: predictedResult,
-		TeamRating:      teamRating,
-		OpponentRating:  opponentRating,
-		AsOf:            asOf,
-	}
 }
 
 // sqliteTeamFacts counts each team's record for a season and ranks every team by the rating from

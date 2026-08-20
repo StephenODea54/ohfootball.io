@@ -79,7 +79,7 @@ services:
   mlflow:
     build:
       context: .
-      dockerfile: services/predictor/Dockerfile
+      dockerfile: services/elo/Dockerfile
     entrypoint: ["mlflow"]
     command:
       - server
@@ -105,10 +105,32 @@ services:
     profiles:
       - tools
 
-  predictor:
+  # Exports by default. A publication needs a Kaggle account, so it takes the credentials from the
+  # environment of the machine running it and never from a value written here.
+  dataset:
     build:
       context: .
-      dockerfile: services/predictor/Dockerfile
+      dockerfile: services/dataset/Dockerfile
+    command: ["export", "--directory", "/export"]
+    environment:
+      DATABASE_URL: postgresql://im_batman:shhhhhhhhh@postgres:5432/ohfootball
+      OHFOOTBALL_MARTS_SCHEMA: ohfootball_marts
+      OHFOOTBALL_TIME_ZONE: America/New_York
+      KAGGLE_USERNAME: ${KAGGLE_USERNAME:-}
+      KAGGLE_KEY: ${KAGGLE_KEY:-}
+      KAGGLE_DATASET: ${KAGGLE_DATASET:-}
+    volumes:
+      - ./services/dataset/export:/export
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+  elo:
+    build:
+      context: .
+      dockerfile: services/elo/Dockerfile
     environment:
       DATABASE_URL: postgresql://im_batman:shhhhhhhhh@postgres:5432/ohfootball
       MLFLOW_TRACKING_URI: http://mlflow:5000

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ohfootball-dataset"
+version = "0.1.0"
+description = "Publishes the ohfootball.io marts to Kaggle as one versioned dataset"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "kaggle==1.7.4.5",
+    "psycopg[binary]>=3.2,<4",
+]
+
+[project.scripts]
+ohfootball-dataset = "ohfootball_dataset.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -109,8 +109,6 @@ func run() error {
 	return nil
 }
 
-// statusFor decides the status of one run. This is the only place that decides
-// it.
 func statusFor(err error) store.RunStatus {
 	if err != nil {
 		return store.RunFailed

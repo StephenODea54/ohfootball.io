@@ -8,7 +8,7 @@ import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 
-import { teamPages } from './prerender'
+import { type PrerenderPage, teamPages } from './prerender'
 
 /**
  * How many pages are drawn at once while building. The work is mostly waiting on the API, so more
@@ -16,7 +16,7 @@ import { teamPages } from './prerender'
  */
 const PRERENDER_CONCURRENCY = 8
 
-const config = defineConfig(async ({ command }) => {
+export default defineConfig(async ({ command }) => {
   // Every page is drawn while the site is built, so the deployed site is files and nothing runs to
   // answer a visitor. The team pages are asked for by address, because the plugin cannot find an
   // address that carries a key only the data knows.
@@ -25,7 +25,7 @@ const config = defineConfig(async ({ command }) => {
     ? Number(process.env.PRERENDER_TEAM_LIMIT)
     : undefined
 
-  let pages: Array<{ path: string }> = []
+  let pages: PrerenderPage[] = []
   if (command === 'build') {
     if (!endpoint) {
       throw new Error(
@@ -59,5 +59,3 @@ const config = defineConfig(async ({ command }) => {
     ],
   }
 })
-
-export default config

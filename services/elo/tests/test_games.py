@@ -1,7 +1,7 @@
 from datetime import date
 import unittest
 
-from ohfootball_predictor.games import Game, chronological
+from ohfootball_elo.games import Game, chronological
 
 
 def game(

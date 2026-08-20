@@ -11,14 +11,21 @@
 {%- endmacro %}
 
 {#
+    The state or province of the United States and of Canada, in brackets, as
+    the site writes it inside a name. For example "Linsly (WV)" and
+    "Hamilton (ON) Cathedral".
+#}
+{% macro ohhsfbdb_state_pattern() -%}
+    '\((AK|AL|AR|AZ|CA|CO|CT|DC|DE|FL|GA|HI|IA|ID|IL|IN|KS|KY|LA|MA|MD|ME|MI|MN|MO|MS|MT|NC|ND|NE|NH|NJ|NM|NV|NY|OK|OR|PA|RI|SC|SD|TN|TX|UT|VA|VT|WA|WI|WV|WY|AB|BC|MB|NB|NL|NS|ON|PE|QC|SK)\)'
+{%- endmacro %}
+
+{#
     True when the name of an opponent names a state or a province other than
-    Ohio. The site writes the place inside the name, as in "Linsly (WV)" and
-    "Hamilton (ON) Cathedral". Such a school has no sheet of its own, so the
-    warehouse mints an identifier for it rather than leaving its games with no
-    opponent.
+    Ohio. Such a school has no sheet of its own, so the warehouse mints an
+    identifier for it rather than leaving its games with no opponent.
 #}
 {% macro ohhsfbdb_is_out_of_state(column_name) -%}
-    {{ column_name }} ~ '\((AK|AL|AR|AZ|CA|CO|CT|DC|DE|FL|GA|HI|IA|ID|IL|IN|KS|KY|LA|MA|MD|ME|MI|MN|MO|MS|MT|NC|ND|NE|NH|NJ|NM|NV|NY|OK|OR|PA|RI|SC|SD|TN|TX|UT|VA|VT|WA|WI|WV|WY|AB|BC|MB|NB|NL|NS|ON|PE|QC|SK)\)'
+    {{ column_name }} ~ {{ ohhsfbdb_state_pattern() }}
 {%- endmacro %}
 
 {#
@@ -40,14 +47,10 @@
 {%- endmacro %}
 
 {#
-    The state or province inside the name of a school, as the site writes it,
-    for example "Linsly (WV)". Null for a school of Ohio, which the site never
-    marks, because the site holds the football of Ohio and marks only what lies
-    outside it.
+    The state or province inside the name of a school. Null for a school of
+    Ohio, which the site never marks, because the site holds the football of
+    Ohio and marks only what lies outside it.
 #}
 {% macro ohhsfbdb_state_in_name(column_name) -%}
-    SUBSTRING(
-        {{ column_name }}
-        FROM '\((AK|AL|AR|AZ|CA|CO|CT|DC|DE|FL|GA|HI|IA|ID|IL|IN|KS|KY|LA|MA|MD|ME|MI|MN|MO|MS|MT|NC|ND|NE|NH|NJ|NM|NV|NY|OK|OR|PA|RI|SC|SD|TN|TX|UT|VA|VT|WA|WI|WV|WY|AB|BC|MB|NB|NL|NS|ON|PE|QC|SK)\)'
-    )
+    SUBSTRING({{ column_name }} FROM {{ ohhsfbdb_state_pattern() }})
 {%- endmacro %}

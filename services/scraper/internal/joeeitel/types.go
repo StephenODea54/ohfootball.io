@@ -16,8 +16,7 @@ func (t TeamRef) Key() string {
 	return teamKey(t.Season, t.TeamID)
 }
 
-// CompareTeamRefs orders references by key. It is exported because the page
-// parsers and the pipeline sort references from other packages.
+// CompareTeamRefs orders references by key.
 func CompareTeamRefs(a, b TeamRef) int {
 	return strings.Compare(a.Key(), b.Key())
 }

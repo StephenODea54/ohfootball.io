@@ -170,14 +170,12 @@ func parseHeader(row []cell, sheet string) (SheetTeam, error) {
 			values = append(values, current.text)
 		}
 	}
-	if len(values) == 0 {
-		return SheetTeam{}, fmt.Errorf("sheet %s names no school in its first row", sheet)
-	}
-
 	team := SheetTeam{Sheet: sheet}
-	if _, err := strconv.Atoi(values[0]); err == nil {
-		team.Number = values[0]
-		values = values[1:]
+	if len(values) > 0 {
+		if _, err := strconv.Atoi(values[0]); err == nil {
+			team.Number = values[0]
+			values = values[1:]
+		}
 	}
 	if len(values) > 0 {
 		team.ShortName = values[0]

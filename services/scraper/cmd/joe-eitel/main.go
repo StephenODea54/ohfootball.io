@@ -114,8 +114,6 @@ func targetSeasons(configuration config.Config, listed []int) (seasons []int, sk
 	return nil, true
 }
 
-// statusFor decides the status of one run. This is the only place that decides
-// it.
 func statusFor(err error) store.RunStatus {
 	if err != nil {
 		return store.RunFailed

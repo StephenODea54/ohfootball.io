@@ -40,14 +40,16 @@ jobs:
             dockerfile: services/scraper/Dockerfile
           - name: analytics
             dockerfile: analytics/Dockerfile
-          - name: predictor
-            dockerfile: services/predictor/Dockerfile
+          - name: elo
+            dockerfile: services/elo/Dockerfile
           - name: snapshot
             dockerfile: services/api/cmd/snapshot/Dockerfile
           - name: site
             dockerfile: frontend/Dockerfile
           - name: migrate
             dockerfile: postgres/Dockerfile
+          - name: dataset
+            dockerfile: services/dataset/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

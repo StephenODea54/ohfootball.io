@@ -8,7 +8,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// fixture reads a saved page from testdata.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
 	body, err := os.ReadFile(filepath.Join("testdata", name))
@@ -18,10 +17,9 @@ func fixture(t *testing.T, name string) []byte {
 	return body
 }
 
-// fixtureDocument reads a saved page and parses it.
 func fixtureDocument(t *testing.T, name string) *goquery.Document {
 	t.Helper()
-	doc, _, err := NewDocument(fixture(t, name), "https://ohhsfbdb.net/TheTable.fld/"+name)
+	doc, _, err := newDocument(fixture(t, name), "https://ohhsfbdb.net/TheTable.fld/"+name)
 	if err != nil {
 		t.Fatalf("parse the fixture %s: %v", name, err)
 	}
@@ -31,7 +29,7 @@ func fixtureDocument(t *testing.T, name string) *goquery.Document {
 // document parses markup that a test wrote.
 func document(t *testing.T, markup string) *goquery.Document {
 	t.Helper()
-	doc, _, err := NewDocument([]byte(markup), "https://ohhsfbdb.net/TheTable.fld/sheet999.htm")
+	doc, _, err := newDocument([]byte(markup), "https://ohhsfbdb.net/TheTable.fld/sheet999.htm")
 	if err != nil {
 		t.Fatalf("parse the markup: %v", err)
 	}
@@ -96,7 +94,7 @@ func TestCleanText(t *testing.T) {
 }
 
 func TestNewDocumentRejectsAnInvalidPageURL(t *testing.T) {
-	if _, _, err := NewDocument([]byte("<html></html>"), "://no-scheme"); err == nil {
-		t.Fatal("NewDocument returned no error for an invalid page URL")
+	if _, _, err := newDocument([]byte("<html></html>"), "://no-scheme"); err == nil {
+		t.Fatal("newDocument returned no error for an invalid page URL")
 	}
 }
