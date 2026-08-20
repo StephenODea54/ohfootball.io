@@ -58,15 +58,6 @@ export class BackendStack extends cdk.Stack {
       },
     })
 
-    // CloudFormation is told where the package sits, and is deliberately not told which version.
-    // The pipeline replaces the code directly once a week, and a version here would let the next
-    // deployment of this stack put the older package back. The warning is raised against the
-    // bucket that holds the package, which is why it is answered there.
-    cdk.Annotations.of(props.artifacts).acknowledgeWarning(
-      '@aws-cdk/aws-lambda:codeFromBucketObjectVersionNotSpecified',
-      'The pipeline owns the code of this function. The stack owns everything else about it.',
-    )
-
     const url = api.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.AWS_IAM,
       invokeMode: lambda.InvokeMode.BUFFERED,

@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2
   ARTIFACT_KEY: api/bootstrap
 
 jobs:
@@ -132,4 +132,5 @@ jobs:
           CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
           npx cdk deploy --require-approval never \
-            OhfootballInfra OhfootballBackend OhfootballFrontend OhfootballEtl
+            OhfootballDns OhfootballInfra OhfootballSecrets \
+            OhfootballBackend OhfootballFrontend OhfootballEtl

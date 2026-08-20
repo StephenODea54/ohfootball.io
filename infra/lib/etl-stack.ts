@@ -25,22 +25,53 @@ export interface EtlStackProps extends cdk.StackProps {
   readonly schedule?: string
 }
 
-/** How long a single step may run before the pipeline gives up on it. */
-const STEP_TIMEOUT = cdk.Duration.hours(2)
+/** What one step of the pipeline may set beyond the image it runs and what it reads. */
+interface StepOptions {
+  /** Replaces the command the image was built with. */
+  readonly command?: string[]
+  /** Read from Secrets Manager on top of the warehouse password every task is given. */
+  readonly secrets?: Record<string, ecs.Secret>
+  /** Replaces the timeout every step is given. */
+  readonly timeout?: cdk.Duration
+}
+
+/**
+ * How long a step may run before the pipeline gives up on it.
+ *
+ * Most steps are quick. A scrape reads one round of games, and the steps that rebuild the marts,
+ * rate every team, and write the snapshot each read the whole record but do one pass over it.
+ * Fifteen minutes is generous for any of them, and a step that runs longer than that has stopped
+ * making progress rather than being slow.
+ */
+const STEP_TIMEOUT = cdk.Duration.minutes(15)
+
+/**
+ * How long the steps that are slow by nature may run.
+ *
+ * Drawing the site is the one step whose work grows with the record rather than with the week. It
+ * writes a page for every season every program has played, which is about 39,500 of them, at
+ * roughly 55 a second against an API on the same machine and slower across a network. Two hours
+ * holds it with room to grow.
+ *
+ * Publishing the dataset writes about 70 MB and uploads it to a service this project does not own,
+ * so the time it takes is not ours to predict. Half an hour is enough for the upload to be slow
+ * without being stuck.
+ */
+const SITE_TIMEOUT = cdk.Duration.hours(2)
+const DATASET_TIMEOUT = cdk.Duration.minutes(30)
 
 /**
  * The parameter naming the secret that holds the Kaggle account which owns the published dataset.
  *
- * The secret is created by hand rather than by this stack, because it holds a credential and a
- * template is readable by anyone who can read the stack. It holds the keys username, key, and
- * dataset.
+ * The secret is raised by the secrets stack and holds the keys username, key, and dataset. Its
+ * values are written by hand, because a template is readable by anyone who can read the stack.
  *
  * What is read here is a parameter holding the whole ARN of that secret, suffix and all. A task
  * reads one key out of the secret, and reading one key needs the whole ARN. The suffix is minted
  * when the secret is created, so it cannot be written here.
  *
- * A run whose secret or parameter is missing fails before the container starts, so both have to
- * exist before the pipeline is deployed.
+ * A run whose secret holds no value fails when it reaches Kaggle, and a run whose parameter is
+ * missing fails before the container starts.
  */
 const KAGGLE_SECRET_PARAMETER = '/ohfootball/kaggle/secret-arn'
 
@@ -113,8 +144,8 @@ export class EtlStack extends cdk.Stack {
     // Collect what the season has added, then rebuild the marts from everything collected so far,
     // then rate every team from the rebuilt marts.
     const scrape = this.runTask('Scrape', 'scraper', { RAW_BUCKET: props.raw.bucketName })
-    const transform = this.runTask('Transform', 'analytics', {}, ['build'])
-    const rate = this.runTask('Rate', 'elo', {}, ['run'])
+    const transform = this.runTask('Transform', 'analytics', {}, { command: ['build'] })
+    const rate = this.runTask('Rate', 'elo', {}, { command: ['run'] })
 
     // Write the snapshot the API reads, fetch the binary the code pipeline built, and put the two
     // together as the package the function runs.
@@ -141,10 +172,15 @@ export class EtlStack extends cdk.Stack {
 
     // The site is built against the API that was just published, so the pages carry the ratings of
     // this run.
-    const buildSite = this.runTask('BuildSite', 'site', {
-      SITE_BUCKET: siteBucketName,
-      VITE_GRAPHQL_URL: apiUrl,
-    })
+    const buildSite = this.runTask(
+      'BuildSite',
+      'site',
+      {
+        SITE_BUCKET: siteBucketName,
+        VITE_GRAPHQL_URL: apiUrl,
+      },
+      { timeout: SITE_TIMEOUT },
+    )
 
     // Every page is written fresh, so the distribution has to be told to stop serving the old one.
     const clearCache = new tasks.CallAwsService(this, 'ClearCache', {
@@ -173,12 +209,16 @@ export class EtlStack extends cdk.Stack {
       'KaggleSecret',
       ssm.StringParameter.valueForStringParameter(this, KAGGLE_SECRET_PARAMETER),
     )
-    const publishDataset = this.runTask('PublishDataset', 'dataset', {}, ['publish'], {
-      KAGGLE_USERNAME: ecs.Secret.fromSecretsManager(kaggleSecret, 'username'),
-      KAGGLE_KEY: ecs.Secret.fromSecretsManager(kaggleSecret, 'key'),
-      // The dataset is named in the secret rather than here, so the account and the thing it owns
-      // are set in one place and neither reaches the template.
-      KAGGLE_DATASET: ecs.Secret.fromSecretsManager(kaggleSecret, 'dataset'),
+    const publishDataset = this.runTask('PublishDataset', 'dataset', {}, {
+      command: ['publish'],
+      secrets: {
+        KAGGLE_USERNAME: ecs.Secret.fromSecretsManager(kaggleSecret, 'username'),
+        KAGGLE_KEY: ecs.Secret.fromSecretsManager(kaggleSecret, 'key'),
+        // The dataset is named in the secret rather than here, so the account and the thing it
+        // owns are set in one place and neither reaches the template.
+        KAGGLE_DATASET: ecs.Secret.fromSecretsManager(kaggleSecret, 'dataset'),
+      },
+      timeout: DATASET_TIMEOUT,
     })
     // Kaggle refusing once is usually Kaggle refusing once. A retry runs the whole task again,
     // which exports the marts again, so the run pays for the attempt in full.
@@ -263,10 +303,9 @@ export class EtlStack extends cdk.Stack {
     id: string,
     image: string,
     environment: Record<string, string>,
-    command?: string[],
-    secrets?: Record<string, ecs.Secret>,
+    options: StepOptions = {},
   ): tasks.EcsRunTask {
-    const definition = this.taskDefinition(id, image, environment, command, secrets)
+    const definition = this.taskDefinition(id, image, environment, options)
     return new tasks.EcsRunTask(this, id, {
       cluster: this.cluster,
       taskDefinition: definition,
@@ -280,7 +319,7 @@ export class EtlStack extends cdk.Stack {
       securityGroups: [this.taskSecurityGroup],
       // The pipeline waits for the task to finish rather than starting it and moving on.
       integrationPattern: sfn.IntegrationPattern.RUN_JOB,
-      taskTimeout: sfn.Timeout.duration(STEP_TIMEOUT),
+      taskTimeout: sfn.Timeout.duration(options.timeout ?? STEP_TIMEOUT),
       resultPath: sfn.JsonPath.DISCARD,
     })
   }
@@ -290,8 +329,7 @@ export class EtlStack extends cdk.Stack {
     id: string,
     image: string,
     environment: Record<string, string>,
-    command?: string[],
-    secrets?: Record<string, ecs.Secret>,
+    options: StepOptions = {},
   ): ecs.FargateTaskDefinition {
     const repository = new ecr.Repository(this, `${id}Repository`, {
       repositoryName: `ohfootball/${image}`,
@@ -325,9 +363,9 @@ export class EtlStack extends cdk.Stack {
       secrets: {
         PGPASSWORD: ecs.Secret.fromSecretsManager(secret, 'password'),
         DBT_PASSWORD: ecs.Secret.fromSecretsManager(secret, 'password'),
-        ...secrets,
+        ...options.secrets,
       },
-      command,
+      command: options.command,
     })
 
     this.props.artifacts.grantReadWrite(definition.taskRole)

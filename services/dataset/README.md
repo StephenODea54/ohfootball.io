@@ -57,23 +57,24 @@ a `kaggle.json`, so the task needs no file and no writable home directory.
 
 ## The secret
 
-The pipeline reads all three Kaggle values from one Secrets Manager secret. The secret is created
-by hand, because a stack that created it would put the token in a template. Reading one key out of
-a secret needs the whole ARN of that secret, including the suffix minted when it was created, so
-the ARN is written to a parameter the stack reads.
+The pipeline reads all three Kaggle values from one Secrets Manager secret. `OhfootballSecrets`
+raises that secret with a key for each of the three and nothing in any of them, and publishes its
+ARN as the parameter `/ohfootball/kaggle/secret-arn`. No value of it passes through a stack, because
+a template is readable by anyone who can read the stack.
 
-**Create both before deploying the pipeline stack.** A task whose secret or parameter is missing
-fails before the container starts, and the weekly run then fails every week.
-
-Take the API token from <https://www.kaggle.com/settings> and write the two:
+Take the API token from <https://www.kaggle.com/settings> and write the values once:
 
 ```sh
-arn=$(aws secretsmanager create-secret --name ohfootball/kaggle \
-  --description 'Kaggle account that owns the published dataset' \
-  --secret-string '{"username":"...","key":"...","dataset":"owner/slug"}' \
-  --query ARN --output text)
-aws ssm put-parameter --name /ohfootball/kaggle/secret-arn --type String --value "$arn"
+aws secretsmanager put-secret-value --secret-id ohfootball/kaggle \
+  --secret-string '{"username":"...","key":"...","dataset":"owner/slug"}'
 ```
+
+A deployment that leaves the shape of the secret alone leaves the values alone with it. Adding a
+key to the secret in `infra/lib/secrets-stack.ts` does not, so write the values again after any such
+change.
+
+A run against a secret still holding its placeholders does not publish anything. It fails, either
+when the container starts or when it reaches Kaggle.
 
 The slug does not have to exist yet. The first run creates the dataset, public, under CC0-1.0.
 

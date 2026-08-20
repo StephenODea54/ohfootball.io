@@ -119,8 +119,27 @@ describe('the run', () => {
     })
   })
 
+  // A step that runs long has stopped making progress rather than being slow, and a run that waits
+  // hours to find that out holds the warehouse awake while it waits. The two steps allowed longer
+  // are the ones whose work is not bounded by the week: drawing every page of the site, and sending
+  // the dataset to a service this project does not own.
   test('gives up on a task that never finishes', () => {
-    expect(build().definition).toContain('"TimeoutSeconds":7200')
+    const { definition } = build()
+    const allowed: Record<string, number> = {
+      Scrape: 900,
+      Transform: 900,
+      Rate: 900,
+      Package: 900,
+      BuildSite: 7200,
+      PublishDataset: 1800,
+    }
+    for (const [state, seconds] of Object.entries(allowed)) {
+      const start = definition.indexOf(`"${state}":{`)
+      expect(start).toBeGreaterThan(0)
+      const found = /"TimeoutSeconds":(\d+)/.exec(definition.slice(start))
+      expect(found).not.toBeNull()
+      expect(Number(found![1])).toEqual(seconds)
+    }
   })
 })
 

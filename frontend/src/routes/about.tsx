@@ -98,6 +98,7 @@ function AboutRoute() {
             <li>Not affiliated with the OHSAA, any school, Joe Eitel, or any other entity.</li>
             <li>A prediction is a guess, not a promise.</li>
             <li>Scores come from public results. Predictions are a reflection of that, whether right or wrong.</li>
+            <li>It is illegal to bet on Ohio high school football games. Please don't use these predictions as hedges for your bets you weirdos.</li>
           </ul>
           <Text className="mt-6 text-sm/6">
             Want the math? Read the{' '}
