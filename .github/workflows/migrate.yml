@@ -3,18 +3,27 @@ name: migrate
 # Applies every migration to the warehouse.
 #
 # The warehouse sits in an isolated subnet and answers only from inside the network, so this
-# workflow never connects to it. It starts a task inside the network through the AWS API and waits
-# for that task to finish. Nothing outside the network holds a route to the database.
+# workflow never connects to it. It starts a state machine that runs a task inside the network and
+# waits for that execution to finish. Nothing outside the network holds a route to the database.
+#
+# The state machine holds the network the task runs in, the role it runs as, and the timeout it is
+# held to, so this workflow names the state machine and nothing else. A task that exits with
+# anything but zero fails the execution, so no exit code is read here either.
 #
 # Every migration is written to be applied again without harm, so the task applies all of them
 # every time and keeps no record of what ran.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "postgres/migrations/**"
-      - "postgres/Dockerfile"
+  # The task pulls the image tagged latest, and deploy.yml is what pushes that tag. Running on the
+  # same push as deploy would start the task against the image built before this commit, and the
+  # migrations added by this commit would not be applied. So this waits for deploy to finish.
+  #
+  # That means a migration runs after every deployment rather than only after a change under
+  # postgres. Applying all of them again costs one short task and changes nothing, because every
+  # migration is written to be repeated.
+  workflow_run:
+    workflows: [deploy]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -33,52 +42,40 @@ jobs:
   migrate:
     name: migrate
     runs-on: ubuntu-latest
+    # A deployment that failed has not pushed the image this task pulls.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/ohfootball-deploy
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: read where the task runs
-        id: where
-        run: |
-          set -euo pipefail
-          read_parameter() {
-            aws ssm get-parameter --name "/ohfootball/pipeline/$1" \
-              --query Parameter.Value --output text
-          }
-          {
-            echo "cluster=$(read_parameter cluster-arn)"
-            echo "task=$(read_parameter migrate-task-arn)"
-            echo "subnets=$(read_parameter subnet-ids)"
-            echo "security_group=$(read_parameter security-group-id)"
-          } >> "$GITHUB_OUTPUT"
-
       - name: apply the migrations
+        env:
+          STATE_MACHINE: arn:aws:states:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:stateMachine:ohfootball-migrate
         run: |
           set -euo pipefail
 
-          # A public address is what lets the task pull its image without a NAT gateway. It still
-          # reaches the warehouse over the network rather than over the internet.
-          arn=$(aws ecs run-task \
-            --cluster '${{ steps.where.outputs.cluster }}' \
-            --task-definition '${{ steps.where.outputs.task }}' \
-            --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.where.outputs.subnets }}],securityGroups=[${{ steps.where.outputs.security_group }}],assignPublicIp=ENABLED}" \
-            --query 'tasks[0].taskArn' --output text)
-
+          arn=$(aws stepfunctions start-execution --state-machine-arn "$STATE_MACHINE" \
+            --query executionArn --output text)
           echo "started $arn"
-          aws ecs wait tasks-stopped --cluster '${{ steps.where.outputs.cluster }}' --tasks "$arn"
 
-          # A task that stops is not a task that worked. The exit code of the container is what
-          # says whether every migration applied.
-          code=$(aws ecs describe-tasks --cluster '${{ steps.where.outputs.cluster }}' --tasks "$arn" \
-            --query 'tasks[0].containers[0].exitCode' --output text)
-          reason=$(aws ecs describe-tasks --cluster '${{ steps.where.outputs.cluster }}' --tasks "$arn" \
-            --query 'tasks[0].stoppedReason' --output text)
+          # A standard state machine is watched rather than waited on. There is no wait command for
+          # an execution, and the synchronous call is offered only by an express state machine,
+          # which cannot run a task and wait for it.
+          while true; do
+            status=$(aws stepfunctions describe-execution --execution-arn "$arn" \
+              --query status --output text)
+            if [ "$status" != "RUNNING" ]; then
+              break
+            fi
+            sleep 10
+          done
 
-          echo "exit code ${code}, stopped because ${reason}"
-          if [ "$code" != "0" ]; then
+          echo "finished $status"
+          if [ "$status" != "SUCCEEDED" ]; then
             echo "the migrations did not apply. The task log holds the statement that failed." >&2
             exit 1
           fi

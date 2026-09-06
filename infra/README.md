@@ -22,9 +22,9 @@ before any name can be served. See the section on names below.
 `OhfootballInfra` is the only stack the others read from. Nothing crosses between the backend and
 the frontend, so each carries its own distribution and its own name.
 
-`OhfootballSecrets` is read by nobody. It publishes the ARN of each secret as a parameter, and a
-stack that needs one reads the parameter. The pipeline is deployed after it, which is stated in
-`bin/ohfootball.ts` and adds no reference between the two.
+`OhfootballSecrets` is read by nobody. A stack that needs a secret names it, and the name is set
+here. The pipeline is deployed after it, which is stated in `bin/ohfootball.ts` and adds no
+reference between the two.
 
 Every secret there is kept when the stack is taken down, because a credential is held nowhere else.
 A secret therefore outlives its stack, and raising the stack again over a surviving secret of the
@@ -32,9 +32,14 @@ same name fails. Remove the survivor, or bring it into the stack with an import.
 `--force-delete-without-recovery` holds the name for a recovery window of at least seven days, and
 `restore-secret` is the way back inside it.
 
-The pipeline changes the API and the site, and reads the name of each from a parameter that stack
-publishes rather than through a stack reference. A reference has to be undone before either side
-can change, and a parameter does not. The names are read when the pipeline stack is deployed, so a
+The pipeline changes the API and the site, and every name it needs is written in `lib/names.ts`
+rather than published by the stack that owns it. Nothing is passed in context, nothing is printed as
+an output, and one parameter is published in the whole project. That one is the id of the site
+distribution, which is minted when the distribution is created and so cannot be written down ahead
+of time. The workflows read the same module by hand, so a name changed there is changed in
+`.github/workflows` as well.
+
+The names are read when the pipeline stack is deployed, so a
 function or a distribution that is replaced needs `OhfootballEtl` deployed again to be seen.
 
 ## The weekly run
@@ -64,10 +69,10 @@ execution when Kaggle refuses, after two retries, and no alarm is raised anywher
 a failure shows in the history of the state machine and nowhere else.
 
 The Kaggle account, its token, and the name of the dataset are held in one secret. The secrets
-stack raises it with a key for each of the three and nothing in any of them, and publishes its ARN
-as `/ohfootball/kaggle/secret-arn`. Reading one key out of a secret needs the whole ARN, including
-the suffix minted when the secret was created, which is why the ARN is published rather than
-written into a stack.
+stack raises it with a key for each of the three and nothing in any of them. The pipeline names the
+secret rather than holding its ARN. Secrets Manager mints a suffix when a secret is created, so the
+whole ARN cannot be written down ahead of time, but it resolves a name in the same account and
+region to the secret that carries it.
 
 The values are written by hand once. A deployment that leaves the shape of the secret alone leaves
 the values alone with it.
@@ -139,14 +144,28 @@ cannot do any of this itself: a task pulls its image before it starts, so it can
 it runs on, and it cannot build the binary it packs with the snapshot.
 
 `migrate.yml` applies the migrations. It never connects to the warehouse, because nothing outside
-the network can. It starts a task inside the network through the AWS API and waits for it. Every
-migration is written to be applied again without harm, so the task applies all of them every time
-and keeps no record of what ran. A migration that cannot be repeated needs a table recording what
-has been applied, and `postgres/Dockerfile` would have to read it.
+the network can. It starts the migration state machine and watches the execution. The state machine
+holds the network the task runs in, the role it runs as, and the timeout it is held to, so the
+workflow names the state machine and nothing else. A task that exits with anything but zero fails
+the execution, so the workflow reads no exit code. Every migration is written to be applied again
+without harm, so the task applies all of them every time and keeps no record of what ran. A
+migration that cannot be repeated needs a table recording what has been applied, and
+`postgres/Dockerfile` would have to read it.
+
+It runs after `deploy.yml` finishes rather than on the same push. The task pulls the image tagged
+latest and `deploy.yml` is what pushes that tag, so running the two together would start the task
+against the image built before the migration was written, and the migration would not be applied.
+Waiting means a migration runs after every deployment, which costs one short task and changes
+nothing.
 
 The workflows take on a role by presenting a token GitHub signed, so no key is stored anywhere.
-The trust accepts that token only from this repository. Set `AWS_ACCOUNT_ID` as a repository secret
-and `githubRepository` in context if the repository is renamed or moved.
+The trust accepts that token only from this repository, which is named in `lib/names.ts`. Set
+`AWS_ACCOUNT_ID` as a repository secret.
+
+An account holds one OpenID Connect provider for each issuer, so the provider for GitHub belongs to
+the account rather than to this project and is created beside the bootstrap. Its ARN carries nothing
+generated, so the stacks name it instead of raising it, and a second project in the same account
+does not collide with this one.
 
 ## Deploying the first time
 
@@ -163,6 +182,12 @@ machine you develop on.
 #    Handing the domain over is described under Names below. Nothing that carries a name can be
 #    deployed until it is done.
 npx cdk bootstrap aws://ACCOUNT/us-east-2
+
+# The account holds one provider for each issuer. Skip this if the account already has one.
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com
+
 npx cdk deploy OhfootballDns
 npx cdk deploy OhfootballInfra OhfootballSecrets
 
@@ -175,11 +200,9 @@ aws secretsmanager put-secret-value --secret-id ohfootball/kaggle \
 make -C ../services/api bootstrap
 make -C ../services/api snapshot
 cd ../services/api/bin && zip -9 bootstrap.zip bootstrap ohfootball.db
-bucket=$(aws ssm get-parameter --name /ohfootball/artifacts/bucket-name \
-  --query Parameter.Value --output text)
-aws s3 cp bootstrap.zip "s3://${bucket}/api/bootstrap.zip"
+aws s3 cp bootstrap.zip "s3://ohfootball-artifacts-ACCOUNT/api/bootstrap.zip"
 
-# 3. Raise the API and the site. Both publish names the pipeline reads.
+# 3. Raise the API and the site.
 npx cdk deploy OhfootballBackend OhfootballFrontend
 
 # 4. Push the images, then raise the pipeline, then migrate and run it once.

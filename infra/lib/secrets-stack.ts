@@ -1,9 +1,8 @@
 import * as cdk from 'aws-cdk-lib'
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
-import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
 
-/** One secret this stack raises, and the parameter telling the other stacks where to find it. */
+/** One secret this stack raises. */
 interface SecretDefinition {
   /**
    * Names the resources of this secret inside the stack.
@@ -15,8 +14,6 @@ interface SecretDefinition {
   readonly id: string
   readonly secretName: string
   readonly description: string
-  /** Where the whole ARN of the secret is published. */
-  readonly parameterName: string
   /** The keys the secret holds, each raised empty. */
   readonly keys: readonly string[]
   /**
@@ -34,7 +31,6 @@ const SECRETS: readonly SecretDefinition[] = [
     id: 'Kaggle',
     secretName: 'ohfootball/kaggle',
     description: 'Kaggle account that owns the published dataset',
-    parameterName: '/ohfootball/kaggle/secret-arn',
     keys: ['username', 'dataset'],
     generatedKey: 'key',
   },
@@ -60,10 +56,10 @@ const SECRETS: readonly SecretDefinition[] = [
  * Removing one takes it out of reach for a recovery window of at least seven days unless the
  * removal is forced, and the name stays taken for the whole of that window.
  *
- * The whole ARN of each secret is published as a parameter. A task reading one key out of a secret
- * needs the whole ARN, including the suffix minted when the secret was created, and that suffix
- * cannot be written down ahead of time. The stacks that read a secret read the parameter, so no
- * stack reference ties them to this one and either side can change alone.
+ * A stack that reads a secret names it. Secrets Manager mints a suffix when a secret is created, so
+ * the whole ARN cannot be written down ahead of time, but it resolves a name in the same account and
+ * region to the secret that carries it. The name is set here, so no stack reference and no published
+ * value tie the two stacks together and either side can change alone.
  *
  * The warehouse keeps its own secret. That one is raised by the cluster, which rotates and attaches
  * it, so it stays in the stack that owns the cluster rather than moving here.
@@ -88,13 +84,6 @@ export class SecretsStack extends cdk.Stack {
         removalPolicy: cdk.RemovalPolicy.RETAIN,
       })
       this.secrets[definition.id] = secret
-
-      new ssm.StringParameter(this, `${definition.id}SecretArnParameter`, {
-        parameterName: definition.parameterName,
-        stringValue: secret.secretArn,
-      })
-
-      new cdk.CfnOutput(this, `${definition.id}SecretArn`, { value: secret.secretArn })
     }
   }
 }

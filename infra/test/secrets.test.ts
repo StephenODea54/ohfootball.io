@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib'
-import { Match, Template } from 'aws-cdk-lib/assertions'
+import { Template } from 'aws-cdk-lib/assertions'
 import { EtlStack } from '../lib/etl-stack'
 import { InfraStack } from '../lib/infra-stack'
 import { SecretsStack } from '../lib/secrets-stack'
@@ -54,33 +54,19 @@ describe('the secrets', () => {
     }
   })
 
-  // A task reading one key out of a secret needs the whole ARN, suffix and all, and the suffix is
-  // minted when the secret is created. Publishing it is what lets another stack name it.
-  test('publish the whole ARN of each one as a parameter', () => {
+  // Nothing here publishes anything. A stack that reads a secret names it, and the name is what
+  // this stack sets, so there is no parameter and no output to keep in step with it.
+  test('are published nowhere, because a reader names them', () => {
     const { template } = build()
-    template.hasResourceProperties('AWS::SSM::Parameter', {
-      Name: '/ohfootball/kaggle/secret-arn',
-      Type: 'String',
-      Value: Match.objectLike({ Ref: Match.stringLikeRegexp('KaggleSecret.*') }),
-    })
-  })
-
-  // Every secret is named somewhere a reader can find it. A secret raised without a parameter is a
-  // secret nothing can read one key out of.
-  test('are published one parameter each, and every parameter names a secret of this stack', () => {
-    const { template } = build()
-    const secrets = Object.keys(template.findResources('AWS::SecretsManager::Secret'))
-    const parameters = Object.values(template.findResources('AWS::SSM::Parameter'))
-    expect(parameters).toHaveLength(secrets.length)
-    const named = parameters.map((parameter) => parameter.Properties.Value.Ref)
-    expect([...named].sort()).toEqual([...secrets].sort())
+    template.resourceCountIs('AWS::SSM::Parameter', 0)
+    expect(template.toJSON().Outputs ?? {}).toEqual({})
   })
 })
 
-// The parameter is the whole of the agreement between the two stacks. Nothing else ties them, so
-// nothing else would catch the name being changed on one side only.
+// The name is the whole of the agreement between the two stacks. Nothing else ties them, so
+// nothing else would catch it being changed on one side only.
 describe('the pipeline and the secrets', () => {
-  test('agree on where the ARN of the Kaggle secret is published', () => {
+  test('agree on the name of the Kaggle secret', () => {
     const app = new cdk.App()
     const infra = new InfraStack(app, 'Infra')
     const secrets = new SecretsStack(app, 'Secrets')
@@ -92,31 +78,30 @@ describe('the pipeline and the secrets', () => {
       codeKey: 'api/bootstrap.zip',
     })
 
-    const published = Object.values(
-      Template.fromStack(secrets).findResources('AWS::SSM::Parameter'),
-    ).map((parameter) => parameter.Properties.Name)
-    expect(published).toContain('/ohfootball/kaggle/secret-arn')
+    const raised = Object.values(
+      Template.fromStack(secrets).findResources('AWS::SecretsManager::Secret'),
+    ).map((secret) => secret.Properties.Name)
+    expect(raised).toContain('ohfootball/kaggle')
 
-    // The name of the parameter the pipeline reads, and the reference CloudFormation gives it.
-    const etlTemplate = Template.fromStack(etl)
-    const entry = Object.entries(etlTemplate.toJSON().Parameters ?? {}).find(
-      ([, parameter]: [string, any]) => published.includes(parameter.Default),
-    )
-    expect(entry).toBeDefined()
-    const [reference] = entry!
-
-    // Reading the parameter proves nothing on its own. What matters is that the ARN it carries is
-    // what the publishing task is told to read its Kaggle account out of.
-    const container = Object.entries(etlTemplate.findResources('AWS::ECS::TaskDefinition'))
-      .filter(([id]) => id.startsWith('PublishDatasetTask'))
-      .map(([, definition]) => definition.Properties.ContainerDefinitions[0])
-    expect(container).toHaveLength(1)
-    const kaggle = container[0].Secrets.filter((each: { Name: string }) =>
-      each.Name.startsWith('KAGGLE_'),
-    )
-    expect(kaggle).toHaveLength(3)
-    for (const secret of kaggle) {
-      expect(JSON.stringify(secret.ValueFrom)).toContain(reference)
+    // The pipeline names the secret in the grant it holds and in the value the task reads.
+    const etlRaw = JSON.stringify(Template.fromStack(etl).toJSON())
+    for (const name of raised) {
+      expect(etlRaw).toContain(name)
     }
+  })
+
+  // The pipeline may not own the secret. A stack that raised it would put the credential in a
+  // template, and two stacks would then raise the same name.
+  test('leave the secret to the stack that raises it', () => {
+    const app = new cdk.App()
+    const infra = new InfraStack(app, 'Infra')
+    const etl = new EtlStack(app, 'Etl', {
+      vpc: infra.vpc,
+      warehouse: infra.warehouse,
+      artifacts: infra.artifacts,
+      raw: infra.raw,
+      codeKey: 'api/bootstrap.zip',
+    })
+    Template.fromStack(etl).resourceCountIs('AWS::SecretsManager::Secret', 0)
   })
 })

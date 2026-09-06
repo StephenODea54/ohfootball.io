@@ -185,16 +185,22 @@ describe('the deployment role', () => {
     })
   })
 
-  test('names a different repository when the context sets one', () => {
-    const stacks = build({ githubRepository: 'someone/else' })
-    stacks.infra.hasResourceProperties('AWS::IAM::Role', {
+  // An account holds one provider for each issuer, so the provider belongs to the account and is
+  // created beside the bootstrap. Naming it rather than raising it is what keeps a second stack in
+  // a second region from trying to create one that already exists.
+  test('takes the provider the account already holds rather than raising one', () => {
+    const infra = build().infra
+    infra.resourceCountIs('Custom::AWSCDKOpenIdConnectProvider', 0)
+    infra.hasResourceProperties('AWS::IAM::Role', {
       RoleName: 'ohfootball-deploy',
       AssumeRolePolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
           Match.objectLike({
+            Action: 'sts:AssumeRoleWithWebIdentity',
             Condition: Match.objectLike({
               StringLike: {
-                'token.actions.githubusercontent.com:sub': 'repo:someone/else:*',
+                'token.actions.githubusercontent.com:sub':
+                  'repo:StephenODea54/ohfootball.io:*',
               },
             }),
           }),

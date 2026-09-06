@@ -4,6 +4,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
+import { SITE_DISTRIBUTION_PARAMETER, bucketName } from './names'
 import { SiteDomain, domainSettings, pointDomainAt } from './site-domain'
 
 export interface FrontendStackProps extends cdk.StackProps {
@@ -25,6 +26,9 @@ export class FrontendStack extends cdk.Stack {
     super(scope, id, props)
 
     this.bucket = new s3.Bucket(this, 'Site', {
+      // The step that writes the built site names the bucket, so the name is set rather than
+      // generated.
+      bucketName: bucketName(this, 'site'),
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
@@ -65,23 +69,12 @@ export class FrontendStack extends cdk.Stack {
 
     pointDomainAt(this, this.distribution, props.domain)
 
-    // The pipeline writes the built site here and then clears the distribution. It reads both
-    // names from here rather than through a stack reference.
-    new ssm.StringParameter(this, 'SiteBucketParameter', {
-      parameterName: '/ohfootball/site/bucket-name',
-      stringValue: this.bucket.bucketName,
-    })
+    // A distribution is given its id when it is created, so the id cannot be written down ahead of
+    // time the way the bucket name can. The pipeline clears the cache and needs it, so this one
+    // name is published and every other one the pipeline uses is fixed.
     new ssm.StringParameter(this, 'SiteDistributionParameter', {
-      parameterName: '/ohfootball/site/distribution-id',
+      parameterName: SITE_DISTRIBUTION_PARAMETER,
       stringValue: this.distribution.distributionId,
-    })
-
-    new cdk.CfnOutput(this, 'SiteBucket', { value: this.bucket.bucketName })
-    new cdk.CfnOutput(this, 'SiteUrl', {
-      value: `https://${props.domain?.domainName ?? this.distribution.distributionDomainName}`,
-    })
-    new cdk.CfnOutput(this, 'SiteDistributionId', {
-      value: this.distribution.distributionId,
     })
   }
 }

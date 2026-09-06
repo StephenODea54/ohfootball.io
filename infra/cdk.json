@@ -5,7 +5,6 @@
     "exclude": ["README.md", "cdk*.json", "**/*.d.ts", "**/*.js", "node_modules", "cdk.out"]
   },
   "context": {
-    "apiCodeKey": "api/bootstrap.zip",
     "@aws-cdk/core:defaultCrossStackReferences": "strong",
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,

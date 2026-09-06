@@ -96,11 +96,11 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/ohfootball-deploy
           aws-region: ${{ env.AWS_REGION }}
 
+      # The bucket carries a fixed name, so the workflow writes to it without asking where it is.
       - name: publish the binary
         run: |
-          bucket=$(aws ssm get-parameter --name /ohfootball/artifacts/bucket-name \
-            --query Parameter.Value --output text)
-          aws s3 cp services/api/bin/bootstrap "s3://${bucket}/${ARTIFACT_KEY}"
+          aws s3 cp services/api/bin/bootstrap \
+            "s3://ohfootball-artifacts-${{ secrets.AWS_ACCOUNT_ID }}/${ARTIFACT_KEY}"
 
   stacks:
     name: stacks

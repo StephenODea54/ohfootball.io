@@ -7,10 +7,26 @@ import { InfraStack } from '../lib/infra-stack'
  * The body of the state machine is assembled from pieces, because the names it carries are only
  * known once the stack is deployed. This puts the pieces back together so a test can read it.
  */
-function definitionOf(template: Template): string {
+function definitionOf(template: Template, name?: string): string {
   const machines = Object.values(template.findResources('AWS::StepFunctions::StateMachine'))
-  const pieces: unknown[] = machines[0].Properties.DefinitionString['Fn::Join'][1]
+  // The weekly run carries no name of its own. The migration carries one, because the deployment
+  // workflow has to name it to start it.
+  const machine = machines.find((each) => each.Properties.StateMachineName === name)
+  expect(machine).toBeDefined()
+  const pieces: unknown[] = machine!.Properties.DefinitionString['Fn::Join'][1]
   return pieces.map((piece) => (typeof piece === 'string' ? piece : JSON.stringify(piece))).join('')
+}
+
+/**
+ * The container of one step.
+ *
+ * The image of a container is a reference to the registry it is pulled from rather than a name, so
+ * a container is found by the step that owns it.
+ */
+function containersOfTemplate(template: Template, step: string): Record<string, any>[] {
+  return Object.entries(template.findResources('AWS::ECS::TaskDefinition'))
+    .filter(([id]) => id.startsWith(`${step}Task`))
+    .map(([, definition]) => definition.Properties.ContainerDefinitions[0])
 }
 
 function build(): { template: Template; raw: string; definition: string } {
@@ -145,25 +161,35 @@ describe('the run', () => {
 
 describe('the things the run changes', () => {
   // Reading these through a stack reference would tie the stacks together, and a reference has to
-  // be undone before either side can change.
-  test('are read from parameters rather than from another stack', () => {
+  // be undone before either side can change. Every name the run needs is fixed except one. A distribution is given its id when it is
+  // created, so that id cannot be written down ahead of time and is read from a parameter.
+  test('are named outright, apart from the id of the distribution', () => {
     const { template, raw } = build()
-    for (const name of [
-      '/ohfootball/api/function-name',
-      '/ohfootball/site/bucket-name',
-      '/ohfootball/site/distribution-id',
-    ]) {
-      template.hasParameter('*', {
-        Type: 'AWS::SSM::Parameter::Value<String>',
-        Default: name,
-      })
-    }
+    // The bootstrap of the account adds one of its own, which is not read by anything here.
+    const parameters = Object.values(template.toJSON().Parameters ?? {}).filter(
+      (parameter: any) =>
+        parameter.Type === 'AWS::SSM::Parameter::Value<String>' &&
+        String(parameter.Default).startsWith('/ohfootball/'),
+    )
+    expect(parameters).toHaveLength(1)
+    expect((parameters[0] as any).Default).toEqual('/ohfootball/site/distribution-id')
+
     // What this stack does read from another stack is the shared base, and only the shared base.
     const imports = raw.match(/"Fn::ImportValue":"[^"]+"/g) ?? []
     expect(imports.length).toBeGreaterThan(0)
     for (const each of imports) {
       expect(each).toContain('Infra:')
     }
+  })
+
+  test('name the function whose code the run replaces, and the address the site is built for', () => {
+    const { template, definition } = build()
+    expect(definition).toContain('ohfootball-api')
+    const container = containersOfTemplate(template, 'BuildSite')[0]
+    const environment = Object.fromEntries(
+      container.Environment.map((each: { Name: string; Value: string }) => [each.Name, each.Value]),
+    )
+    expect(environment.VITE_GRAPHQL_URL).toEqual('https://api.ohfootball.io/graphql')
   })
 
   test('include replacing the code of the API', () => {
@@ -176,16 +202,8 @@ describe('the things the run changes', () => {
 // The dataset is published out of the same marts the site was built from, and it is published last
 // so a Kaggle outage costs the dataset and not the site.
 describe('the published dataset', () => {
-  // The image of a container is a reference to the registry it is pulled from rather than a name,
-  // so a container is found by the step that owns it.
-  function containersOf(template: Template, step: string): Record<string, any>[] {
-    return Object.entries(template.findResources('AWS::ECS::TaskDefinition'))
-      .filter(([id]) => id.startsWith(`${step}Task`))
-      .map(([, definition]) => definition.Properties.ContainerDefinitions[0])
-  }
-
   function containerOf(template: Template, step: string): Record<string, any> {
-    const found = containersOf(template, step)
+    const found = containersOfTemplate(template, step)
     expect(found).toHaveLength(1)
     return found[0]
   }
@@ -215,14 +233,12 @@ describe('the published dataset', () => {
   // A task reads one key out of the secret, and that needs the whole ARN including the suffix the
   // secret was given when it was created. The suffix cannot be written here, so the ARN is read
   // from a parameter, the same way the names of the API and the site are read.
-  test('is told which secret to read by a parameter', () => {
-    const { template, raw } = build()
-    template.hasParameter('*', {
-      Type: 'AWS::SSM::Parameter::Value<String>',
-      Default: '/ohfootball/kaggle/secret-arn',
-    })
-    // A grant on part of an ARN ends in the wildcard CDK adds for a secret it only knows by name.
-    expect(raw).not.toContain('-??????')
+  // Secrets Manager mints a suffix when a secret is created, so a stack that names one rather than
+  // holding its whole ARN is granted the name and the six characters that follow it.
+  test('is told which secret to read by name', () => {
+    const { raw } = build()
+    expect(raw).toContain('secret:ohfootball/kaggle')
+    expect(raw).toContain('-??????')
   })
 
   // The secret is created by hand, so nothing here may try to own it. A stack that created it
@@ -273,13 +289,26 @@ describe('the migration task', () => {
     expect(definition).not.toContain('Migrate')
   })
 
-  test('publishes what the workflow needs to start it', () => {
+  // The workflow names the state machine and nothing else. The network the task runs in, the role
+  // it runs as, and the timeout it is held to all stay in the stack.
+  test('runs behind a state machine the workflow can name without being told anything', () => {
     const { template } = build()
-    for (const name of ['cluster-arn', 'migrate-task-arn', 'subnet-ids', 'security-group-id']) {
-      template.hasResourceProperties('AWS::SSM::Parameter', {
-        Name: `/ohfootball/pipeline/${name}`,
-      })
-    }
+    template.resourceCountIs('AWS::StepFunctions::StateMachine', 2)
+    template.hasResourceProperties('AWS::StepFunctions::StateMachine', {
+      StateMachineName: 'ohfootball-migrate',
+    })
+  })
+
+  // A task that exits with anything but zero fails the execution, so the workflow reads no exit
+  // code. That only holds while the state waits for the task rather than starting it and moving on.
+  test('waits for the task it starts', () => {
+    const { template } = build()
+    expect(definitionOf(template, 'ohfootball-migrate')).toContain('ecs:runTask.sync')
+  })
+
+  // Nothing is printed. A workflow that reads an output has to be told the name of a stack first.
+  test('publishes nothing about itself', () => {
+    expect(build().template.toJSON().Outputs ?? {}).toEqual({})
   })
 })
 

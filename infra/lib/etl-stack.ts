@@ -13,6 +13,14 @@ import * as sfn from 'aws-cdk-lib/aws-stepfunctions'
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks'
 import { Construct } from 'constructs'
 import { WAREHOUSE_DATABASE, WAREHOUSE_PORT, WAREHOUSE_USERNAME } from './infra-stack'
+import {
+  API_FUNCTION,
+  API_GRAPHQL_URL,
+  MIGRATION_STATE_MACHINE,
+  PIPELINE_SCHEDULE,
+  SITE_DISTRIBUTION_PARAMETER,
+  bucketName,
+} from './names'
 
 export interface EtlStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc
@@ -21,8 +29,6 @@ export interface EtlStackProps extends cdk.StackProps {
   readonly raw: s3.IBucket
   /** Key of the API package the pipeline replaces each run. */
   readonly codeKey: string
-  /** When the run starts, as a cron the scheduler understands. */
-  readonly schedule?: string
 }
 
 /** What one step of the pipeline may set beyond the image it runs and what it reads. */
@@ -58,22 +64,32 @@ const STEP_TIMEOUT = cdk.Duration.minutes(15)
  * without being stuck.
  */
 const SITE_TIMEOUT = cdk.Duration.hours(2)
+
+/**
+ * How long the migration may run.
+ *
+ * Every migration is applied on every run, so the time it takes grows with the number of files and
+ * not with the record. Ten minutes is far more than the five of them need, and a run longer than
+ * that is a statement waiting on a lock rather than a statement doing work.
+ */
+const MIGRATION_TIMEOUT = cdk.Duration.minutes(10)
 const DATASET_TIMEOUT = cdk.Duration.minutes(30)
 
 /**
- * The parameter naming the secret that holds the Kaggle account which owns the published dataset.
+ * The secret holding the Kaggle account which owns the published dataset.
  *
  * The secret is raised by the secrets stack and holds the keys username, key, and dataset. Its
  * values are written by hand, because a template is readable by anyone who can read the stack.
  *
- * What is read here is a parameter holding the whole ARN of that secret, suffix and all. A task
- * reads one key out of the secret, and reading one key needs the whole ARN. The suffix is minted
- * when the secret is created, so it cannot be written here.
+ * It is named here rather than read from a parameter. Secrets Manager mints a suffix when a secret
+ * is created, so the whole ARN cannot be written down ahead of time, but it resolves a name in the
+ * same account and region to the secret that carries it. The name is fixed by the secrets stack, so
+ * naming it here ties the two stacks together through nothing that has to be deployed first.
  *
- * A run whose secret holds no value fails when it reaches Kaggle, and a run whose parameter is
- * missing fails before the container starts.
+ * A run whose secret holds no value fails when it reaches Kaggle, and a run whose secret is missing
+ * fails before the container starts.
  */
-const KAGGLE_SECRET_PARAMETER = '/ohfootball/kaggle/secret-arn'
+const KAGGLE_SECRET = 'ohfootball/kaggle'
 
 /**
  * The weekly run that collects, rebuilds, and publishes.
@@ -89,6 +105,8 @@ const KAGGLE_SECRET_PARAMETER = '/ohfootball/kaggle/secret-arn'
  */
 export class EtlStack extends cdk.Stack {
   readonly stateMachine: sfn.StateMachine
+  /** Applies every migration to the warehouse. The deployment workflow starts this. */
+  readonly migration: sfn.StateMachine
 
   private readonly repositories: Record<string, ecr.Repository> = {}
   private readonly cluster: ecs.Cluster
@@ -127,18 +145,13 @@ export class EtlStack extends cdk.Stack {
       description: 'Pipeline tasks read and write the warehouse',
     })
 
-    const apiFunctionName = ssm.StringParameter.valueForStringParameter(
-      this,
-      '/ohfootball/api/function-name',
-    )
-    const apiUrl = ssm.StringParameter.valueForStringParameter(this, '/ohfootball/api/url')
-    const siteBucketName = ssm.StringParameter.valueForStringParameter(
-      this,
-      '/ohfootball/site/bucket-name',
-    )
+    // The function, the bucket, and the address of the API all carry fixed names, so they are read
+    // from one module rather than published by the stack that owns them. The id of the distribution
+    // is the exception, because a distribution is given its id when it is created.
+    const siteBucketName = bucketName(this, 'site')
     const siteDistributionId = ssm.StringParameter.valueForStringParameter(
       this,
-      '/ohfootball/site/distribution-id',
+      SITE_DISTRIBUTION_PARAMETER,
     )
 
     // Collect what the season has added, then rebuild the marts from everything collected so far,
@@ -161,12 +174,12 @@ export class EtlStack extends cdk.Stack {
       service: 'lambda',
       action: 'updateFunctionCode',
       parameters: {
-        FunctionName: apiFunctionName,
+        FunctionName: API_FUNCTION,
         S3Bucket: props.artifacts.bucketName,
         S3Key: props.codeKey,
       },
       iamResources: [
-        cdk.Arn.format({ service: 'lambda', resource: 'function', resourceName: '*' }, this),
+        cdk.Arn.format({ service: 'lambda', resource: 'function', resourceName: API_FUNCTION }, this),
       ],
     })
 
@@ -177,7 +190,7 @@ export class EtlStack extends cdk.Stack {
       'site',
       {
         SITE_BUCKET: siteBucketName,
-        VITE_GRAPHQL_URL: apiUrl,
+        VITE_GRAPHQL_URL: API_GRAPHQL_URL,
       },
       { timeout: SITE_TIMEOUT },
     )
@@ -204,11 +217,7 @@ export class EtlStack extends cdk.Stack {
     // The dataset is published last, out of the same marts the site was built from. It is last
     // because nothing else in the run reads it, so a Kaggle outage costs the publication of the
     // dataset and not the publication of the site.
-    const kaggleSecret = secretsmanager.Secret.fromSecretCompleteArn(
-      this,
-      'KaggleSecret',
-      ssm.StringParameter.valueForStringParameter(this, KAGGLE_SECRET_PARAMETER),
-    )
+    const kaggleSecret = secretsmanager.Secret.fromSecretNameV2(this, 'KaggleSecret', KAGGLE_SECRET)
     const publishDataset = this.runTask('PublishDataset', 'dataset', {}, {
       command: ['publish'],
       secrets: {
@@ -259,7 +268,7 @@ export class EtlStack extends cdk.Stack {
     new scheduler.CfnSchedule(this, 'WeeklyRun', {
       // The data changes about once a week in season, so a run on a schedule is enough and nothing
       // else ever wakes the warehouse.
-      scheduleExpression: props.schedule ?? 'cron(0 9 ? * TUE *)',
+      scheduleExpression: PIPELINE_SCHEDULE,
       scheduleExpressionTimezone: 'America/New_York',
       flexibleTimeWindow: { mode: 'OFF' },
       target: {
@@ -271,28 +280,27 @@ export class EtlStack extends cdk.Stack {
     // The warehouse answers only from inside the network. A migration therefore runs as a task
     // here, and the deployment workflow starts it through the AWS API rather than by reaching the
     // database. Nothing outside the network ever needs a route to it.
-    const migrate = this.taskDefinition('Migrate', 'migrate', {})
-
-    // What the workflow has to name to start that task. They are published rather than printed,
-    // because a workflow can read a parameter without being told the name of a stack.
-    const subnets = props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PUBLIC })
-    const handles: Record<string, string> = {
-      'cluster-arn': this.cluster.clusterArn,
-      'migrate-task-arn': migrate.taskDefinitionArn,
-      'subnet-ids': subnets.subnetIds.join(','),
-      'security-group-id': this.taskSecurityGroup.securityGroupId,
-    }
-    for (const [name, value] of Object.entries(handles)) {
-      new ssm.StringParameter(this, `Pipeline${name}`, {
-        parameterName: `/ohfootball/pipeline/${name}`,
-        stringValue: value,
-      })
-    }
-
-    new cdk.CfnOutput(this, 'PipelineArn', { value: this.stateMachine.stateMachineArn })
-    for (const [name, repository] of Object.entries(this.repositories)) {
-      new cdk.CfnOutput(this, `${name}RepositoryUri`, { value: repository.repositoryUri })
-    }
+    //
+    // The task is wrapped in a state machine of its own rather than started directly. The network
+    // it runs in, the role it runs as, and the timeout it is held to then stay in this file, and
+    // the workflow names the state machine and nothing else. A task that exits with anything but
+    // zero fails the execution, so the workflow reads no exit code either.
+    this.migration = new sfn.StateMachine(this, 'Migration', {
+      stateMachineName: MIGRATION_STATE_MACHINE,
+      stateMachineType: sfn.StateMachineType.STANDARD,
+      timeout: MIGRATION_TIMEOUT,
+      definitionBody: sfn.DefinitionBody.fromChainable(
+        this.runTask('Migrate', 'migrate', {}, { timeout: MIGRATION_TIMEOUT }),
+      ),
+      logs: {
+        destination: new logs.LogGroup(this, 'MigrationStateLogs', {
+          retention: logs.RetentionDays.ONE_MONTH,
+          removalPolicy: cdk.RemovalPolicy.DESTROY,
+        }),
+        level: sfn.LogLevel.ERROR,
+      },
+      tracingEnabled: false,
+    })
   }
 
   /**

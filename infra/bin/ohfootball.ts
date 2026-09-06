@@ -5,6 +5,7 @@ import { DnsStack } from '../lib/dns-stack'
 import { EtlStack } from '../lib/etl-stack'
 import { FrontendStack } from '../lib/frontend-stack'
 import { InfraStack } from '../lib/infra-stack'
+import { API_CODE_KEY } from '../lib/names'
 import { SecretsStack } from '../lib/secrets-stack'
 import { domainFromContext } from '../lib/site-domain'
 
@@ -16,8 +17,6 @@ const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.CDK_DEFAULT_REGION,
 }
-
-const apiCodeKey: string = app.node.tryGetContext('apiCodeKey')
 
 const siteDomain = domainFromContext(app, 'site')
 const apiDomain = domainFromContext(app, 'api')
@@ -36,7 +35,7 @@ new FrontendStack(app, 'OhfootballFrontend', { env, domain: siteDomain })
 new BackendStack(app, 'OhfootballBackend', {
   env,
   artifacts: infra.artifacts,
-  codeKey: apiCodeKey,
+  codeKey: API_CODE_KEY,
   // The API answers the built site. Without a domain the distribution name is not known until the
   // site stack is deployed, so the browser is told to expect any origin until one is set.
   siteOrigin: siteDomain ? `https://${siteDomain.domainName}` : '*',
@@ -51,13 +50,12 @@ const etl = new EtlStack(app, 'OhfootballEtl', {
   warehouse: infra.warehouse,
   artifacts: infra.artifacts,
   raw: infra.raw,
-  codeKey: apiCodeKey,
-  schedule: app.node.tryGetContext('pipelineSchedule'),
+  codeKey: API_CODE_KEY,
 })
 
-// The pipeline reads a parameter naming a secret, and a parameter is read when the stack that
-// reads it is deployed. The order is stated here rather than left to chance, and it adds no
-// reference between the two, so either can still change alone.
+// A pipeline task reads a secret by name, and a name resolves to nothing until the secret exists.
+// The order is stated here rather than left to chance, and it adds no reference between the two, so
+// either can still change alone.
 etl.addDependency(secrets)
 
 cdk.Tags.of(app).add('project', 'ohfootball.io')

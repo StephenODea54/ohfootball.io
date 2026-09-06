@@ -3,8 +3,15 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as rds from 'aws-cdk-lib/aws-rds'
 import * as s3 from 'aws-cdk-lib/aws-s3'
-import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
+import {
+  GITHUB_ISSUER,
+  MIGRATION_STATE_MACHINE,
+  REPOSITORY,
+  bucketName,
+  githubProviderArn,
+  migrationStateMachineArn,
+} from './names'
 
 /** Aurora pauses after this long without work. Five minutes is the shortest the service allows. */
 const AUTO_PAUSE = cdk.Duration.minutes(5)
@@ -24,12 +31,6 @@ export const WAREHOUSE_DATABASE = 'ohfootball'
  * carries a value nothing can check until the stack is deployed.
  */
 export const WAREHOUSE_PORT = 5432
-
-/** Repository the deployment workflow runs from, as owner/name. */
-const DEFAULT_REPOSITORY = 'StephenODea54/ohfootball.io'
-
-/** Where GitHub signs the token a workflow presents. */
-const GITHUB_ISSUER = 'token.actions.githubusercontent.com'
 
 /**
  * The parts every other stack builds on: the network, the warehouse, and the buckets.
@@ -96,6 +97,9 @@ export class InfraStack extends cdk.Stack {
     // Everything here is built from the warehouse or from the repository, so it can be thrown away
     // and made again. Versions let a deployment roll back to the package before it.
     this.artifacts = new s3.Bucket(this, 'Artifacts', {
+      // The deployment workflow writes the binary here and names the bucket to do it, so the name
+      // is set rather than generated.
+      bucketName: bucketName(this, 'artifacts'),
       versioned: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -105,22 +109,7 @@ export class InfraStack extends cdk.Stack {
       lifecycleRules: [{ noncurrentVersionExpiration: cdk.Duration.days(30) }],
     })
 
-    // The deployment workflow writes the binary here. It reads the name from a parameter rather
-    // than from a stack output, so the workflow never has to know the name of a stack.
-    new ssm.StringParameter(this, 'ArtifactsBucketParameter', {
-      parameterName: '/ohfootball/artifacts/bucket-name',
-      stringValue: this.artifacts.bucketName,
-    })
-
     this.deployRole = this.buildDeployRole()
-
-    new cdk.CfnOutput(this, 'DeployRoleArn', { value: this.deployRole.roleArn })
-    new cdk.CfnOutput(this, 'WarehouseEndpoint', {
-      value: this.warehouse.clusterEndpoint.hostname,
-    })
-    new cdk.CfnOutput(this, 'WarehouseSecretArn', { value: this.warehouse.secret!.secretArn })
-    new cdk.CfnOutput(this, 'ArtifactsBucket', { value: this.artifacts.bucketName })
-    new cdk.CfnOutput(this, 'RawBucket', { value: this.raw.bucketName })
   }
 
   /**
@@ -132,29 +121,20 @@ export class InfraStack extends cdk.Stack {
    *
    * The permissions are narrow because the CDK does the heavy work through roles of its own,
    * created when the account was bootstrapped. This role may take those on, push the images the
-   * pipeline runs, write the binary the API is built from, and start the migration task. It cannot
+   * pipeline runs, write the binary the API is built from, and start the migration. It cannot
    * reach the warehouse, which answers only from inside the network.
    */
   private buildDeployRole(): iam.Role {
-    const repository = this.node.tryGetContext('githubRepository') ?? DEFAULT_REPOSITORY
-
-    // An account holds one provider for GitHub. Pass the ARN of an existing one to share it rather
-    // than trying to create a second, which the account refuses.
-    const existing = this.node.tryGetContext('githubOidcProviderArn')
-    const provider = existing
-      ? iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(this, 'GitHubProvider', existing)
-      : new iam.OpenIdConnectProvider(this, 'GitHubProvider', {
-          url: `https://${GITHUB_ISSUER}`,
-          clientIds: ['sts.amazonaws.com'],
-        })
-
+    // An account holds one provider for each issuer, so the provider for GitHub belongs to the
+    // account and not to this project. It is created beside the bootstrap, and named here from
+    // parts that carry nothing generated.
     const role = new iam.Role(this, 'DeployRole', {
       roleName: 'ohfootball-deploy',
-      assumedBy: new iam.WebIdentityPrincipal(provider.openIdConnectProviderArn, {
+      assumedBy: new iam.WebIdentityPrincipal(githubProviderArn(this), {
         StringEquals: { [`${GITHUB_ISSUER}:aud`]: 'sts.amazonaws.com' },
         // Narrowed to one repository. Without this, a workflow in any repository anywhere could
         // take this role on.
-        StringLike: { [`${GITHUB_ISSUER}:sub`]: `repo:${repository}:*` },
+        StringLike: { [`${GITHUB_ISSUER}:sub`]: `repo:${REPOSITORY}:*` },
       }),
       description: 'Assumed by the deployment workflow of ohfootball.io',
       maxSessionDuration: cdk.Duration.hours(1),
@@ -196,28 +176,28 @@ export class InfraStack extends cdk.Stack {
     // Writing the binary the pipeline packs together with the snapshot.
     this.artifacts.grantReadWrite(role)
 
-    // Starting the migration task and waiting for it. Passing a role is what lets a task run as
-    // the role its definition names, and the call is refused without it.
+    // Starting the migration and watching it finish. The state machine holds the network the task
+    // runs in and the role it runs as, so the workflow names neither and this grant reaches one
+    // state machine rather than every task in the account.
     role.addToPolicy(
       new iam.PolicyStatement({
-        actions: ['ecs:RunTask', 'ecs:DescribeTasks', 'ecs:ListTasks'],
-        resources: ['*'],
+        actions: ['states:StartExecution'],
+        resources: [migrationStateMachineArn(this)],
       }),
     )
     role.addToPolicy(
       new iam.PolicyStatement({
-        actions: ['iam:PassRole'],
-        resources: ['*'],
-        conditions: { StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' } },
-      }),
-    )
-
-    // Reading the names the workflow needs in order to start that task.
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['ssm:GetParameter', 'ssm:GetParameters'],
+        actions: ['states:DescribeExecution'],
         resources: [
-          cdk.Arn.format({ service: 'ssm', resource: 'parameter', resourceName: 'ohfootball/*' }, this),
+          cdk.Arn.format(
+            {
+              service: 'states',
+              resource: 'execution',
+              resourceName: `${MIGRATION_STATE_MACHINE}:*`,
+              arnFormat: cdk.ArnFormat.COLON_RESOURCE_NAME,
+            },
+            this,
+          ),
         ],
       }),
     )

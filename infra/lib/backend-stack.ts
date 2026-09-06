@@ -4,8 +4,8 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as logs from 'aws-cdk-lib/aws-logs'
 import * as s3 from 'aws-cdk-lib/aws-s3'
-import * as ssm from 'aws-cdk-lib/aws-ssm'
 import { Construct } from 'constructs'
+import { API_FUNCTION } from './names'
 import { SiteDomain, domainSettings, pointDomainAt } from './site-domain'
 
 export interface BackendStackProps extends cdk.StackProps {
@@ -40,6 +40,9 @@ export class BackendStack extends cdk.Stack {
     super(scope, id, props)
 
     const api = new lambda.Function(this, 'Api', {
+      // The pipeline replaces the code of this function every week and names it to do so, so the
+      // name is set rather than generated.
+      functionName: API_FUNCTION,
       runtime: lambda.Runtime.PROVIDED_AL2023,
       architecture: lambda.Architecture.ARM_64,
       handler: 'bootstrap',
@@ -80,24 +83,5 @@ export class BackendStack extends cdk.Stack {
     })
 
     pointDomainAt(this, this.distribution, props.domain)
-
-    // The pipeline replaces the code of this function every week. It reads the name from here
-    // rather than through a stack reference, because a reference has to be undone before either
-    // stack can change.
-    new ssm.StringParameter(this, 'ApiFunctionNameParameter', {
-      parameterName: '/ohfootball/api/function-name',
-      stringValue: api.functionName,
-    })
-
-    const apiUrl = `https://${props.domain?.domainName ?? this.distribution.distributionDomainName}`
-
-    // The site is built against this address, so the build reads it from here.
-    new ssm.StringParameter(this, 'ApiUrlParameter', {
-      parameterName: '/ohfootball/api/url',
-      stringValue: `${apiUrl}/graphql`,
-    })
-
-    new cdk.CfnOutput(this, 'ApiUrl', { value: apiUrl })
-    new cdk.CfnOutput(this, 'ApiFunctionName', { value: api.functionName })
   }
 }
