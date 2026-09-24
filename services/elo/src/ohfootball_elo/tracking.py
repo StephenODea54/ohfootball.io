@@ -34,7 +34,13 @@ def track_run(
     log_per_season: bool = True,
 ) -> tuple[str, Evaluation]:
     """Log one reproducible Elo run and return its MLflow ID and evaluation."""
-    import mlflow
+    try:
+        import mlflow
+    except ImportError as missing:
+        raise SystemExit(
+            "this command logs to a tracking server, which is not installed. "
+            "Install the package with the tracking extra: pip install '.[tracking]'"
+        ) from missing
 
     games = tuple(training_games)
     overall = evaluate(historical_predictions)

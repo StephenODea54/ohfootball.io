@@ -116,6 +116,11 @@ artifacts and per-season metrics.
 MLflow is only an experiment tracker here. This project does not use its model
 registry or deployment features, and Elo does not need a serialized estimator.
 
+MLflow is an extra of this package and is not installed by default. `run` and
+`sweep` need it, so install the package with `pip install '.[tracking]'` to use
+them. `publish` writes ratings and predictions to the warehouse and logs
+nothing, so it runs without the extra. The weekly run calls `publish` only.
+
 ## Metrics worth caring about
 
 **Brier score** is the most approachable primary metric. It is the mean squared
