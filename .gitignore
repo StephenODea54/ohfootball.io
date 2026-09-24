@@ -21,12 +21,14 @@ infra/cdk.out
 !.env.example
 !.gitignore
 !Dockerfile
+!Dockerfile.*
 !go.mod
 !go.sum
 !go.work
 !go.work.sum
 !LICENSE
 !Makefile
+!*.mk
 
 # And filetypes
 !*.conf

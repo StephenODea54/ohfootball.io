@@ -145,6 +145,42 @@ services:
     profiles:
       - tools
 
+  # Holds what the weekly run calls. The host runs the same image and starts a target inside it on
+  # a schedule. Run one here with: make pipeline ARGS=rate
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    environment:
+      DATABASE_URL: postgresql://im_batman:shhhhhhhhh@postgres:5432/ohfootball
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: im_batman
+      PGPASSWORD: shhhhhhhhh
+      PGDATABASE: ohfootball
+      DBT_HOST: postgres
+      DBT_PORT: "5432"
+      DBT_USER: im_batman
+      DBT_PASSWORD: shhhhhhhhh
+      DBT_DATABASE: ohfootball
+      DBT_SCHEMA: ohfootball_stg
+      OHFOOTBALL_MARTS_SCHEMA: ohfootball_marts
+      OHFOOTBALL_TIME_ZONE: America/New_York
+      # The scrape names one season and does not read the calendar, so this is set to the year of
+      # the season in progress.
+      SCRAPER_SEASON: ${SCRAPER_SEASON:-}
+      # A publication needs a Kaggle account and the site has to be asked to build, so both are
+      # taken from the environment of the machine running this and never written here.
+      KAGGLE_USERNAME: ${KAGGLE_USERNAME:-}
+      KAGGLE_KEY: ${KAGGLE_KEY:-}
+      KAGGLE_DATASET: ${KAGGLE_DATASET:-}
+      SITE_DEPLOY_WEBHOOK: ${SITE_DEPLOY_WEBHOOK:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
 volumes:
   postgres_data:
   pgadmin_data:

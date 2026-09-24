@@ -1,0 +1,72 @@
+# Holds everything the weekly run calls.
+#
+# The host runs a scheduled job by starting a command inside a container that is already running,
+# so this image has to stay up between runs. It therefore does nothing until it is asked to, and
+# the command it is asked for is a target of pipeline.mk.
+#
+# One image rather than one image per step, because a scheduled job on this host reaches a running
+# container and not a container it starts. Five idle containers would cost five times as much to
+# hold up for the same work.
+#
+# The tracking server is not installed. The weekly run publishes ratings and logs nothing, and
+# leaving the tracking server out halves the number of packages installed here.
+#
+# Build from the repository root:
+#   docker build -f Dockerfile.pipeline -t ohfootball/pipeline .
+
+FROM golang:1.25-alpine AS build
+
+WORKDIR /src
+COPY pkg/database ./pkg/database
+COPY services/scraper ./services/scraper
+
+WORKDIR /src/services/scraper
+RUN GOWORK=off go mod download
+RUN CGO_ENABLED=0 GOOS=linux GOWORK=off go build -trimpath -ldflags="-s -w" \
+    -o /out/joe-eitel ./cmd/joe-eitel
+RUN CGO_ENABLED=0 GOOS=linux GOWORK=off go build -trimpath -ldflags="-s -w" \
+    -o /out/ohhsfbdb ./cmd/ohhsfbdb
+
+FROM python:3.12-slim
+
+ARG DBT_CORE_VERSION=1.12.0
+ARG DBT_POSTGRES_VERSION=1.11.0
+
+# git is read by dbt when it resolves a package. curl asks the host to build the site. make runs
+# the targets. The PostgreSQL client applies a migration by hand.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+        curl \
+        git \
+        make \
+        postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir \
+    "dbt-core==${DBT_CORE_VERSION}" \
+    "dbt-postgres==${DBT_POSTGRES_VERSION}"
+
+COPY services/elo/pyproject.toml services/elo/README.md /tmp/elo/
+COPY services/elo/src /tmp/elo/src
+RUN pip install --no-cache-dir /tmp/elo && rm -rf /tmp/elo
+
+COPY services/dataset/pyproject.toml services/dataset/README.md /tmp/dataset/
+COPY services/dataset/src /tmp/dataset/src
+RUN pip install --no-cache-dir /tmp/dataset && rm -rf /tmp/dataset
+
+COPY --from=build /out/joe-eitel /usr/local/bin/joe-eitel
+COPY --from=build /out/ohhsfbdb /usr/local/bin/ohhsfbdb
+
+COPY analytics ./analytics
+COPY postgres/migrations ./migrations
+COPY pipeline.mk ./Makefile
+
+# dbt reads its connection settings from here, and every setting in that file is read from the
+# environment.
+ENV DBT_PROFILES_DIR=/app/analytics
+
+# The container holds itself up so a scheduled job has something to run a command inside. It
+# starts nothing and listens on no port.
+CMD ["sleep", "infinity"]

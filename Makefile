@@ -1,7 +1,8 @@
 .PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs db-migrate \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
-	dataset-build dataset-test dataset-export
+	dataset-build dataset-test dataset-export \
+	pipeline pipeline-build pipeline-test
 
 DBT := docker compose run --rm dbt
 
@@ -15,6 +16,7 @@ test:
 	$(MAKE) -C services/api test
 	$(MAKE) -C services/elo test
 	$(MAKE) -C services/dataset test
+	$(MAKE) pipeline-test
 
 vet:
 	$(MAKE) -C services/scraper vet
@@ -22,6 +24,7 @@ vet:
 	$(MAKE) -C services/api vet
 	$(MAKE) -C services/elo vet
 	$(MAKE) -C services/dataset vet
+	python3 -m compileall -q tests
 
 fmt:
 	$(MAKE) -C services/scraper fmt
@@ -109,3 +112,17 @@ dataset-test:
 # services/dataset/export, which Git ignores.
 dataset-export:
 	docker compose run --rm dataset export --directory /export $(ARGS)
+
+pipeline-build:
+	docker compose build pipeline
+
+# Runs one target of the weekly run inside the pipeline image, which is what the host does on a
+# schedule. Name the target, for example:
+# make pipeline ARGS=rate
+pipeline:
+	docker compose run --rm pipeline make $(ARGS)
+
+# Checks the target that asks the host to build the site. It needs no image and no database, so
+# it is part of the top level test target.
+pipeline-test:
+	python3 -m unittest discover -s tests

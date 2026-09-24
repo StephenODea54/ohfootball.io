@@ -51,6 +51,9 @@ jobs:
       - run: make -C services/elo test
       - run: make -C services/dataset vet
       - run: make -C services/dataset test
+      # Checks the target that asks the host to build the site. It answers itself over the
+      # loopback address and needs no image and no database.
+      - run: make pipeline-test
 
   # The site is drawn ahead of time against the API, and prerender.ts decides which addresses are
   # drawn. A mistake there is a page missing from the published site, so the types are checked
