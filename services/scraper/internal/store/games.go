@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/StephenODea54/pkg/database/db"
+	"github.com/StephenODea54/services/scraper/internal/db"
 	"github.com/StephenODea54/services/scraper/internal/joeeitel"
 	"github.com/jackc/pgx/v5/pgtype"
 )

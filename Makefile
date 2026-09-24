@@ -1,4 +1,4 @@
-.PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs db-migrate \
+.PHONY: build test vet fmt hooks db-up db-down db-logs db-migrate \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
@@ -12,7 +12,6 @@ build:
 
 test:
 	$(MAKE) -C services/scraper test
-	go -C pkg/database test ./...
 	$(MAKE) -C services/api test
 	$(MAKE) -C services/elo test
 	$(MAKE) -C services/dataset test
@@ -20,7 +19,6 @@ test:
 
 vet:
 	$(MAKE) -C services/scraper vet
-	go -C pkg/database vet ./...
 	$(MAKE) -C services/api vet
 	$(MAKE) -C services/elo vet
 	$(MAKE) -C services/dataset vet
@@ -29,16 +27,9 @@ vet:
 fmt:
 	$(MAKE) -C services/scraper fmt
 	$(MAKE) -C services/api fmt
-	gofmt -w pkg/database/*.go pkg/database/db/*.go
 
 hooks:
 	git config core.hooksPath .githooks
-
-sqlc-generate:
-	go -C pkg/database run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 generate
-
-sqlc-vet:
-	go -C pkg/database run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 vet
 
 db-up:
 	docker compose up -d --wait

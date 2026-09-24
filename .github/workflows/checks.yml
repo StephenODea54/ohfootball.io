@@ -24,7 +24,6 @@ jobs:
           cache-dependency-path: |
             services/api/go.sum
             services/scraper/go.sum
-            pkg/database/go.sum
       - name: format
         run: |
           unformatted=$(gofmt -l $(git ls-files '*.go'))
@@ -36,8 +35,6 @@ jobs:
       - run: make -C services/api test
       - run: make -C services/scraper vet
       - run: make -C services/scraper test
-      - run: go -C pkg/database vet ./...
-      - run: go -C pkg/database test ./...
 
   python:
     name: python

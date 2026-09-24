@@ -7,8 +7,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/StephenODea54/pkg/database"
 	"github.com/StephenODea54/services/api/graph/model"
+	"github.com/StephenODea54/services/api/internal/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
