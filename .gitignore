@@ -29,6 +29,7 @@ infra/cdk.out
 !Makefile
 
 # And filetypes
+!*.conf
 !*.css
 !*.go
 !*.graphqls

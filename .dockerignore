@@ -4,3 +4,10 @@
 **/__pycache__
 **/*.pyc
 coverage.out
+
+# A build installs what it needs inside the image. Copying these in would put files built for the
+# machine that ran the build into an image that runs somewhere else.
+**/node_modules
+**/.output
+**/.nitro
+**/.vite

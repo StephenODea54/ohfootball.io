@@ -12,14 +12,16 @@ import { type PrerenderPage, teamPages } from './prerender'
 
 /**
  * How many pages are drawn at once while building. The work is mostly waiting on the API, so more
- * than one at a time helps, and forty thousand pages one after another would not finish quickly.
+ * than one at a time helps, and a page for every team of the season one after another would not
+ * finish quickly.
  */
 const PRERENDER_CONCURRENCY = 8
 
 export default defineConfig(async ({ command }) => {
   // Every page is drawn while the site is built, so the deployed site is files and nothing runs to
   // answer a visitor. The team pages are asked for by address, because the plugin cannot find an
-  // address that carries a key only the data knows.
+  // address that carries a key only the data knows. Only the current season is drawn; see
+  // ./prerender.ts for what that leaves out.
   const endpoint = process.env.VITE_GRAPHQL_URL
   const cap = process.env.PRERENDER_TEAM_LIMIT
     ? Number(process.env.PRERENDER_TEAM_LIMIT)
@@ -34,7 +36,7 @@ export default defineConfig(async ({ command }) => {
       )
     }
     pages = await teamPages(endpoint, cap)
-    console.log(`prerendering ${pages.length} team pages from ${endpoint}`)
+    console.log(`prerendering ${pages.length} current season team pages from ${endpoint}`)
   }
 
   return {
