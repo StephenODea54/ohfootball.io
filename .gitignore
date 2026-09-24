@@ -50,7 +50,7 @@ infra/cdk.out
 todos.json
 
 # dbt-generated artifacts
-analytics/.user.yml
-analytics/dbt_packages/
-analytics/logs/
-analytics/target/
+services/analytics/.user.yml
+services/analytics/dbt_packages/
+services/analytics/logs/
+services/analytics/target/

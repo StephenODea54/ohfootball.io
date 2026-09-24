@@ -9,7 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/migrations:/docker-entrypoint-initdb.d:ro
+      - ./infra/postgres/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 2s
@@ -56,7 +56,7 @@ services:
 
   dbt:
     build:
-      context: ./analytics
+      context: ./services/analytics
     environment:
       DBT_HOST: ${DBT_HOST:-postgres}
       DBT_PORT: ${DBT_PORT:-5432}
@@ -66,7 +66,7 @@ services:
       DBT_SCHEMA: ${DBT_SCHEMA:-ohfootball_stg}
       DBT_PROFILES_DIR: /usr/app
     volumes:
-      - ./analytics:/usr/app
+      - ./services/analytics:/usr/app
     working_dir: /usr/app
     ports:
       - "8081:8081"
@@ -150,7 +150,7 @@ services:
   pipeline:
     build:
       context: .
-      dockerfile: Dockerfile.pipeline
+      dockerfile: infra/pipeline/Dockerfile
     environment:
       DATABASE_URL: postgresql://im_batman:shhhhhhhhh@postgres:5432/ohfootball
       PGHOST: postgres

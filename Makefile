@@ -22,7 +22,7 @@ vet:
 	$(MAKE) -C services/api vet
 	$(MAKE) -C services/elo vet
 	$(MAKE) -C services/dataset vet
-	python3 -m compileall -q tests
+	python3 -m compileall -q infra/pipeline/tests
 
 fmt:
 	$(MAKE) -C services/scraper fmt
@@ -39,13 +39,13 @@ db-down:
 
 # Apply one migration to a database that already holds data.
 #
-# Compose mounts postgres/migrations into the entry point directory of the
+# Compose mounts infra/postgres/migrations into the entry point directory of the
 # image, which runs a file one time only, when the volume is created. A
 # migration added later never reaches a database that already exists, so an
 # operator applies it here. Name the file, for example:
-# make db-migrate FILE=postgres/migrations/004_ohhsfbdb_raw.sql
+# make db-migrate FILE=infra/postgres/migrations/004_ohhsfbdb_raw.sql
 db-migrate:
-	@test -n "$(FILE)" || { echo "name the migration with FILE=postgres/migrations/..."; exit 1; }
+	@test -n "$(FILE)" || { echo "name the migration with FILE=infra/postgres/migrations/..."; exit 1; }
 	docker compose exec -T postgres psql -v ON_ERROR_STOP=1 \
 		-U im_batman -d ohfootball < $(FILE)
 
@@ -116,4 +116,4 @@ pipeline:
 # Checks the target that asks the host to build the site. It needs no image and no database, so
 # it is part of the top level test target.
 pipeline-test:
-	python3 -m unittest discover -s tests
+	python3 -m unittest discover -s infra/pipeline/tests

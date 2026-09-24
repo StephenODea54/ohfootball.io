@@ -65,8 +65,8 @@ jobs:
         with:
           node-version: "22"
           cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: services/frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-        working-directory: frontend
+        working-directory: services/frontend
       - run: pnpm typecheck
-        working-directory: frontend
+        working-directory: services/frontend

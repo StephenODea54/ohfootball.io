@@ -11,7 +11,7 @@
 # be issued before the first build of the site.
 #
 # Build from the repository root:
-#   docker build -f frontend/Dockerfile --build-arg VITE_GRAPHQL_URL=... -t ohfootball/site .
+#   docker build -f services/frontend/Dockerfile --build-arg VITE_GRAPHQL_URL=... -t ohfootball/site .
 
 FROM node:22-alpine AS build
 
@@ -19,10 +19,10 @@ RUN corepack enable
 
 WORKDIR /app
 
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-COPY frontend ./
+COPY services/frontend ./
 
 ARG VITE_GRAPHQL_URL
 ENV VITE_GRAPHQL_URL=${VITE_GRAPHQL_URL}
@@ -36,13 +36,13 @@ RUN set -eu; \
     # no pages. Serving that gives a site where every address answers with nothing.
     if [ -z "$(find .output/public -name '*.html' -print -quit 2>/dev/null)" ]; then \
         echo "the build wrote no pages to .output/public" >&2; \
-        echo "check the prerender settings in frontend/vite.config.ts" >&2; \
+        echo "check the prerender settings in services/frontend/vite.config.ts" >&2; \
         exit 1; \
     fi
 
 FROM nginx:1.29-alpine
 
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY services/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/.output/public /usr/share/nginx/html
 
 EXPOSE 8080

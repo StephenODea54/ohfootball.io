@@ -2,7 +2,7 @@
 #
 # The host runs a scheduled job by starting a command inside a container that is already running,
 # so this image has to stay up between runs. It therefore does nothing until it is asked to, and
-# the command it is asked for is a target of pipeline.mk.
+# the command it is asked for is a target of the Makefile beside this file.
 #
 # One image rather than one image per step, because a scheduled job on this host reaches a running
 # container and not a container it starts. Five idle containers would cost five times as much to
@@ -12,7 +12,7 @@
 # leaving the tracking server out halves the number of packages installed here.
 #
 # Build from the repository root:
-#   docker build -f Dockerfile.pipeline -t ohfootball/pipeline .
+#   docker build -f infra/pipeline/Dockerfile -t ohfootball/pipeline .
 
 FROM golang:1.25-alpine AS build
 
@@ -58,9 +58,9 @@ RUN pip install --no-cache-dir /tmp/dataset && rm -rf /tmp/dataset
 COPY --from=build /out/joe-eitel /usr/local/bin/joe-eitel
 COPY --from=build /out/ohhsfbdb /usr/local/bin/ohhsfbdb
 
-COPY analytics ./analytics
-COPY postgres/migrations ./migrations
-COPY pipeline.mk ./Makefile
+COPY services/analytics ./analytics
+COPY infra/postgres/migrations ./migrations
+COPY infra/pipeline/Makefile ./Makefile
 
 # dbt reads its connection settings from here, and every setting in that file is read from the
 # environment.

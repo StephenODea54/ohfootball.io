@@ -13,8 +13,8 @@ import threading
 import unittest
 from pathlib import Path
 
-REPOSITORY = Path(__file__).resolve().parent.parent
-PIPELINE = REPOSITORY / "pipeline.mk"
+PIPELINE_DIRECTORY = Path(__file__).resolve().parent.parent
+PIPELINE = PIPELINE_DIRECTORY / "Makefile"
 
 
 class Answer(http.server.BaseHTTPRequestHandler):
@@ -53,7 +53,7 @@ def publish_site(webhook: str | None) -> subprocess.CompletedProcess[str]:
     command = ["make", "-f", str(PIPELINE), "publish-site"]
     if webhook is not None:
         command.append(f"SITE_DEPLOY_WEBHOOK={webhook}")
-    return subprocess.run(command, capture_output=True, text=True, cwd=REPOSITORY)
+    return subprocess.run(command, capture_output=True, text=True, cwd=PIPELINE_DIRECTORY)
 
 
 class TheRequestToBuildTheSite(unittest.TestCase):
