@@ -1,5 +1,4 @@
-.PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs \
-	infra-install infra-test infra-synth infra-diff db-migrate \
+.PHONY: build test vet fmt hooks sqlc-generate sqlc-vet db-up db-down db-logs db-migrate \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export
@@ -110,17 +109,3 @@ dataset-test:
 # services/dataset/export, which Git ignores.
 dataset-export:
 	docker compose run --rm dataset export --directory /export $(ARGS)
-
-# The stacks keep their own dependencies, so they are not part of the top level test target. A
-# synth reads no account and no network, so it runs without credentials.
-infra-install:
-	cd infra && pnpm install
-
-infra-test:
-	cd infra && pnpm test
-
-infra-synth:
-	cd infra && pnpm synth
-
-infra-diff:
-	cd infra && pnpm diff

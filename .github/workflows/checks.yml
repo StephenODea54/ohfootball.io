@@ -52,8 +52,11 @@ jobs:
       - run: make -C services/dataset vet
       - run: make -C services/dataset test
 
-  infra:
-    name: infra
+  # The site is drawn ahead of time against the API, and prerender.ts decides which addresses are
+  # drawn. A mistake there is a page missing from the published site, so the types are checked
+  # here. A build is not run, because it needs an API to read.
+  frontend:
+    name: frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,13 +65,8 @@ jobs:
         with:
           node-version: "22"
           cache: pnpm
-          cache-dependency-path: infra/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-        working-directory: infra
-      - run: npx tsc --noEmit
-        working-directory: infra
-      - run: pnpm test
-        working-directory: infra
-      # A synth reads no account and no network, so it proves the stacks build without credentials.
-      - run: pnpm synth
-        working-directory: infra
+        working-directory: frontend
+      - run: pnpm typecheck
+        working-directory: frontend

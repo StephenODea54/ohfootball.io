@@ -14,8 +14,7 @@ runs `make vet`, and runs `make test` before each commit.
 ## How it fits together
 
 [docs/architecture.md](docs/architecture.md) describes the two pipelines, what each step of the
-weekly run touches, and what a visitor reaches. [infra/README.md](infra/README.md) covers the
-stacks and the order to deploy them the first time.
+weekly run touches, and what a visitor reaches.
 
 # TODO
 

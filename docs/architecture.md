@@ -162,12 +162,6 @@ function, the address of the API, the site bucket, and the distribution from par
 stacks publish. A stack reference would have to be undone before either side could change. Only
 `InfraStack` is read directly, because the network and the buckets are shared ground.
 
-## Deploying the first time
-
-There is a circle to break. The API stack needs the package before it can deploy, and the run that
-writes the package needs the API to exist. The way through uses the data on the machine you develop
-on. The steps are in [infra/README.md](../infra/README.md).
-
 ## What it costs
 
 About four to eight dollars a month. Aurora capacity and storage are most of it. Fargate runs for
