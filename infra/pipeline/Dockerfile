@@ -68,4 +68,9 @@ ENV DBT_PROFILES_DIR=/app/analytics
 
 # The container holds itself up so a scheduled job has something to run a command inside. It
 # starts nothing and listens on no port.
-CMD ["sleep", "infinity"]
+#
+# The command is process 1 in its container. Process 1 ignores a signal that has no handler, so a
+# plain sleep would make the host wait the full stop period on each deploy and then kill it. The
+# shell sets a handler for the stop signal, waits on the sleep, and stops with success when the
+# signal arrives.
+CMD ["sh", "-c", "trap 'exit 0' TERM INT; sleep infinity & wait"]
