@@ -12,9 +12,6 @@
 *dist
 *node_modules
 
-# CDK writes its templates here on every synth
-infra/cdk.out
-
 # And permit certain files
 !.githooks/*
 !.dockerignore
@@ -35,6 +32,7 @@ infra/cdk.out
 !*.css
 !*.go
 !*.graphqls
+!*.htm
 !*.html
 !*.json
 !*.md
