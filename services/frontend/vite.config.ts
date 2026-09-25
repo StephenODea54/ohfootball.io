@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -17,15 +17,17 @@ import { type PrerenderPage, teamPages } from './prerender'
  */
 const PRERENDER_CONCURRENCY = 8
 
-export default defineConfig(async ({ command }) => {
+export default defineConfig(async ({ command, mode }) => {
   // Every page is drawn while the site is built, so the deployed site is files and nothing runs to
   // answer a visitor. The team pages are asked for by address, because the plugin cannot find an
   // address that carries a key only the data knows. Only the current season is drawn; see
   // ./prerender.ts for what that leaves out.
-  const endpoint = process.env.VITE_GRAPHQL_URL
-  const cap = process.env.PRERENDER_TEAM_LIMIT
-    ? Number(process.env.PRERENDER_TEAM_LIMIT)
-    : undefined
+  //
+  // Vite gives the .env files to the browser code but not to this file, so they are read here. A
+  // value set in the environment of the shell takes precedence over the same value in a file.
+  const settings = loadEnv(mode, process.cwd(), '')
+  const endpoint = settings.VITE_GRAPHQL_URL
+  const cap = settings.PRERENDER_TEAM_LIMIT ? Number(settings.PRERENDER_TEAM_LIMIT) : undefined
 
   let pages: PrerenderPage[] = []
   if (command === 'build') {
