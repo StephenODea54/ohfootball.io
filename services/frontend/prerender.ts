@@ -9,7 +9,7 @@
  * in the browser from the season the address carries in its search. Drawing every season a program
  * has played would build about forty thousand pages that no address reaches.
  *
- * A team that did not play the current season therefore has no page of its own. The server
+ * A team that did not play the current season therefore has no page of its own. Cloudflare Pages
  * answers that address with the application and a 404, and the application draws the team from
  * the API. The page works, and a crawler is told the page is not part of the site.
  *

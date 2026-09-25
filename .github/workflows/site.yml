@@ -1,0 +1,77 @@
+name: site
+
+# Builds the site against the public API and publishes it to Cloudflare Pages.
+#
+# The build draws every page of the current season from the API, so the API must answer on its
+# public name while this runs. The weekly run starts this workflow through the REST API of GitHub
+# after the new ratings land. See publish-site in infra/pipeline/Makefile. A push to main that
+# changes the site starts it too.
+#
+# A step that fails stops the run before the upload. Pages then keeps the site it served before.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - services/frontend/**
+      - .github/workflows/site.yml
+
+# One run at a time. A run that starts while another runs waits for it and does not stop it, so a
+# series of pushes cannot keep the site from being published. GitHub keeps one waiting run, and a
+# newer run takes its place. Nothing is lost, because the newer run builds a newer commit and reads
+# the API when it runs.
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    # The upload names main, so a run on any other branch would publish that branch as the site.
+    if: github.ref == 'refs/heads/main'
+    # The secrets of the upload are held by this environment. Its deployment branch rule lets only
+    # main read them.
+    environment: production
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # The build reads this address to learn which pages to draw, and the same value goes into
+      # the script the browser runs.
+      VITE_GRAPHQL_URL: https://api.ohfootball.io/graphql
+    steps:
+      - uses: actions/checkout@v4
+      # The repository root has no package.json. This step reads the pnpm version from the
+      # packageManager field of the site instead.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: services/frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: services/frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: services/frontend
+      - run: pnpm typecheck
+        working-directory: services/frontend
+      - run: pnpm build
+        working-directory: services/frontend
+      # Checks that the build wrote the pages in the form Pages serves, and writes the 404 pages.
+      - run: make pages
+        working-directory: services/frontend
+      # The project has to exist in Pages before the first run. docs/architecture.md tells how to
+      # make it. --commit-dirty stops a warning about the files the action installs Wrangler with.
+      - name: upload
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: >-
+            pages deploy services/frontend/.output/public
+            --project-name=ohfootball
+            --branch=main
+            --commit-dirty=true

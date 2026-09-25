@@ -17,6 +17,7 @@
 !.dockerignore
 !.env.example
 !.gitignore
+!_headers
 !Dockerfile
 !Dockerfile.*
 !go.mod

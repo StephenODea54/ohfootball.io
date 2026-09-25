@@ -2,7 +2,7 @@
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
-	pipeline pipeline-build pipeline-test postgres-test
+	pipeline pipeline-build pipeline-test postgres-test site-test
 
 DBT := docker compose run --rm dbt
 
@@ -16,6 +16,7 @@ test:
 	$(MAKE) -C services/elo test
 	$(MAKE) -C services/dataset test
 	$(MAKE) pipeline-test
+	$(MAKE) site-test
 	$(MAKE) postgres-test
 
 vet:
@@ -23,7 +24,7 @@ vet:
 	$(MAKE) -C services/api vet
 	$(MAKE) -C services/elo vet
 	$(MAKE) -C services/dataset vet
-	python3 -m compileall -q infra/pipeline/tests infra/postgres
+	python3 -m compileall -q infra/pipeline/tests infra/postgres services/frontend/tests
 
 fmt:
 	$(MAKE) -C services/scraper fmt
@@ -127,6 +128,11 @@ pipeline:
 # it is part of the top level test target.
 pipeline-test:
 	python3 -m unittest discover -s infra/pipeline/tests
+
+# Checks the target that makes the build of the site ready for Cloudflare Pages, and the headers
+# that Pages sends. It needs no build and no API, so it is part of the top level test target.
+site-test:
+	python3 -m unittest discover -s services/frontend/tests
 
 # Checks the files that the migrate image holds. The tests need no image, no database and no
 # package outside the standard library, so they are part of the top level test target.

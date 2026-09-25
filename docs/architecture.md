@@ -2,9 +2,13 @@
 
 How ohfootball.io is built, deployed, and rebuilt.
 
-Everything runs on one host that runs Docker and Dokploy. Dokploy builds each application from
-this repository and runs it as a Docker Swarm service. Traefik, which Dokploy installs, holds the
-two public names and their certificates.
+The API, the warehouse, and the weekly run are on one host that runs Docker and Dokploy. Dokploy
+builds each of them from this repository and runs it as a Docker Swarm service. Traefik, which
+Dokploy installs, holds the name `api.ohfootball.io` and its certificate.
+
+The site is on Cloudflare Pages. GitHub Actions builds it against the public API and sends the
+files to Pages. Cloudflare holds the DNS of `ohfootball.io`, the name of the site, and its
+certificate.
 
 There are two pipelines. One publishes code and runs when a change lands on main. The other
 rebuilds data and runs once a week. Neither does the work of the other.
@@ -17,6 +21,7 @@ flowchart TB
         direction LR
         merge["Push to main"] --> checks["GitHub Actions<br/>checks.yml"]
         merge --> deploy["Dokploy<br/>builds and deploys each app"]
+        merge --> sitewf["GitHub Actions<br/>site.yml"]
     end
 
     subgraph data["Data pipeline: Dokploy schedule, weekly"]
@@ -26,24 +31,26 @@ flowchart TB
 
     subgraph serve["What a visitor reaches"]
         direction LR
-        proxy["Traefik<br/>ohfootball.io<br/>api.ohfootball.io"] --> web["site<br/>nginx, prerendered pages"]
-        proxy --> api["api<br/>Go, GraphQL"]
+        pages["Cloudflare Pages<br/>ohfootball.io<br/>prerendered pages"]
+        proxy["Traefik<br/>api.ohfootball.io"] --> api["api<br/>Go, GraphQL"]
     end
 
     warehouse[("PostgreSQL<br/>managed by Dokploy")]
 
-    deploy -.deploys.-> serve
+    deploy -.deploys.-> api
     deploy -.deploys.-> data
+    sitewf -.reads.-> proxy
+    sitewf -.uploads.-> pages
     run -.reads and writes.-> warehouse
     api -.reads.-> warehouse
-    site -.webhook.-> deploy
+    site -.workflow_dispatch.-> sitewf
 ```
 
 The warehouse has no public port. Only the applications on the host reach it.
 
 ## The applications
 
-Dokploy holds one database and four applications. Each application is built from a Dockerfile in
+Dokploy holds one database and three applications. Each application is built from a Dockerfile in
 this repository, with the repository root as the build context.
 
 | Application | Dockerfile | Port | Domain | Does |
@@ -51,28 +58,28 @@ this repository, with the repository root as the build context.
 | `postgres` | none, a Dokploy database | 5432, internal | none | holds the warehouse |
 | `migrate` | `infra/postgres/Dockerfile` | none | none | applies the migrations, then waits |
 | `api` | `services/api/Dockerfile` | 8082 | `api.ohfootball.io` | answers GraphQL from the warehouse |
-| `site` | `services/frontend/Dockerfile` | 8080 | `ohfootball.io` | serves the pages drawn at build time |
 | `pipeline` | `infra/pipeline/Dockerfile` | none | none | holds the tools of the weekly run and waits for a command |
 
 `migrate` and `pipeline` listen on no port. Swarm starts a container again when it stops, so
 neither container stops on its own. `migrate` applies the migrations and then waits for a stop
 signal. `pipeline` does nothing until a command is started inside it.
 
-The images of `api` and `site` hold a health check. When the Update Config of an application is
-empty, Dokploy deploys with the order `start-first` and rolls back a deploy that fails. Swarm then
-keeps the old container until the new one passes its check, so a deploy does not stop the site or
-the API. Leave the Update Config empty. A value there replaces the whole default, so a config
+The image of `api` holds a health check. When the Update Config of an application is empty,
+Dokploy deploys with the order `start-first` and rolls back a deploy that fails. Swarm then keeps
+the old container until the new one passes its check, so a deploy does not stop the API. Leave the
+Update Config empty. A value there replaces the whole default, so a config
 that sets only the order loses the rollback.
 
 ## The code pipeline
 
-GitHub Actions checks each change. Dokploy deploys it. The two do not wait for each other, so a
-push to main is deployed even when a check fails.
+GitHub Actions checks each change. Dokploy deploys the applications on the host, and GitHub
+Actions publishes the site. The checks and the deploys do not wait for each other, so a push to
+main is deployed even when a check fails.
 
 | Job in `checks.yml` | Does |
 | --- | --- |
 | `go` | format, vet, and test the API and the scraper |
-| `python` | vet and test the rating, the dataset, the request that builds the site, and the migration files |
+| `python` | vet and test the rating, the dataset, the request that builds the site, the output of the site build, and the migration files |
 | `frontend` | type check the site |
 | `migrations` | build the migration image, apply every migration to an empty database, apply them again, and validate the record |
 
@@ -80,8 +87,24 @@ Each application has automatic deploys on. A push to main builds every applicati
 replaces its container when the build works. A build that fails leaves the running container in
 place.
 
-The site is not built in CI. Its build reads the API over the network, and no API answers inside
-a checks run.
+### The site
+
+`.github/workflows/site.yml` builds the site and publishes it to Cloudflare Pages. It starts on a
+push to main that changes `services/frontend` or the workflow, and when the weekly run asks for it.
+It also starts from the Actions tab of the repository, or with
+`gh workflow run site.yml --ref main`.
+
+The workflow type checks the site, builds it against `https://api.ohfootball.io/graphql`, and runs
+`make pages` in `services/frontend`. That target checks the output and writes the two 404 pages.
+Wrangler then sends `services/frontend/.output/public` to the Pages project `ohfootball` as a
+production deployment. A step that fails stops the run before the upload, and Pages keeps the
+deployment it served before.
+
+One run goes at a time. A new run waits for the run in progress and does not stop it. The workflow
+runs only on main, because the upload names main as its branch and a run on another branch would
+publish that branch as the site.
+
+The checks do not build the site, because no API answers inside a checks run.
 
 ## Migrations
 
@@ -177,27 +200,52 @@ not the site.
 
 ```mermaid
 flowchart LR
-    visitor(["Visitor"]) --> proxy["Traefik"] --> site["site<br/>nginx"] --> pages[["prerendered HTML"]]
-    caller(["Browser or API user"]) --> proxy2["Traefik"] --> api["api"] --> warehouse[("PostgreSQL")]
+    visitor(["Visitor"]) --> pages["Cloudflare Pages<br/>ohfootball.io"] --> files[["prerendered HTML"]]
+    caller(["Browser or API user"]) --> proxy["Traefik<br/>api.ohfootball.io"] --> api["api"] --> warehouse[("PostgreSQL")]
 ```
 
-Every page of the current season is a file that the build wrote ahead of time. A page for a team
-that did not play the current season is not written. nginx answers that address with the
-application and a 404, and the browser draws the page from the API.
+Every page of the current season is a file that the build wrote ahead of time. Each page is a file
+named for its address, such as `leaderboard.html` for `/leaderboard`. A page for a team that did
+not play the current season is not written.
+
+| Address | Answer |
+| --- | --- |
+| a page of the current season, such as `/leaderboard` | the page, 200 |
+| the same address with a slash at the end or with `.html` | 308 to the address without them, path only |
+| an address with no page, such as a team that did not play the current season | `404.html`, a copy of the home page, with 404; the browser then draws the page from the API |
+| a missing file under `/assets/` | one line of plain text, with 404 |
+
+A file under `/assets/` carries a hash of its content in its name, so Pages sends it with
+`Cache-Control: public, max-age=31536000, immutable`. A page gets the Pages default,
+`Cache-Control: public, max-age=0, must-revalidate`, and an ETag, so a browser asks whether its
+copy is still current. A 404 gets `Cache-Control: no-store`. `services/frontend/public/_headers`
+holds these rules.
+
+Pages keeps the files it served recently for visitors of the deployment before. For up to a week
+after an address loses its page, Pages can still answer it with the old page and 200.
 
 The API reads the warehouse on each request. It has two health endpoints. `/healthz` answers
 without reading anything. `/readyz` reads the store.
 
 ## Things that hold this together
 
-**The site is built against the public API.** The build reads `VITE_GRAPHQL_URL` to learn which
-pages to draw, and the same value goes into the script the browser runs. So it is
-`https://api.ohfootball.io/graphql` and not a name inside the host. A build of the site leaves the
-host and comes back through Traefik. The name of the API must resolve, its certificate must be
-issued, and the warehouse must hold data before the first build of the site.
+**The site is built against the public API.** The build runs in GitHub Actions and reads
+`VITE_GRAPHQL_URL` to learn which pages to draw, and the same value goes into the script the
+browser runs. So it is `https://api.ohfootball.io/graphql`. The API must answer on its public
+name, and the warehouse must hold data, before the first build of the site. A build that cannot
+read the API fails, and Pages keeps the site it served before.
 
 **The API allows one origin.** `CORS_ORIGIN` on the API is `https://ohfootball.io`. A browser on
-any other origin cannot read the API.
+any other origin cannot read the API. This includes the addresses that Pages gives the project,
+such as `ohfootball.pages.dev`. On those addresses the prerendered pages show, but a page drawn in
+the browser gets no data.
+
+**The name of the API is DNS only.** Pages serves an apex domain only from a zone on the same
+Cloudflare account, so `ohfootball.io` is a Cloudflare zone. The A record of `api` points at the
+host and is not proxied. Traefik gets the certificate of `api.ohfootball.io` from Let's Encrypt
+with an HTTP challenge, and it has to receive those requests itself. Before you proxy the record,
+set the SSL mode of the zone to Full (strict). Do not add cache rules for `ohfootball.io`, because
+Pages sets its own caching.
 
 **The season does not follow the calendar.** `SCRAPER_SEASON` names the one season the weekly
 scrape reads. Raise it by hand when a new season starts, or the run keeps reading the season
@@ -232,11 +280,18 @@ Dokploy shows for the database as `DATABASE_URL`.
 | `ELO_RATING_SCALE` | optional, default `400` |
 | `GRAPHQL_COMPLEXITY_LIMIT` | optional, default `1000` |
 
-### `site`
+### `site` workflow
 
-| Setting | Value |
+Set these as secrets of the environment `production` in the settings of the GitHub repository.
+Give the environment the deployment branch rule `main` and no required reviewers, so the weekly
+run does not wait for an approval.
+
+| Secret | Value |
 | --- | --- |
-| build argument `VITE_GRAPHQL_URL` | `https://api.ohfootball.io/graphql` |
+| `CLOUDFLARE_API_TOKEN` | a Cloudflare API token with the permission Account, Cloudflare Pages, Edit |
+| `CLOUDFLARE_ACCOUNT_ID` | the ID of the Cloudflare account that holds the Pages project |
+
+`.github/workflows/site.yml` names the Pages project `ohfootball` and the address of the API.
 
 ### `pipeline`
 

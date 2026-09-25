@@ -55,6 +55,11 @@ export default defineConfig(async ({ command, mode }) => {
           // nothing would report it until somebody visited.
           failOnError: true,
           crawlLinks: false,
+          // Cloudflare Pages serves /leaderboard from leaderboard.html. It serves
+          // leaderboard/index.html only at /leaderboard/, and it sends /leaderboard there with a
+          // redirect. The router removes that slash again, so each page is written as a file named
+          // for its address. make pages checks this before the site is published.
+          autoSubfolderIndex: false,
         },
         pages,
       }),

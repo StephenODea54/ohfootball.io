@@ -1,0 +1,22 @@
+# Cloudflare Pages reads this file and does not serve it.
+#
+# Pages sends "Cache-Control: public, max-age=0, must-revalidate" and an ETag with each file, so a
+# browser asks whether a page is still current before it uses a copy. Every page is drawn again by
+# each weekly run, so that is what a page needs, and no rule here sets it.
+#
+# When more than one rule matches an address, Pages joins the values of a header that two rules
+# set. Only one rule may therefore set Cache-Control.
+
+# Every name in this directory carries a hash of what the file holds, so a change to the file
+# changes its name. A browser can keep one of these for as long as it likes.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The address that Pages gives the project is a second copy of the site. Search engines are told
+# to leave it out. The API does not answer a browser on that address.
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+
+# 404.html is a copy of the home page, and Pages also serves it at /404.
+/404
+  X-Robots-Tag: noindex

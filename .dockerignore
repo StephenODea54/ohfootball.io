@@ -5,8 +5,9 @@
 **/*.pyc
 coverage.out
 
-# A build installs what it needs inside the image. Copying these in would put files built for the
-# machine that ran the build into an image that runs somewhere else.
+# No image copies the site. On a machine that built it, these directories hold hundreds of
+# megabytes, and each image is built with the repository root as its context, so a build would
+# send them to Docker for nothing.
 **/node_modules
 **/.output
 **/.nitro

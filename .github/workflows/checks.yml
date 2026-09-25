@@ -51,12 +51,16 @@ jobs:
       # Checks the target that asks the host to build the site. It answers itself over the
       # loopback address and needs no image and no database.
       - run: make pipeline-test
+      # Checks the target that makes the build of the site ready for Cloudflare Pages, and the
+      # headers Pages sends. It needs no build and no API.
+      - run: make site-test
       # Checks the settings of the migrations and the names and text of the migration files.
       - run: make postgres-test
 
   # The site is drawn ahead of time against the API, and prerender.ts decides which addresses are
   # drawn. A mistake there is a page missing from the published site, so the types are checked
-  # here. A build is not run, because it needs an API to read.
+  # here. A build is not run here, because it needs an API to read. site.yml builds the site
+  # against the public API before it publishes it.
   frontend:
     name: frontend
     runs-on: ubuntu-latest

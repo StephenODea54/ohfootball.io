@@ -4,8 +4,8 @@ The site of ohfootball.io. It is a TanStack Start application with React, Tailwi
 Intent UI components.
 
 Every page of the current season is drawn when the site is built. The deployed site is files that
-nginx serves, and nothing runs to answer a visitor. A browser asks the API directly for anything
-that was not drawn ahead of time.
+Cloudflare Pages serves, and nothing runs to answer a visitor. A browser asks the API directly for
+anything that was not drawn ahead of time.
 
 ## Settings
 
@@ -35,25 +35,36 @@ The development server listens on port 3000. It draws each page when the page is
 pnpm typecheck
 ```
 
-The checks in CI run the same command.
+From the root of the repository, `make site-test` checks `make pages` and the rules in
+`public/_headers`. The checks in CI run both.
 
 ## Build the site
 
 ```sh
 pnpm build
+make pages
 ```
 
 The build reads the API at `VITE_GRAPHQL_URL` to learn which team pages to draw, so the API must
 answer and the warehouse must hold data. The build stops at the first page that fails to draw. It
-writes the pages to `.output/public`.
+writes the pages to `.output/public`, one file for each address, such as `leaderboard.html` for
+`/leaderboard`.
 
-The image in `Dockerfile` runs the same build and serves the pages with nginx on port 8080. Build
-it from the root of the repository:
+`make pages` makes that directory ready for Cloudflare Pages. It stops when the build wrote no
+pages, or when a page is a directory, because Pages would send each such address through a
+redirect. It then writes `404.html`, a copy of the home page, and `assets/404.html`, a line of
+plain text. Pages answers an address that has no page with the nearest of the two and the status
+404. The browser then draws the page from the API. `public/_headers` sets how long a browser keeps
+each file.
+
+To see how Pages answers, serve the directory with Wrangler:
 
 ```sh
-docker build -f services/frontend/Dockerfile \
-  --build-arg VITE_GRAPHQL_URL=https://api.ohfootball.io/graphql \
-  -t ohfootball/site .
+npx wrangler pages dev .output/public
 ```
 
-`docs/architecture.md` describes how the host builds and serves the site.
+## Publish the site
+
+`.github/workflows/site.yml` runs the same build against `https://api.ohfootball.io/graphql` and
+sends `.output/public` to Cloudflare Pages. It starts on a push to main that changes the site, and
+when the weekly run asks for it. `docs/architecture.md` describes the workflow and its settings.
