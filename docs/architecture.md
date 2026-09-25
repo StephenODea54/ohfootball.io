@@ -58,10 +58,11 @@ this repository, with the repository root as the build context.
 neither container stops on its own. `migrate` applies the migrations and then waits for a stop
 signal. `pipeline` does nothing until a command is started inside it.
 
-The images of `api` and `site` hold a health check. In the Swarm settings of both applications,
-set the update order to `start-first`. Swarm then keeps the old container until the new one passes
-its check, so a deploy does not stop the site or the API. The weekly run deploys the site each
-week, so this matters for `site` most.
+The images of `api` and `site` hold a health check. When the Update Config of an application is
+empty, Dokploy deploys with the order `start-first` and rolls back a deploy that fails. Swarm then
+keeps the old container until the new one passes its check, so a deploy does not stop the site or
+the API. Leave the Update Config empty. A value there replaces the whole default, so a config
+that sets only the order loses the rollback.
 
 ## The code pipeline
 
@@ -263,11 +264,10 @@ Do these steps in this order.
 3. Create the `migrate` application and deploy it. Its log shows each migration as `applied`,
    and then the container stays up.
 4. Create the `api` application. Add the domain `api.ohfootball.io` on port 8082 with a Let's
-   Encrypt certificate. Set the update order to `start-first`. Deploy it.
-   `https://api.ohfootball.io/healthz` answers when it is up.
+   Encrypt certificate. Deploy it. `https://api.ohfootball.io/healthz` answers when it is up.
 5. Create the `site` application with its build argument and the domain `ohfootball.io` on port
-   8080. Keep automatic deploys on and set no watch paths. Set the update order to `start-first`.
-   Do not deploy it yet. Copy its deploy webhook.
+   8080. Keep automatic deploys on and set no watch paths. Do not deploy it yet. Copy its deploy
+   webhook.
 6. Create the `pipeline` application with its settings, including the webhook from step 5.
    Deploy it.
 7. Open a terminal in the `pipeline` container and load the record. The load reads every season
