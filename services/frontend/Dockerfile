@@ -15,11 +15,16 @@
 
 FROM node:22-alpine AS build
 
+# Corepack installs the pnpm version that the packageManager field of package.json names. The
+# image, the checks and a developer machine therefore install with the same pnpm.
 RUN corepack enable
 
 WORKDIR /app
 
-COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
+# pnpm-workspace.yaml names the packages that may run an install script. The install reads it,
+# so it is copied in with the lockfile.
+COPY services/frontend/package.json services/frontend/pnpm-lock.yaml \
+    services/frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY services/frontend ./
