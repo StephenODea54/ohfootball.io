@@ -45,6 +45,10 @@ rate:
 # visitor only after the site is built again. The address is the deploy webhook of the site
 # application.
 #
+# Dokploy reads the branch of a deploy from the body of a push event. It refuses a request that
+# names no branch, or a branch that the application does not deploy from, and answers 301. The
+# request therefore has the form of a push from GitHub to that branch. SITE_BRANCH names it.
+#
 # The webhook answers as soon as the request is accepted. It does not wait for the build, so this
 # target reports that the build was asked for and not that the build worked. The log of the site
 # application holds the result.
@@ -55,6 +59,9 @@ publish-site:
 	}
 	@status=$$(curl --silent --show-error --location --max-time 30 \
 		--output /dev/null --write-out '%{http_code}' \
+		--header 'Content-Type: application/json' \
+		--header 'X-GitHub-Event: push' \
+		--data '{"ref":"refs/heads/$(SITE_BRANCH)"}' \
 		--request POST "$(SITE_DEPLOY_WEBHOOK)") || { \
 		echo "the request to build the site did not reach the host" >&2; \
 		exit 1; \
@@ -72,6 +79,9 @@ publish-dataset:
 # weekly run. It is called by hand when the record has to be built again.
 backfill:
 	ohhsfbdb
+
+# The branch that the site application deploys from.
+SITE_BRANCH ?= main
 
 # Where the dbt project is. The image holds it at this path, and a run on a workstation names its
 # own.
