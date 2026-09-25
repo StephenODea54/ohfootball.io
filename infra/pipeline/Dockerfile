@@ -32,7 +32,8 @@ ARG DBT_CORE_VERSION=1.12.0
 ARG DBT_POSTGRES_VERSION=1.11.0
 
 # git is read by dbt when it resolves a package. curl asks the host to build the site. make runs
-# the targets. The PostgreSQL client applies a migration by hand.
+# the targets. The PostgreSQL client lets an operator read or change the warehouse by hand. The
+# migrations are applied by the image in infra/postgres.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
         curl \
@@ -59,7 +60,6 @@ COPY --from=build /out/joe-eitel /usr/local/bin/joe-eitel
 COPY --from=build /out/ohhsfbdb /usr/local/bin/ohhsfbdb
 
 COPY services/analytics ./analytics
-COPY infra/postgres/migrations ./migrations
 COPY infra/pipeline/Makefile ./Makefile
 
 # dbt reads its connection settings from here, and every setting in that file is read from the

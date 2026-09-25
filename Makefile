@@ -1,8 +1,8 @@
-.PHONY: build test vet fmt hooks db-up db-down db-logs db-migrate \
+.PHONY: build test vet fmt hooks db-up db-down db-logs db-migrate db-baseline \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
-	pipeline pipeline-build pipeline-test
+	pipeline pipeline-build pipeline-test postgres-test
 
 DBT := docker compose run --rm dbt
 
@@ -16,13 +16,14 @@ test:
 	$(MAKE) -C services/elo test
 	$(MAKE) -C services/dataset test
 	$(MAKE) pipeline-test
+	$(MAKE) postgres-test
 
 vet:
 	$(MAKE) -C services/scraper vet
 	$(MAKE) -C services/api vet
 	$(MAKE) -C services/elo vet
 	$(MAKE) -C services/dataset vet
-	python3 -m compileall -q infra/pipeline/tests
+	python3 -m compileall -q infra/pipeline/tests infra/postgres
 
 fmt:
 	$(MAKE) -C services/scraper fmt
@@ -37,17 +38,26 @@ db-up:
 db-down:
 	docker compose down
 
-# Apply one migration to a database that already holds data.
+# Applies every migration that the local database does not hold yet.
 #
-# Compose mounts infra/postgres/migrations into the entry point directory of the
-# image, which runs a file one time only, when the volume is created. A
-# migration added later never reaches a database that already exists, so an
-# operator applies it here. Name the file, for example:
-# make db-migrate FILE=infra/postgres/migrations/004_ohhsfbdb_raw.sql
+# The migrate service of the compose file runs sustained. sustained keeps a record of each
+# migration it applied in the table sustained_migrations, so it applies only the new ones.
+# make db-up runs the same service before the API starts, so this target is for a migration
+# written while the database is up.
 db-migrate:
-	@test -n "$(FILE)" || { echo "name the migration with FILE=infra/postgres/migrations/..."; exit 1; }
-	docker compose exec -T postgres psql -v ON_ERROR_STOP=1 \
-		-U im_batman -d ohfootball < $(FILE)
+	docker compose run --rm migrate
+
+# Records the migrations as applied without running them.
+#
+# A volume created before sustained applied the migrations already holds their tables, because
+# the database image ran the files when it created the volume. sustained has no record of them
+# and tries to make the tables again, so make db-up fails. Run this target one time on such a
+# volume and then run make db-up. It records every migration up to and including BASELINE. If
+# the volume does not hold the last migration, name the last one that it holds, for example:
+# make db-baseline BASELINE=004_ohhsfbdb_raw
+BASELINE ?= 005_ratings_cover_every_season
+db-baseline:
+	docker compose run --rm migrate sustained baseline $(BASELINE)
 
 # Pass any dbt command or selector with, for example:
 # make dbt ARGS="run --select stg_games"
@@ -117,3 +127,8 @@ pipeline:
 # it is part of the top level test target.
 pipeline-test:
 	python3 -m unittest discover -s infra/pipeline/tests
+
+# Checks the files that the migrate image holds. The tests need no image, no database and no
+# package outside the standard library, so they are part of the top level test target.
+postgres-test:
+	PYTHONPATH=infra/postgres python3 -m unittest discover -s infra/postgres/tests

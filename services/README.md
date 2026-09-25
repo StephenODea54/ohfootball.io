@@ -6,5 +6,5 @@
 - `scraper`: Joe Eitel ingestion commands.
 
 Run the core local stack with `docker compose up -d --wait`. This starts
-PostgreSQL, pgAdmin, and the GraphQL API. The data tooling remains behind the
-`tools` Compose profile.
+PostgreSQL, applies the migrations, and starts pgAdmin and the GraphQL API. The
+data tooling remains behind the `tools` Compose profile.

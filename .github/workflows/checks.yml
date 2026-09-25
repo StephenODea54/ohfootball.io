@@ -51,6 +51,8 @@ jobs:
       # Checks the target that asks the host to build the site. It answers itself over the
       # loopback address and needs no image and no database.
       - run: make pipeline-test
+      # Checks the settings of the migrations and the names and text of the migration files.
+      - run: make postgres-test
 
   # The site is drawn ahead of time against the API, and prerender.ts decides which addresses are
   # drawn. A mistake there is a page missing from the published site, so the types are checked
@@ -74,3 +76,35 @@ jobs:
         working-directory: services/frontend
       - run: pnpm typecheck
         working-directory: services/frontend
+
+  # Builds the image that applies the migrations and runs it two times on an empty database. The
+  # first run applies every migration. The second run applies nothing and must still succeed,
+  # because the host starts the container again on each deploy.
+  migrations:
+    name: migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: ohfootball
+          POSTGRES_USER: im_batman
+          POSTGRES_PASSWORD: shhhhhhhhh
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U im_batman -d ohfootball"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://im_batman:shhhhhhhhh@localhost:5432/ohfootball?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f infra/postgres/Dockerfile -t ohfootball/migrate .
+      - name: apply every migration
+        run: docker run --rm --network host -e DATABASE_URL ohfootball/migrate python migrate.py
+      - name: apply again
+        run: docker run --rm --network host -e DATABASE_URL ohfootball/migrate python migrate.py
+      - name: validate the record
+        run: docker run --rm --network host -e DATABASE_URL ohfootball/migrate sustained validate

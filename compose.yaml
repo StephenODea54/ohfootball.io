@@ -9,13 +9,28 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 2s
       timeout: 5s
       retries: 15
     restart: unless-stopped
+
+  # Applies every migration that the database does not hold yet, and then stops. The services
+  # that read the database wait until it stops with success. The directory is mounted, so a new
+  # migration is applied without a new build of the image.
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/postgres/Dockerfile
+    command: ["python", "migrate.py"]
+    environment:
+      DATABASE_URL: postgresql://im_batman:shhhhhhhhh@postgres:5432/ohfootball?sslmode=disable
+    volumes:
+      - ./infra/postgres:/app:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   pgadmin:
     image: dpage/pgadmin4:9.16
@@ -46,6 +61,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/readyz"]
       interval: 2s
@@ -73,6 +90,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     profiles:
       - tools
 
@@ -124,6 +143,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     profiles:
       - tools
 
@@ -140,6 +161,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       mlflow:
         condition: service_healthy
     profiles:
@@ -178,6 +201,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     profiles:
       - tools
 

@@ -2,7 +2,7 @@
 //
 // These statements were first written by sqlc from a file of queries and the migrations. The
 // generator is no longer part of the project, so the code is now kept by hand. A change to a raw
-// table is made here as well as in the migration that holds it.
+// table is made here as well as in a new migration in infra/postgres/migrations.
 
 package db
 
