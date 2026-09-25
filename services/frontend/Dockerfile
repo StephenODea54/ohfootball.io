@@ -51,3 +51,9 @@ COPY services/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/.output/public /usr/share/nginx/html
 
 EXPOSE 8080
+
+# The host waits for this check to pass before it counts a new container as running. With the
+# update order set to start-first, the old container answers until then, so a deploy does not
+# stop the site. nginx listens on IPv4 only, so the check names 127.0.0.1 and not localhost.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:8080/ || exit 1
