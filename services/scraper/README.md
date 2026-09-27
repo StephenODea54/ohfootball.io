@@ -15,6 +15,9 @@ the warehouse.
    only. The crawler does not follow the schedule of such an opponent. If it did, it would
    leave Ohio and never stop.
 
+The site answers some team pages with status 200 and a body that holds only white space.
+See the empty team pages below.
+
 The crawler writes each team page as it reads it. One team page is one transaction.
 Nothing is held in memory except the list of teams still to read.
 
@@ -75,8 +78,11 @@ SCRAPER_ALL_SEASONS=true \
 The program writes one JSON line for each season, on standard output:
 
 ```json
-{"run_id":"...","season":2015,"regions":26,"ohsaa_teams":716,"opponent_teams_discovered":61,"opponent_teams_scraped":61,"game_rows":7284,"status":"succeeded"}
+{"run_id":"...","season":2015,"regions":26,"ohsaa_teams":716,"opponent_teams_discovered":61,"opponent_teams_scraped":61,"game_rows":7284,"empty_team_pages":0,"status":"succeeded"}
 ```
+
+`empty_team_pages` counts the team pages that held only white space. Those teams are also
+counted in `ohsaa_teams` or `opponent_teams_scraped`.
 
 The status is `succeeded`, `failed`, or `skipped`. Only `succeeded` and `failed` reach the
 database. A skipped run creates no row.
@@ -87,6 +93,8 @@ Any error stops that season. There is no partial success. The crawler cannot rea
 again on its own, so an incomplete season and a failed season need the same repair, which
 is one more run of that season.
 
+An empty team page is the one exception. See the next section.
+
 A season that stops keeps the rows it already wrote, under a run with the status `failed`.
 The analytics layer reads only runs with the status `succeeded`, so those rows are not
 used. A stopped run therefore leaves rows behind, and they stay until someone removes them.
@@ -94,6 +102,34 @@ used. A stopped run therefore leaves rows behind, and they stay until someone re
 In the all-seasons mode, a failed season does not stop the seasons that follow. Each season
 is its own run. An interrupt does stop the loop, and the run that was open records its
 outcome before the program exits.
+
+### Empty team pages
+
+Some team pages hold only white space. The page of Berea in 2001 is an example. The same
+team has a normal page in 2002, so the site has no data for that team in that season. Such
+a page is not a new format.
+
+The fetch client retries an empty body as it retries a server error. If the body is still
+empty after the last retry, the crawler skips the page. It writes a warning that names the
+team and the address, and adds one to `empty_team_pages`. The season can still succeed.
+
+A skipped team has no schedule rows. If a schedule of the run names the team, the crawler
+writes a placeholder row that holds only the identifier and the name of the link. Without
+that row, a game row names a team that the run does not hold, and the relationship tests of
+the marts fail. Every opponent came from a schedule, so an empty opponent page always gets a
+placeholder. An OHSAA team that no schedule names gets no row.
+
+The placeholder of an OHSAA team also holds the state `OH`, because the team came from a
+region list of the OHSAA. The rating and the API read only teams of Ohio. When the link on
+the region list has no text, the name comes from the schedule link that named the team.
+
+The analytics layer drops a placeholder when a successful run holds the same team in full.
+The full version then stays current while the page is empty. A team that only has
+placeholders keeps them.
+
+More than five empty team pages in one season stop the season. The count includes the
+opponents. A season lists about 700 OHSAA teams, and a site that is broken answers most of
+them empty, so a small limit catches it early.
 
 ## Page formats
 
@@ -106,7 +142,7 @@ The site has used two page formats for a team.
 
 Each format has its own file in `internal/joeeitel/teampage`. A page that matches no format
 stops the run. This is deliberate: a page in a new format means the site changed, and a
-person must look at it.
+person must look at it. An empty page is not a format, and it does not stop the run.
 
 To support a new format, add a file with a type that satisfies `TeamPageParser`, and add
 that type to the registry in `parser.go`.

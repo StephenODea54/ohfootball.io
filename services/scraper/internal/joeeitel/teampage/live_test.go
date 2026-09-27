@@ -18,6 +18,9 @@ import (
 // every page of every season before it goes into service. The saved pages
 // cover four pages, and one season covers about seven hundred.
 //
+// An empty page is not a format. A real run skips it, so this test counts it
+// and does not fail.
+//
 // The test skips unless SCRAPER_LIVE_SEASON holds a season, so the offline
 // suite and the pre-commit hook make no network request. Run it as:
 //
@@ -82,6 +85,11 @@ func TestLiveSeasonFormats(t *testing.T) {
 		body, err := client.Get(ctx, ref.URL)
 		if err != nil {
 			t.Fatalf("read the team page %s: %v", ref.URL, err)
+		}
+		if joeeitel.IsEmptyPage(body) {
+			counts["empty"]++
+			t.Logf("the team page %s is empty", ref.URL)
+			continue
 		}
 		doc, _, err := joeeitel.NewDocument(body, ref.URL)
 		if err != nil {

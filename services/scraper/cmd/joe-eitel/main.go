@@ -17,6 +17,7 @@ import (
 
 	"github.com/StephenODea54/services/scraper/internal/config"
 	"github.com/StephenODea54/services/scraper/internal/fetch"
+	"github.com/StephenODea54/services/scraper/internal/joeeitel"
 	"github.com/StephenODea54/services/scraper/internal/pipeline"
 	"github.com/StephenODea54/services/scraper/internal/store"
 )
@@ -33,6 +34,7 @@ type summary struct {
 	OpponentTeamsDiscovered int    `json:"opponent_teams_discovered"`
 	OpponentTeamsScraped    int    `json:"opponent_teams_scraped"`
 	GameRows                int    `json:"game_rows"`
+	EmptyTeamPages          int    `json:"empty_team_pages"`
 	Status                  string `json:"status"`
 }
 
@@ -69,6 +71,7 @@ func run() error {
 			MaxRetries:        configuration.MaxRetries,
 			UserAgent:         configuration.UserAgent,
 			Accept:            "text/html,application/xhtml+xml",
+			AcceptBody:        joeeitel.AcceptBody,
 		}),
 		Workers: configuration.Workers,
 		BaseURL: configuration.BaseURL,
@@ -141,17 +144,23 @@ func scrapeSeason(ctx context.Context, database *store.Store, runner *pipeline.R
 		return seasonErr
 	}
 
-	printSummary(summary{
-		RunID:                   runID.String(),
+	printSummary(seasonSummary(runID.String(), result, status))
+	return nil
+}
+
+// seasonSummary builds the output line of one season that succeeded.
+func seasonSummary(runID string, result pipeline.Summary, status store.RunStatus) summary {
+	return summary{
+		RunID:                   runID,
 		Season:                  result.Season,
 		Regions:                 result.Regions,
 		OHSAATeams:              result.OHSAATeams,
 		OpponentTeamsDiscovered: result.OpponentsDiscovered,
 		OpponentTeamsScraped:    result.OpponentsScraped,
 		GameRows:                result.GameRows,
+		EmptyTeamPages:          result.EmptyTeamPages,
 		Status:                  string(status),
-	})
-	return nil
+	}
 }
 
 func printSummary(value summary) {

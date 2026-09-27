@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_team_observations
-    description: One cleaned team observation for every team in each successful scraper run.
+    description: One cleaned team observation for every team in each successful scraper run. A joeeitel.com placeholder row is dropped when a successful run holds the same team in full.
     data_tests:
       - unique:
           arguments:

@@ -50,12 +50,14 @@ func (s *stubGetter) callCount(pageURL string) int {
 	return s.calls[pageURL]
 }
 
-// memorySink keeps the pages a run wrote.
+// memorySink keeps the pages a run wrote. err fails every write, and failTeam
+// fails the write of one team only.
 type memorySink struct {
-	mutex sync.Mutex
-	teams []joeeitel.Team
-	rows  []joeeitel.TeamScheduleRow
-	err   error
+	mutex    sync.Mutex
+	teams    []joeeitel.Team
+	rows     []joeeitel.TeamScheduleRow
+	err      error
+	failTeam string
 }
 
 func (m *memorySink) WriteTeam(_ context.Context, team joeeitel.Team, rows []joeeitel.TeamScheduleRow) error {
@@ -63,6 +65,9 @@ func (m *memorySink) WriteTeam(_ context.Context, team joeeitel.Team, rows []joe
 	defer m.mutex.Unlock()
 	if m.err != nil {
 		return m.err
+	}
+	if m.failTeam != "" && team.TeamID == m.failTeam {
+		return errors.New("the database refused the team")
 	}
 	m.teams = append(m.teams, team)
 	m.rows = append(m.rows, rows...)
@@ -230,6 +235,20 @@ func TestSeasonStopsOnAnyError(t *testing.T) {
 			},
 			want: "parse team",
 		},
+		{
+			name: "a team page holds one character among the white space",
+			breakSite: func(g *stubGetter) {
+				g.pages[teamURL("3", 2025)] = "\n\n.\n\n"
+			},
+			want: "parse team",
+		},
+		{
+			name: "an opponent page is in no known format",
+			breakSite: func(g *stubGetter) {
+				g.pages[teamURL("91", 2025)] = `<html><body><p>a new design</p></body></html>`
+			},
+			want: "parse team",
+		},
 	}
 
 	for _, test := range tests {
@@ -265,7 +284,7 @@ func TestWriteTeamPageFailsOnAnUnreadableTeamURL(t *testing.T) {
 	getter.pages["://broken"] = `<html></html>`
 
 	_, err := newRunner(getter).writeTeamPage(context.Background(),
-		joeeitel.TeamRef{Season: 2025, TeamID: "5", URL: "://broken"}, &memorySink{}, true)
+		joeeitel.TeamRef{Season: 2025, TeamID: "5", URL: "://broken"}, &memorySink{}, true, &emptyPages{})
 	if err == nil {
 		t.Fatal("writeTeamPage returned no error for an unreadable URL")
 	}
