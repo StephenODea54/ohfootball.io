@@ -148,8 +148,8 @@ The compose file runs the same image once, before the services that read the dat
 
 ## The weekly run
 
-A Dokploy schedule on the `pipeline` application starts `make pipeline` inside its container every
-Tuesday at 13:00 UTC.
+A Dokploy schedule on the `pipeline` application starts `cd /app && make pipeline` inside its
+container every Tuesday at 13:00 UTC.
 
 ```mermaid
 flowchart TD
@@ -344,9 +344,11 @@ project of their own. Do these steps in this order.
    it.
 8. Open a terminal in the `pipeline` container and load the record. The load reads every season
    and runs for more than two hours. A terminal that closes stops a command that runs in it, so
-   start the load in the background:
+   start the load in the background. The terminal opens in `/` and the Makefile is in `/app`, the
+   working directory of the image, so the command changes to `/app` first:
    ```sh
-   nohup sh -c 'SCRAPER_SEASON= make backfill &&
+   nohup sh -c 'cd /app &&
+     SCRAPER_SEASON= make backfill &&
      SCRAPER_SEASON= SCRAPER_ALL_SEASONS=true make scrape &&
      make transform rate publish-site' > /tmp/first-load.log 2>&1 &
    ```
@@ -358,9 +360,11 @@ project of their own. Do these steps in this order.
    uses them. Then, in the Pages project, open Custom domains, select Set up a domain, and enter
    `ohfootball.io`. Cloudflare adds the DNS record and the certificate. To serve `www` as well,
    add `www.ohfootball.io` as a second custom domain.
-10. Run `make publish-dataset` when the Kaggle settings are in place.
+10. Run `cd /app && make publish-dataset` when the Kaggle settings are in place.
 11. Add a schedule to the `pipeline` application. Set its time zone to `UTC`. It runs
-    `make pipeline` with the cron expression `0 13 * * 2`.
+    `cd /app && make pipeline` with the cron expression `0 13 * * 2`. Until the Kaggle settings
+    are in place, run `cd /app && make scrape transform rate publish-site` instead, because
+    `make pipeline` ends with the publication of the dataset and fails without them.
 
 After the first deploy, a push to main deploys each application on the host and publishes the site
 when the site changed, and the schedule rebuilds the data and the site each week.
