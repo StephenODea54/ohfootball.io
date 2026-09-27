@@ -31,9 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     # The upload names main, so a run on any other branch would publish that branch as the site.
     if: github.ref == 'refs/heads/main'
-    # The secrets of the upload are held by this environment. Its deployment branch rule lets only
-    # main read them.
-    environment: production
     timeout-minutes: 30
     permissions:
       contents: read

@@ -31,7 +31,7 @@ FROM python:3.12-slim
 ARG DBT_CORE_VERSION=1.12.0
 ARG DBT_POSTGRES_VERSION=1.11.0
 
-# git is read by dbt when it resolves a package. curl asks the host to build the site. make runs
+# git is read by dbt when it resolves a package. curl asks GitHub to build the site. make runs
 # the targets. The PostgreSQL client lets an operator read or change the warehouse by hand. The
 # migrations are applied by the image in infra/postgres.
 RUN apt-get update \

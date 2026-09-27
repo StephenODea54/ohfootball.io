@@ -157,11 +157,11 @@ flowchart TD
 
     scrape["scrape<br/>joe-eitel"] --> transform["transform<br/>dbt build"]
     transform --> rate["rate<br/>ohfootball-elo publish"]
-    rate --> site["publish-site<br/>POST to the webhook of the site"]
+    rate --> site["publish-site<br/>start the site workflow"]
     site --> dataset["publish-dataset<br/>ohfootball-dataset publish"]
 
     warehouse[("PostgreSQL")]
-    build["Dokploy builds the site"]
+    build["GitHub Actions builds the site<br/>and uploads it to Pages"]
     kaggle[("Kaggle")]
 
     scrape -. writes .-> warehouse
@@ -177,21 +177,27 @@ flowchart TD
 | `scrape` | Go | collects the games of the season named by `SCRAPER_SEASON` |
 | `transform` | dbt | rebuilds staging, intermediate, and the marts |
 | `rate` | Python | rates every team in every season and stores a pregame prediction for every game played |
-| `publish-site` | curl | sends a push event to the deploy webhook of the site |
+| `publish-site` | curl | starts the site workflow through the REST API of GitHub |
 | `publish-dataset` | Python | sends the marts to Kaggle as one new version |
 | `backfill` | Go | reads the seasons before the ones the weekly scrape reads; run by hand |
 
 Each target runs on its own. A run that stops part way is finished by running the targets that did
 not run, in the order above.
 
-Dokploy reads the branch of a deploy from the body of a push event, and it refuses a request that
-names no branch. So `publish-site` sends a request in the form of a push from GitHub to the branch
-in `SITE_BRANCH`, which is `main` by default. Dokploy also refuses the request when the `site`
-application has automatic deploys off, or when it has watch paths that the request does not match.
+`publish-site` sends `POST /repos/StephenODea54/ohfootball.io/actions/workflows/site.yml/dispatches`
+with the body `{"ref":"main"}`. `SITE_REPOSITORY`, `SITE_WORKFLOW`, and `SITE_BRANCH` change the
+three names. The request carries `SITE_WORKFLOW_TOKEN`, a fine-grained personal access token that
+holds only this repository and only the permission Actions, read and write.
 
-The webhook answers as soon as Dokploy accepts the request. It does not wait for the build. So
-`publish-site` reports that the build was asked for, and the log of the `site` application holds the
-result.
+GitHub refuses the request with 401 when the token is wrong or has expired, with 403 or 404 when
+the token cannot reach the repository or the workflow file does not exist, and with 422 when the
+workflow has no `workflow_dispatch` trigger or the branch does not exist. Each refusal stops the
+run.
+
+GitHub answers 200 with the ID and the address of the new run as soon as it accepts the request.
+It does not wait for the build. So
+`publish-site` reports that the build was asked for, and the run of `site` in the Actions tab holds
+the result. By default, GitHub sends an email to the owner of the token when that run fails.
 
 The dataset is published last. Nothing else reads it, so a refusal by Kaggle costs the dataset and
 not the site.
@@ -241,11 +247,11 @@ such as `ohfootball.pages.dev`. On those addresses the prerendered pages show, b
 the browser gets no data.
 
 **The name of the API is DNS only.** Pages serves an apex domain only from a zone on the same
-Cloudflare account, so `ohfootball.io` is a Cloudflare zone. The A record of `api` points at the
-host and is not proxied. Traefik gets the certificate of `api.ohfootball.io` from Let's Encrypt
-with an HTTP challenge, and it has to receive those requests itself. Before you proxy the record,
-set the SSL mode of the zone to Full (strict). Do not add cache rules for `ohfootball.io`, because
-Pages sets its own caching.
+Cloudflare account, so `ohfootball.io` is a Cloudflare zone. The A record of `api`, and its
+AAAA record if the host answers on IPv6, point at the host and are not proxied. Traefik gets the certificate of `api.ohfootball.io` from
+Let's Encrypt with an HTTP challenge, and it has to receive those requests itself. Before you proxy
+a record of `api`, set the SSL mode of the zone to Full (strict). Do not add cache rules for
+`ohfootball.io`, because Pages sets its own caching.
 
 **The season does not follow the calendar.** `SCRAPER_SEASON` names the one season the weekly
 scrape reads. Raise it by hand when a new season starts, or the run keeps reading the season
@@ -282,9 +288,10 @@ Dokploy shows for the database as `DATABASE_URL`.
 
 ### `site` workflow
 
-Set these as secrets of the environment `production` in the settings of the GitHub repository.
-Give the environment the deployment branch rule `main` and no required reviewers, so the weekly
-run does not wait for an approval.
+Set these as repository secrets in the settings of the GitHub repository, under Secrets and
+variables, Actions. The repository is private, and a private repository on the free plan of GitHub
+has no environments, so the secrets are not held by an environment. The workflow reads them only
+in its run on main.
 
 | Secret | Value |
 | --- | --- |
@@ -304,28 +311,38 @@ run does not wait for an approval.
 | `OHFOOTBALL_MARTS_SCHEMA` | `ohfootball_marts` |
 | `OHFOOTBALL_TIME_ZONE` | `America/New_York` |
 | `SCRAPER_SEASON` | the year of the season in progress |
-| `SITE_DEPLOY_WEBHOOK` | the deploy webhook of the `site` application |
-| `SITE_BRANCH` | optional, default `main`, the branch the `site` application deploys from |
+| `SITE_WORKFLOW_TOKEN` | a fine-grained personal access token for `StephenODea54/ohfootball.io` with the repository permission Actions, read and write |
+| `SITE_REPOSITORY`, `SITE_WORKFLOW`, `SITE_BRANCH` | optional, default `StephenODea54/ohfootball.io`, `site.yml`, and `main`, the workflow that `publish-site` starts |
 | `KAGGLE_USERNAME`, `KAGGLE_KEY`, `KAGGLE_DATASET` | the Kaggle account and dataset |
 
 ## The first deploy
 
 The site cannot be built until the API answers on its public name and the warehouse holds data.
-Do these steps in this order.
+The host already runs Dokploy for another project. Create the applications below in a Dokploy
+project of their own. Do these steps in this order.
 
-1. Point DNS A records for `ohfootball.io` and `api.ohfootball.io` at the host.
+1. Add `ohfootball.io` to Cloudflare as a zone. Check the records that Cloudflare imports. Add
+   an A record for `api` that points at the host, and set it to DNS only. A wildcard record does
+   not do this, because a proxied wildcard sends `api` through Cloudflare. Add an AAAA record for
+   `api` only if Traefik on the host answers on IPv6. Keep any MX and TXT records. If the zone has CAA records, allow Let's Encrypt and the certificate
+   authorities that Cloudflare uses. Turn off DNSSEC at the registrar, then set the nameservers
+   there to the two that Cloudflare shows. Wait until Cloudflare shows the zone as active.
 2. Create a PostgreSQL database in Dokploy. Give it no external port. Copy its internal
    connection URL.
 3. Create the `migrate` application and deploy it. Its log shows each migration as `applied`,
    and then the container stays up.
 4. Create the `api` application. Add the domain `api.ohfootball.io` on port 8082 with a Let's
    Encrypt certificate. Deploy it. `https://api.ohfootball.io/healthz` answers when it is up.
-5. Create the `site` application with its build argument and the domain `ohfootball.io` on port
-   8080. Keep automatic deploys on and set no watch paths. Do not deploy it yet. Copy its deploy
-   webhook.
-6. Create the `pipeline` application with its settings, including the webhook from step 5.
-   Deploy it.
-7. Open a terminal in the `pipeline` container and load the record. The load reads every season
+5. Create the Pages project with
+   `npx wrangler pages project create ohfootball --production-branch=main`. Make the Cloudflare
+   API token. In GitHub, add the two repository secrets. See the settings of the `site`
+   workflow.
+6. Make the fine-grained token in the settings of the GitHub account that owns the repository.
+   Select Only select repositories and `StephenODea54/ohfootball.io`. Under Repository
+   permissions, set Actions to Read and write. Set an expiry and write down the date.
+7. Create the `pipeline` application with its settings, including `SITE_WORKFLOW_TOKEN`. Deploy
+   it.
+8. Open a terminal in the `pipeline` container and load the record. The load reads every season
    and runs for more than two hours. A terminal that closes stops a command that runs in it, so
    start the load in the background:
    ```sh
@@ -334,10 +351,16 @@ Do these steps in this order.
      make transform rate publish-site' > /tmp/first-load.log 2>&1 &
    ```
    Read `/tmp/first-load.log` to follow it. The load stops at the first target that fails. The
-   last target asks for the first build of the site. Watch the log of the `site` application.
-8. Run `make publish-dataset` when the Kaggle settings are in place.
-9. Add a schedule to the `pipeline` application. Set its time zone to `UTC`. It runs
-   `make pipeline` with the cron expression `0 13 * * 2`.
+   last target starts the site workflow for the first build of the site. Follow the run in the
+   Actions tab of the repository.
+9. In the DNS of the zone, delete the A and AAAA records of the apex that point at the host.
+   Delete the wildcard and `www` records that point at the host too, unless something on the host
+   uses them. Then, in the Pages project, open Custom domains, select Set up a domain, and enter
+   `ohfootball.io`. Cloudflare adds the DNS record and the certificate. To serve `www` as well,
+   add `www.ohfootball.io` as a second custom domain.
+10. Run `make publish-dataset` when the Kaggle settings are in place.
+11. Add a schedule to the `pipeline` application. Set its time zone to `UTC`. It runs
+    `make pipeline` with the cron expression `0 13 * * 2`.
 
-After the first deploy, a push to main deploys each application, and the schedule rebuilds the
-data and the site each week.
+After the first deploy, a push to main deploys each application on the host and publishes the site
+when the site changed, and the schedule rebuilds the data and the site each week.

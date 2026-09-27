@@ -124,7 +124,7 @@ pipeline-build:
 pipeline:
 	docker compose run --rm pipeline make $(ARGS)
 
-# Checks the target that asks the host to build the site. It needs no image and no database, so
+# Checks the target that asks GitHub to build the site. It needs no image and no database, so
 # it is part of the top level test target.
 pipeline-test:
 	python3 -m unittest discover -s infra/pipeline/tests

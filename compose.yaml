@@ -192,12 +192,13 @@ services:
       # The scrape names one season and does not read the calendar, so this is set to the year of
       # the season in progress.
       SCRAPER_SEASON: ${SCRAPER_SEASON:-}
-      # A publication needs a Kaggle account and the site has to be asked to build, so both are
-      # taken from the environment of the machine running this and never written here.
+      # A publication needs a Kaggle account, and a request to build the site needs a GitHub
+      # token, so both are taken from the environment of the machine running this and never
+      # written here.
       KAGGLE_USERNAME: ${KAGGLE_USERNAME:-}
       KAGGLE_KEY: ${KAGGLE_KEY:-}
       KAGGLE_DATASET: ${KAGGLE_DATASET:-}
-      SITE_DEPLOY_WEBHOOK: ${SITE_DEPLOY_WEBHOOK:-}
+      SITE_WORKFLOW_TOKEN: ${SITE_WORKFLOW_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

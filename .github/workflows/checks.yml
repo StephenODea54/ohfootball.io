@@ -48,8 +48,8 @@ jobs:
       - run: make -C services/elo test
       - run: make -C services/dataset vet
       - run: make -C services/dataset test
-      # Checks the target that asks the host to build the site. It answers itself over the
-      # loopback address and needs no image and no database.
+      # Checks the target that asks GitHub to build the site. A stand-in for GitHub answers over
+      # the loopback address, and the check needs no image and no database.
       - run: make pipeline-test
       # Checks the target that makes the build of the site ready for Cloudflare Pages, and the
       # headers Pages sends. It needs no build and no API.

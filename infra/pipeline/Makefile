@@ -39,36 +39,45 @@ transform:
 rate:
 	ohfootball-elo publish
 
-# Asks the host to build the site again.
+# Asks GitHub to build the site again and publish it.
 #
 # The site is drawn ahead of time and reads the API while it is built, so a new rating reaches a
-# visitor only after the site is built again. The address is the deploy webhook of the site
-# application.
+# visitor only after the site is built again. The build runs in GitHub Actions. It is the workflow
+# SITE_WORKFLOW of the repository SITE_REPOSITORY, and it publishes the site to Cloudflare Pages.
+# This target starts that workflow on the branch SITE_BRANCH.
 #
-# Dokploy reads the branch of a deploy from the body of a push event. It refuses a request that
-# names no branch, or a branch that the application does not deploy from, and answers 301. The
-# request therefore has the form of a push from GitHub to that branch. SITE_BRANCH names it.
+# SITE_WORKFLOW_TOKEN is a fine-grained personal access token. It holds this one repository and
+# the permission to read and write Actions, and nothing else. The shell reads it from the
+# environment and gives it to curl on standard input. It is therefore not part of a command line,
+# and make does not print it in the commands it runs.
 #
-# The webhook answers as soon as the request is accepted. It does not wait for the build, so this
-# target reports that the build was asked for and not that the build worked. The log of the site
-# application holds the result.
+# GitHub answers as soon as it accepts the request. It does not wait for the build, so this target
+# reports that the build was asked for and not that the build worked. The run of the workflow in
+# the Actions tab of the repository holds the result.
 publish-site:
-	@test -n "$(SITE_DEPLOY_WEBHOOK)" || { \
-		echo "SITE_DEPLOY_WEBHOOK is required. It is the deploy webhook of the site." >&2; \
+	@test -n "$${SITE_WORKFLOW_TOKEN:-}" || { \
+		echo "SITE_WORKFLOW_TOKEN is required. It is the token that starts the site workflow." >&2; \
 		exit 1; \
 	}
-	@status=$$(curl --silent --show-error --location --max-time 30 \
+	@status=$$(printf 'Authorization: Bearer %s\n' "$$SITE_WORKFLOW_TOKEN" | \
+		curl --silent --show-error --max-time 30 \
 		--output /dev/null --write-out '%{http_code}' \
+		--header @- \
+		--header 'Accept: application/vnd.github+json' \
+		--header 'X-GitHub-Api-Version: $(GITHUB_API_VERSION)' \
 		--header 'Content-Type: application/json' \
-		--header 'X-GitHub-Event: push' \
-		--data '{"ref":"refs/heads/$(SITE_BRANCH)"}' \
-		--request POST "$(SITE_DEPLOY_WEBHOOK)") || { \
-		echo "the request to build the site did not reach the host" >&2; \
+		--data '{"ref":"$(SITE_BRANCH)"}' \
+		--request POST \
+		"$(GITHUB_API_URL)/repos/$(SITE_REPOSITORY)/actions/workflows/$(SITE_WORKFLOW)/dispatches") || { \
+		echo "the request to build the site did not reach GitHub" >&2; \
 		exit 1; \
 	}; \
 	case "$$status" in \
-	2??) echo "the site build was asked for and the host answered $$status" ;; \
-	*) echo "the host refused the request to build the site and answered $$status" >&2; exit 1 ;; \
+	2??) echo "GitHub accepted the request to build the site and answered $$status" ;; \
+	401) echo "GitHub refused the token and answered 401. The token is wrong or has expired." >&2; exit 1 ;; \
+	403|404) echo "GitHub answered $$status. The token cannot start $(SITE_WORKFLOW) in $(SITE_REPOSITORY), or the workflow does not exist." >&2; exit 1 ;; \
+	422) echo "GitHub answered 422. The workflow has no workflow_dispatch trigger, or the branch $(SITE_BRANCH) does not exist." >&2; exit 1 ;; \
+	*) echo "GitHub refused the request to build the site and answered $$status" >&2; exit 1 ;; \
 	esac
 
 # Writes the marts as files and sends them to Kaggle as one new version.
@@ -80,8 +89,16 @@ publish-dataset:
 backfill:
 	ohhsfbdb
 
-# The branch that the site application deploys from.
+# The repository, the workflow and the branch that publish-site starts. The workflow is named by
+# its file name.
+SITE_REPOSITORY ?= StephenODea54/ohfootball.io
+SITE_WORKFLOW ?= site.yml
 SITE_BRANCH ?= main
+
+# The REST API of GitHub and the version of it that publish-site asks for. The tests point the
+# address at a server on the loopback address.
+GITHUB_API_URL ?= https://api.github.com
+GITHUB_API_VERSION ?= 2026-03-10
 
 # Where the dbt project is. The image holds it at this path, and a run on a workstation names its
 # own.
