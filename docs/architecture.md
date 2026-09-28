@@ -318,7 +318,7 @@ in its run on main.
 | `SCRAPER_SEASON` | the year of the season in progress |
 | `SITE_WORKFLOW_TOKEN` | a fine-grained personal access token for `StephenODea54/ohfootball.io` with the repository permission Actions, read and write |
 | `SITE_REPOSITORY`, `SITE_WORKFLOW`, `SITE_BRANCH` | optional, default `StephenODea54/ohfootball.io`, `site.yml`, and `main`, the workflow that `publish-site` starts |
-| `KAGGLE_USERNAME`, `KAGGLE_KEY`, `KAGGLE_DATASET` | the Kaggle account and dataset |
+| `KAGGLE_USERNAME`, `KAGGLE_KEY`, `KAGGLE_DATASET` | the Kaggle account, its legacy API key from `kaggle.json`, and the dataset as `owner/slug`; `KAGGLE_API_TOKEN` can take the place of the key |
 
 ## The first deploy
 

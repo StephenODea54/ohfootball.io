@@ -95,46 +95,35 @@ Kaggle calculates the usability rating again some time after a change. It is not
 
 | Name                      | Holds                                                     |
 | ------------------------- | --------------------------------------------------------- |
-| `DATABASE_URL`            | The warehouse, with no password in it                     |
-| `PGPASSWORD`              | The warehouse password, read the way libpq reads it        |
+| `DATABASE_URL`            | The connection URL of the warehouse                        |
 | `OHFOOTBALL_MARTS_SCHEMA` | The schema the marts are in, `ohfootball_marts` by default |
 | `KAGGLE_USERNAME`         | The Kaggle account that owns the dataset                   |
-| `KAGGLE_KEY`              | The API token of that account                              |
+| `KAGGLE_KEY`              | The legacy API key of that account, from `kaggle.json`     |
+| `KAGGLE_API_TOKEN`        | A token of the new form (`KGAT_...`), in place of the key  |
 | `KAGGLE_DATASET`          | The dataset, as `owner/slug`                               |
 
-The Kaggle client reads `KAGGLE_USERNAME` and `KAGGLE_KEY` from the environment before it looks for
-a `kaggle.json`, so the task needs no file and no writable home directory.
+The Kaggle client reads these values from the environment before it looks for a `kaggle.json`, so
+the container needs no file and no writable home directory. It tries `KAGGLE_API_TOKEN` first and
+then `KAGGLE_USERNAME` with `KAGGLE_KEY`.
 
-## The secret
+## The credentials
 
-The pipeline reads all three Kaggle values from one Secrets Manager secret. `OhfootballSecrets`
-raises that secret with a key for each of the three and nothing in any of them, and publishes its
-ARN as the parameter `/ohfootball/kaggle/secret-arn`. No value of it passes through a stack, because
-a template is readable by anyone who can read the stack.
+On the host, the values are settings of the `pipeline` application in Dokploy. Nothing else holds
+them. Take the key from <https://www.kaggle.com/settings>, under API. The settings of the pipeline
+in `docs/architecture.md` list the other values the application needs.
 
-Take the API token from <https://www.kaggle.com/settings> and write the values once:
-
-```sh
-aws secretsmanager put-secret-value --secret-id ohfootball/kaggle \
-  --secret-string '{"username":"...","key":"...","dataset":"owner/slug"}'
-```
-
-A deployment that leaves the shape of the secret alone leaves the values alone with it. Adding a
-key to the secret in `infra/lib/secrets-stack.ts` does not, so write the values again after any such
-change.
-
-A run against a secret still holding its placeholders does not publish anything. It fails, either
-when the container starts or when it reaches Kaggle.
+A change to a setting in Dokploy reaches the container only after the application is deployed
+again.
 
 The slug does not have to exist yet. The first run creates the dataset, public, under CC0-1.0.
 
 ## Caveats
 
-A failed publication fails the execution. Nothing else is rolled back, because the site and the API
-are already published by then, and no alarm is raised. A failed run shows in the state machine
-history and nowhere else.
+A failed publication fails `make publish-dataset`, the last target of the weekly run. Nothing
+else is undone, because the site was asked for before it, and no alarm is raised. The failure shows
+in the log of the run in the schedules of the `pipeline` application in Dokploy.
 
-The step retries twice. A retry re-exports and re-uploads from the start. If a first attempt
-reached Kaggle and died afterwards, the retry adds a second version of the same data rather than
-replacing the first. A refusal of the metadata update is such a case, because it comes after the
+Nothing retries the target. A second run exports and uploads from the start. If a first run
+reached Kaggle and failed after it, the second run adds a second version of the same data and does
+not replace the first. A refusal of the metadata update is such a case, because it comes after the
 upload.

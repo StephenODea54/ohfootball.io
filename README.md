@@ -11,6 +11,13 @@ make hooks
 It points Git at `.githooks`. The pre-commit hook then checks the format of the Go files,
 runs `make vet`, and runs `make test` before each commit.
 
+`make test` also type checks and tests the site when pnpm is installed. Install the packages of the
+site one time, or the hook fails:
+
+```sh
+pnpm -C services/frontend install
+```
+
 ## How it fits together
 
 [docs/architecture.md](docs/architecture.md) describes the two pipelines, what each step of the
