@@ -22,7 +22,15 @@ import {
 } from "@/features/api-docs/api"
 import { CodeBlock } from "@/features/api-docs/components/code-block"
 
-function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+function Section({
+  id,
+  title,
+  children,
+}: {
+  id: string
+  title: string
+  children: React.ReactNode
+}) {
   return (
     <section className="mt-12" aria-labelledby={`${id}-heading`}>
       <Heading id={`${id}-heading`} level={2} className="text-2xl/8 sm:text-3xl/9">
@@ -45,7 +53,9 @@ export function ApiDocsContent() {
           <p className="font-semibold text-primary-subtle-fg text-sm/6 uppercase tracking-[0.18em]">
             API
           </p>
-          <Heading className="mt-3 text-4xl/none sm:text-5xl/none">Read The Ratings From Your Code</Heading>
+          <Heading className="mt-3 text-4xl/none sm:text-5xl/none">
+            Read The Ratings From Your Code
+          </Heading>
           <Text className="mt-5 text-base/7 sm:text-lg/8">
             The ratings and the predictions of the current season are available from a public
             GraphQL API. You do not need an account or a key. Follow the two rules on this page, so
@@ -118,9 +128,8 @@ export function ApiDocsContent() {
             <Text className="mt-3 text-base/7">
               One query may select at most {queryLimits.fields} fields. Each alias and each field of
               a fragment counts, each time the query uses it. A query may have at most{" "}
-              {queryLimits.tokens} tokens, and a request body may have at most{" "}
-              {queryLimits.bodyMiB} MiB. These limits hold for queries that read only the schema
-              too.
+              {queryLimits.tokens} tokens, and a request body may have at most {queryLimits.bodyMiB}{" "}
+              MiB. These limits hold for queries that read only the schema too.
             </Text>
           </Section>
 
@@ -162,7 +171,10 @@ export function ApiDocsContent() {
               {topTenQuery}
             </CodeBlock>
             <Text className="mt-4 text-base/7">Or send the same query with curl:</Text>
-            <CodeBlock label="A curl command for the ten teams with the highest rating" className="mt-4">
+            <CodeBlock
+              label="A curl command for the ten teams with the highest rating"
+              className="mt-4"
+            >
               {curlExample(oneLine(topTenQuery))}
             </CodeBlock>
           </Section>
@@ -170,9 +182,9 @@ export function ApiDocsContent() {
           <Section id="playground" title="The Playground">
             <Text className="mt-3 text-base/7">
               The <TextLink href={playgroundUrl}>playground</TextLink> runs queries in your browser.
-              The schema, the documentation, and the completion load when the page opens. Before
-              you run a query, replace the text in the <Code>From</Code> header of the Headers pane
-              with your contact:
+              The schema, the documentation, and the completion load when the page opens. Before you
+              run a query, replace the text in the <Code>From</Code> header of the Headers pane with
+              your contact:
             </Text>
             <CodeBlock label="The Headers pane of the playground" className="mt-4">
               {playgroundHeadersExample()}

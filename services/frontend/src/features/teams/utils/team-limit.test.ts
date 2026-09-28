@@ -14,6 +14,8 @@ describe("assertBelowTeamLimit", () => {
   })
 
   it("stops a season above the cap", () => {
-    expect(() => assertBelowTeamLimit(2026, TEAM_QUERY_LIMIT + 1)).toThrow("Raise the cap in the API")
+    expect(() => assertBelowTeamLimit(2026, TEAM_QUERY_LIMIT + 1)).toThrow(
+      "Raise the cap in the API",
+    )
   })
 })

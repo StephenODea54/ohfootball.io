@@ -3,7 +3,14 @@
 import { Area, AreaChart } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card"
-import { CartesianGrid, Chart, ChartTooltip, ChartTooltipContent, XAxis, YAxis } from "@/components/ui/chart"
+import {
+  CartesianGrid,
+  Chart,
+  ChartTooltip,
+  ChartTooltipContent,
+  XAxis,
+  YAxis,
+} from "@/components/ui/chart"
 import type { Team } from "@/types/api"
 
 const chartConfig = {
@@ -32,9 +39,8 @@ export function RatingHistoryChart({
   const lastSeason = past.at(-1)?.season
   const seasonIndex = past.findIndex((point) => point.season === team.season)
   const previousPoint = seasonIndex > 0 ? past[seasonIndex - 1] : undefined
-  const ratingDelta = rating !== null && previousPoint
-    ? rating - Math.round(previousPoint.value)
-    : null
+  const ratingDelta =
+    rating !== null && previousPoint ? rating - Math.round(previousPoint.value) : null
   const ratings = history.map((point) => point.rating)
   const minimumRating = ratings.length ? Math.min(...ratings) - 25 : 1400
   const maximumRating = ratings.length ? Math.max(...ratings) + 25 : 1600
@@ -55,7 +61,8 @@ export function RatingHistoryChart({
         {ratingDelta !== null && previousPoint && (
           <CardAction>
             <Badge intent={ratingDelta >= 0 ? "success" : "danger"} className="font-semibold">
-              {ratingDelta >= 0 ? "+" : ""}{ratingDelta} vs {previousPoint.season}
+              {ratingDelta >= 0 ? "+" : ""}
+              {ratingDelta} vs {previousPoint.season}
             </Badge>
           </CardAction>
         )}

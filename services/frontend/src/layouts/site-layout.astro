@@ -1,8 +1,8 @@
 ---
-import '@/styles.css'
-import { AppFooter } from '@/components/layouts/app-footer'
-import { AppNavbar } from '@/components/layouts/app-navbar'
-import { visitorPathname } from '@/utils/pathname'
+import "@/styles.css"
+import { AppFooter } from "@/components/layouts/app-footer"
+import { AppNavbar } from "@/components/layouts/app-navbar"
+import { visitorPathname } from "@/utils/pathname"
 
 interface Props {
   title: string
@@ -26,15 +26,15 @@ const pathname = visitorPathname(Astro.url.pathname)
     {noindex && <meta name="robots" content="noindex" />}
     <!-- Sets the theme before the page is painted, so a dark page does not flash light first. -->
     <script is:inline>
-      (function () {
+      ;(function () {
         try {
-          var theme = localStorage.getItem('theme')
+          var theme = localStorage.getItem("theme")
           var dark =
-            theme === 'dark' ||
-            ((!theme || theme === 'system') &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches)
-          document.documentElement.classList.toggle('dark', dark)
-          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+            theme === "dark" ||
+            ((!theme || theme === "system") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches)
+          document.documentElement.classList.toggle("dark", dark)
+          document.documentElement.style.colorScheme = dark ? "dark" : "light"
         } catch (e) {}
       })()
     </script>

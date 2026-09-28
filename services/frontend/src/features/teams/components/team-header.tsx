@@ -15,7 +15,8 @@ export function TeamHeader({ team }: { team: Team }) {
       <div>
         <Text className="font-medium">{`${teamMeta(team)} · ${team.season}`}</Text>
         <Heading className="mt-1 text-4xl/none sm:text-5xl/none">
-          {team.name}{team.mascot && <span className="text-muted-fg"> {team.mascot}</span>}
+          {team.name}
+          {team.mascot && <span className="text-muted-fg"> {team.mascot}</span>}
         </Heading>
       </div>
 
@@ -28,11 +29,26 @@ export function TeamHeader({ team }: { team: Team }) {
   )
 }
 
-function TeamStat({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+function TeamStat({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string
+  value: string
+  accent?: boolean
+}) {
   return (
     <div>
       <dt className="text-xs/5 font-medium uppercase tracking-wide text-muted-fg">{label}</dt>
-      <dd className={twJoin("mt-0.5 text-2xl/7 font-semibold", accent ? "text-success-subtle-fg" : "text-fg")}>{value}</dd>
+      <dd
+        className={twJoin(
+          "mt-0.5 text-2xl/7 font-semibold",
+          accent ? "text-success-subtle-fg" : "text-fg",
+        )}
+      >
+        {value}
+      </dd>
     </div>
   )
 }

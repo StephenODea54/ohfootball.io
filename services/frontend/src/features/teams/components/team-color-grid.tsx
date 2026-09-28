@@ -1,8 +1,8 @@
 "use client"
 
 import { GridList, GridListItem } from "@/components/ui/grid-list"
-import { teamSwatches } from "@/features/teams/utils/team-colors"
 import { openTeam } from "@/features/teams/utils/open-team"
+import { teamSwatches } from "@/features/teams/utils/team-colors"
 import type { TeamSummary } from "@/types/api"
 
 interface TeamColorGridProps {

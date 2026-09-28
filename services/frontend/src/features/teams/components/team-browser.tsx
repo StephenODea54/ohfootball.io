@@ -4,15 +4,8 @@ import { useMemo, useState } from "react"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
 import { TeamColorGrid } from "@/features/teams/components/team-color-grid"
-import {
-  DivisionSelect,
-  RegionSelect,
-} from "@/features/teams/components/team-filter-controls"
-import {
-  ALL_DIVISIONS,
-  ALL_REGIONS,
-  filterTeams,
-} from "@/features/teams/utils/filter-teams"
+import { DivisionSelect, RegionSelect } from "@/features/teams/components/team-filter-controls"
+import { ALL_DIVISIONS, ALL_REGIONS, filterTeams } from "@/features/teams/utils/filter-teams"
 import type { TeamSummary } from "@/types/api"
 
 /** How many schools the grid shows before the visitor narrows it by region or division. */

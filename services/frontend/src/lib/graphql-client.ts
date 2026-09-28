@@ -32,7 +32,8 @@ export async function graphqlRequest<T>(query: string, variables?: object): Prom
   if (!response.ok) throw new Error(`GraphQL request failed with status ${response.status}`)
 
   const payload = (await response.json()) as GraphQLResponse<T>
-  if (payload.errors?.length) throw new Error(payload.errors.map((error) => error.message).join("; "))
+  if (payload.errors?.length)
+    throw new Error(payload.errors.map((error) => error.message).join("; "))
   if (!payload.data) throw new Error("GraphQL response did not include data")
   return payload.data
 }

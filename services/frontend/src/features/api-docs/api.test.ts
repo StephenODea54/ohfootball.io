@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   apiEndpoint,
   curlExample,
-  limits,
   errorExample,
+  limits,
   oneLine,
   playgroundHeadersExample,
   playgroundUrl,
@@ -58,7 +58,12 @@ describe("the API page", () => {
   })
 
   it("keeps the burst of one address inside the total burst, as the API does", () => {
-    expect(limits).toEqual({ addressPerMinute: 60, addressBurst: 20, totalPerSecond: 20, totalBurst: 40 })
+    expect(limits).toEqual({
+      addressPerMinute: 60,
+      addressBurst: 20,
+      totalPerSecond: 20,
+      totalBurst: 40,
+    })
     expect(limits.addressBurst).toBeLessThanOrEqual(limits.totalBurst)
   })
 

@@ -1,36 +1,37 @@
-import { ArrowRightIcon } from '@heroicons/react/20/solid'
-import { buttonStyles } from '@/components/ui/button'
-import { Container } from '@/components/ui/container'
-import { Heading } from '@/components/ui/heading'
-import { Link } from '@/components/ui/link'
-import { Text, TextLink } from '@/components/ui/text'
-import { links, paths } from '@/config/paths'
+import { ArrowRightIcon } from "@heroicons/react/20/solid"
+import { buttonStyles } from "@/components/ui/button"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { Link } from "@/components/ui/link"
+import { Text, TextLink } from "@/components/ui/text"
+import { links, paths } from "@/config/paths"
 
 const questions = [
   {
-    question: 'What Is A Rating?',
-    answer: 'A rating is meant to be a measure of how good a team is. The higher the better.',
+    question: "What Is A Rating?",
+    answer: "A rating is meant to be a measure of how good a team is. The higher the better.",
   },
   {
-    question: 'My Team Won. Why Did The Rating Barely Move?',
-    answer: 'Beating a weak team is worth little. Beating a strong team is worth a lot.',
+    question: "My Team Won. Why Did The Rating Barely Move?",
+    answer: "Beating a weak team is worth little. Beating a strong team is worth a lot.",
   },
   {
-    question: 'What Does A 68% Win Chance Mean?',
-    answer: 'The favorite wins about 68 games out of 100, on average.',
+    question: "What Does A 68% Win Chance Mean?",
+    answer: "The favorite wins about 68 games out of 100, on average.",
   },
   {
-    question: 'When Do Ratings Change?',
+    question: "When Do Ratings Change?",
     answer:
-      'Once a week, every Tuesday morning, Eastern time. A game counts once its score is posted.',
+      "Once a week, every Tuesday morning, Eastern time. A game counts once its score is posted.",
   },
   {
-    question: 'Why Is My School Missing?',
-    answer: 'A school needs games this season to get a rating. Out of state schools are not ranked.',
+    question: "Why Is My School Missing?",
+    answer:
+      "A school needs games this season to get a rating. Out of state schools are not ranked.",
   },
   {
-    question: 'Does This Set Playoff Seeding?',
-    answer: 'No. The OHSAA does that with its own system. This is not affiliated with the OHSAA.',
+    question: "Does This Set Playoff Seeding?",
+    answer: "No. The OHSAA does that with its own system. This is not affiliated with the OHSAA.",
   },
 ]
 
@@ -42,22 +43,22 @@ export function AboutContent() {
         <div className="max-w-3xl">
           <Heading className="text-4xl/none sm:text-5xl/none">About</Heading>
           <Text className="mt-4 text-base/7 sm:text-lg/8">
-            ohfootball.io is an incredibly nerdy attempt at rating and making predictions
-            for Ohio high school football teams. The ratings and predictions are solely based on historical win and loss
-            results, and predictions are made using a statistical model. The current accuracy
-            of the predictions hover around 80%.
+            ohfootball.io is an incredibly nerdy attempt at rating and making predictions for Ohio
+            high school football teams. The ratings and predictions are solely based on historical
+            win and loss results, and predictions are made using a statistical model. The current
+            accuracy of the predictions hover around 80%.
           </Text>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href={paths.home.getHref()}
-              className={buttonStyles({ intent: 'primary', size: 'lg' })}
+              className={buttonStyles({ intent: "primary", size: "lg" })}
             >
               Find Your School <ArrowRightIcon />
             </Link>
             <Link
               href={paths.leaderboard.getHref()}
-              className={buttonStyles({ intent: 'outline', size: 'lg' })}
+              className={buttonStyles({ intent: "outline", size: "lg" })}
             >
               See The Rankings
             </Link>
@@ -83,17 +84,16 @@ export function AboutContent() {
             Where The Data Comes From
           </Heading>
           <Text className="mt-4 text-base/7">
-            The scores come from two places.{' '}
+            The scores come from two places.{" "}
             <TextLink href="https://joeeitel.com/hsfoot/">joeeitel.com</TextLink> has every season
             from 2000, and <TextLink href="https://ohhsfbdb.net">ohhsfbdb.net</TextLink> has the
-            seasons from 1972 to 1999. Both are awesome, and you should absolutely check them
-            out.
+            seasons from 1972 to 1999. Both are awesome, and you should absolutely check them out.
           </Text>
           <Text className="mt-3 text-base/7">
-            That is also why only the season in progress is shown here. A page for every old
-            score would turn ohfootball.io into a place to look up past results, and that takes
-            away from those two. So you will find ratings and predictions for the current season
-            only. For earlier seasons, and for the predictions made for them, use the{' '}
+            That is also why only the season in progress is shown here. A page for every old score
+            would turn ohfootball.io into a place to look up past results, and that takes away from
+            those two. So you will find ratings and predictions for the current season only. For
+            earlier seasons, and for the predictions made for them, use the{" "}
             <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
           </Text>
         </section>
@@ -103,17 +103,17 @@ export function AboutContent() {
             Data And Code
           </Heading>
           <Text className="mt-4 text-base/7">
-            All of the code, including the API and the model, is on{' '}
+            All of the code, including the API and the model, is on{" "}
             <TextLink href={links.repository}>GitHub</TextLink>. Every game and rating is also
             published each week as a <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
           </Text>
           <Text className="mt-3 text-base/7">
-            To read the ratings and predictions from your own code, see the{' '}
+            To read the ratings and predictions from your own code, see the{" "}
             <TextLink href={paths.api.getHref()}>API page</TextLink>.
           </Text>
           <Text className="mt-3 text-base/7">
-            Found a wrong score or a missing school? Please{' '}
-            <TextLink href={links.issues}>open an issue</TextLink>, or send an email to{' '}
+            Found a wrong score or a missing school? Please{" "}
+            <TextLink href={links.issues}>open an issue</TextLink>, or send an email to{" "}
             <TextLink href={links.contact}>hey@ohfootball.io</TextLink>.
           </Text>
         </section>
@@ -125,11 +125,17 @@ export function AboutContent() {
           <ul className="mt-4 space-y-3 text-muted-fg text-sm/6">
             <li>Not affiliated with the OHSAA, any school, Joe Eitel, or any other entity.</li>
             <li>A prediction is a guess, not a promise.</li>
-            <li>Scores come from public results. Predictions are a reflection of that, whether right or wrong.</li>
-            <li>It is illegal to bet on Ohio high school football games. Please don't use these predictions as hedges for your bets you weirdos.</li>
+            <li>
+              Scores come from public results. Predictions are a reflection of that, whether right
+              or wrong.
+            </li>
+            <li>
+              It is illegal to bet on Ohio high school football games. Please don't use these
+              predictions as hedges for your bets you weirdos.
+            </li>
           </ul>
           <Text className="mt-6 text-sm/6">
-            Want the math? Read the{' '}
+            Want the math? Read the{" "}
             <TextLink href={paths.methodology.getHref()}>methodology</TextLink>.
           </Text>
         </section>

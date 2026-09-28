@@ -4,16 +4,23 @@ import { useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Link } from "@/components/ui/link"
 import { ProgressBar, ProgressBarTrack } from "@/components/ui/progress-bar"
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Text } from "@/components/ui/text"
 import { paths } from "@/config/paths"
 import { TeamFilterControls } from "@/features/teams/components/team-filter-controls"
-import { formatRecord, teamMeta } from "@/features/teams/utils/format"
 import {
   EMPTY_TEAM_FILTERS,
   filterTeams,
   type TeamFilterState,
 } from "@/features/teams/utils/filter-teams"
+import { formatRecord, teamMeta } from "@/features/teams/utils/format"
 import type { TeamRating, TeamSummary } from "@/types/api"
 
 type RatedTeam = TeamSummary & { rating: TeamRating }
@@ -44,7 +51,9 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
           <CardContent>
             <Table aria-label={`${season} Rating Leaderboard`} bleed>
               <TableHeader className="bg-muted/70 text-xs/5 uppercase tracking-wide">
-                <TableColumn isRowHeader className="w-16">Rank</TableColumn>
+                <TableColumn isRowHeader className="w-16">
+                  Rank
+                </TableColumn>
                 <TableColumn>School</TableColumn>
                 <TableColumn className="text-end">Record</TableColumn>
                 <TableColumn className="w-32 text-end">Rating</TableColumn>
@@ -52,9 +61,8 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
               <TableBody items={ratedTeams}>
                 {(team) => {
                   const rating = team.rating.value
-                  const progress = ratingRange === 0
-                    ? 100
-                    : ((rating - ratingFloor) / ratingRange) * 100
+                  const progress =
+                    ratingRange === 0 ? 100 : ((rating - ratingFloor) / ratingRange) * 100
 
                   return (
                     <TableRow id={team.id}>

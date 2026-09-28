@@ -1,8 +1,8 @@
 "use client"
 
 import { MoonIcon, SunIcon } from "@heroicons/react/20/solid"
-import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme/theme-provider"
+import { Button } from "@/components/ui/button"
 
 /**
  * The button that switches between the light and the dark theme.

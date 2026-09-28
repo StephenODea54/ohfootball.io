@@ -1,17 +1,17 @@
 ---
-import type { GetStaticPaths } from 'astro'
-import { PRERENDER_TEAM_LIMIT } from 'astro:env/server'
-import SiteLayout from '@/layouts/site-layout.astro'
-import { Container } from '@/components/ui/container'
-import { Heading } from '@/components/ui/heading'
-import { Link } from '@/components/ui/link'
-import { paths } from '@/config/paths'
-import { getCurrentSeason } from '@/features/seasons/api/get-current-season'
-import { getTeam } from '@/features/teams/api/get-team'
-import { getTeams } from '@/features/teams/api/get-teams'
-import { RatingHistoryChart } from '@/features/teams/components/rating-history-chart'
-import { TeamHeader } from '@/features/teams/components/team-header'
-import { TeamScheduleTable } from '@/features/teams/components/team-schedule-table'
+import type { GetStaticPaths } from "astro"
+import { PRERENDER_TEAM_LIMIT } from "astro:env/server"
+import SiteLayout from "@/layouts/site-layout.astro"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { Link } from "@/components/ui/link"
+import { paths } from "@/config/paths"
+import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
+import { getTeam } from "@/features/teams/api/get-team"
+import { getTeams } from "@/features/teams/api/get-teams"
+import { RatingHistoryChart } from "@/features/teams/components/rating-history-chart"
+import { TeamHeader } from "@/features/teams/components/team-header"
+import { TeamScheduleTable } from "@/features/teams/components/team-schedule-table"
 
 /**
  * One page for every team of the current season. A team address holds no season, so a team that

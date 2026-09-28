@@ -1,7 +1,14 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 /** The values the published ratings use. */
 const parameters = [
@@ -76,9 +83,7 @@ export function ParametersTable() {
             {(parameter) => (
               <TableRow id={parameter.id}>
                 <TableCell className="font-medium text-fg">{parameter.name}</TableCell>
-                <TableCell className="text-end font-semibold text-fg">
-                  {parameter.value}
-                </TableCell>
+                <TableCell className="text-end font-semibold text-fg">{parameter.value}</TableCell>
                 <TableCell className="text-muted-fg">{parameter.note}</TableCell>
               </TableRow>
             )}

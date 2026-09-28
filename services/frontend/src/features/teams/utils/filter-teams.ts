@@ -23,12 +23,14 @@ export function filterTeams<T extends TeamSummary>(teams: T[], filters: TeamFilt
 
   return teams.filter((team) => {
     const matchesQuery = !query || team.name.toLowerCase().includes(query)
-    const matchesRegion = filters.region === ALL_REGIONS
-      || (filters.region === UNASSIGNED_REGION
+    const matchesRegion =
+      filters.region === ALL_REGIONS ||
+      (filters.region === UNASSIGNED_REGION
         ? team.region === null
         : team.region === Number(filters.region))
-    const matchesDivision = filters.division === ALL_DIVISIONS
-      || (filters.division === INDEPENDENT_DIVISION
+    const matchesDivision =
+      filters.division === ALL_DIVISIONS ||
+      (filters.division === INDEPENDENT_DIVISION
         ? team.division === null
         : team.division === Number(filters.division))
 

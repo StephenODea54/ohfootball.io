@@ -2,14 +2,14 @@
 
 import { SearchField, SearchInput } from "@/components/ui/search-field"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { formatDivision } from "@/features/teams/utils/format"
 import {
   ALL_DIVISIONS,
   ALL_REGIONS,
   INDEPENDENT_DIVISION,
-  UNASSIGNED_REGION,
   type TeamFilterState,
+  UNASSIGNED_REGION,
 } from "@/features/teams/utils/filter-teams"
+import { formatDivision } from "@/features/teams/utils/format"
 import type { TeamSummary } from "@/types/api"
 
 interface FilterSelectProps {

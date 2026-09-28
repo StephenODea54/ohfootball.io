@@ -1,5 +1,11 @@
 "use client"
 
+import { Bars2Icon } from "@heroicons/react/20/solid"
+import { ThemeProvider } from "@/components/theme/theme-provider"
+import { ThemeSwitcher } from "@/components/theme/theme-switcher"
+import { buttonStyles } from "@/components/ui/button"
+import { Link } from "@/components/ui/link"
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu"
 import {
   Navbar,
   NavbarItem,
@@ -10,12 +16,6 @@ import {
   NavbarSpacer,
   NavbarStart,
 } from "@/components/ui/navbar"
-import { Bars2Icon } from "@heroicons/react/20/solid"
-import { ThemeProvider } from "@/components/theme/theme-provider"
-import { ThemeSwitcher } from "@/components/theme/theme-switcher"
-import { buttonStyles } from "@/components/ui/button"
-import { Link } from "@/components/ui/link"
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu"
 import { paths } from "@/config/paths"
 
 const navItems = [
@@ -28,7 +28,9 @@ const navItems = [
 
 /** A team page belongs to Home, because a school is found from the home page. */
 function isCurrentPage(itemPath: string, pathname: string) {
-  return itemPath === "/" ? pathname === "/" || pathname.startsWith("/teams/") : pathname === itemPath
+  return itemPath === "/"
+    ? pathname === "/" || pathname.startsWith("/teams/")
+    : pathname === itemPath
 }
 
 /**
@@ -38,10 +40,7 @@ function isCurrentPage(itemPath: string, pathname: string) {
 function PageMenu({ pathname }: { pathname: string }) {
   return (
     <Menu>
-      <MenuTrigger
-        aria-label="Pages"
-        className={buttonStyles({ intent: "plain", size: "sq-sm" })}
-      >
+      <MenuTrigger aria-label="Pages" className={buttonStyles({ intent: "plain", size: "sq-sm" })}>
         <Bars2Icon />
       </MenuTrigger>
       <MenuContent aria-label="Pages" placement="bottom end" items={navItems}>

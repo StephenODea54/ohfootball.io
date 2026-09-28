@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { twMerge } from 'tailwind-merge'
+import type { ReactNode } from "react"
+import { twMerge } from "tailwind-merge"
 
 /**
  * A small set of pieces that set mathematical notation with the styles of the
@@ -23,8 +23,8 @@ export function Formula({ children, className, label }: FormulaProps) {
     <div
       aria-label={label}
       className={twMerge(
-        'flex flex-col items-center gap-y-3 overflow-x-auto rounded-lg border bg-muted/60 px-5 py-5 font-math text-fg text-lg/none lining-nums sm:text-xl/none',
-        className
+        "flex flex-col items-center gap-y-3 overflow-x-auto rounded-lg border bg-muted/60 px-5 py-5 font-math text-fg text-lg/none lining-nums sm:text-xl/none",
+        className,
       )}
       role="math"
     >
@@ -35,7 +35,9 @@ export function Formula({ children, className, label }: FormulaProps) {
 
 /** One line of a formula. A block can hold more than one. */
 export function FormulaLine({ children }: { children: ReactNode }) {
-  return <span className="inline-flex items-center justify-center whitespace-nowrap">{children}</span>
+  return (
+    <span className="inline-flex items-center justify-center whitespace-nowrap">{children}</span>
+  )
 }
 
 /** A single letter symbol, with an optional subscript and prime mark. */

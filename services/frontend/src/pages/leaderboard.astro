@@ -1,13 +1,13 @@
 ---
-import SiteLayout from '@/layouts/site-layout.astro'
-import { Container } from '@/components/ui/container'
-import { Heading } from '@/components/ui/heading'
-import { Text } from '@/components/ui/text'
-import { getCurrentSeason } from '@/features/seasons/api/get-current-season'
-import { getTeams } from '@/features/teams/api/get-teams'
-import { LastUpdatedStamp } from '@/features/teams/components/last-updated-stamp'
-import { LeaderboardTable } from '@/features/teams/components/leaderboard-table'
-import { lastUpdated } from '@/features/teams/utils/format'
+import SiteLayout from "@/layouts/site-layout.astro"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { Text } from "@/components/ui/text"
+import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
+import { getTeams } from "@/features/teams/api/get-teams"
+import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
+import { LeaderboardTable } from "@/features/teams/components/leaderboard-table"
+import { lastUpdated } from "@/features/teams/utils/format"
 
 const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
 ---

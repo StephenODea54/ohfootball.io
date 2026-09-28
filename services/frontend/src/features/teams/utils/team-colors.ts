@@ -33,7 +33,10 @@ function normalizeColor(value: string | null | undefined): string | null {
 
   const hex = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed
   if (/^[0-9a-f]{3}$/i.test(hex)) {
-    return `#${hex.split("").map((digit) => digit + digit).join("")}`.toUpperCase()
+    return `#${hex
+      .split("")
+      .map((digit) => digit + digit)
+      .join("")}`.toUpperCase()
   }
   if (/^[0-9a-f]{6}$/i.test(hex)) return `#${hex.toUpperCase()}`
 

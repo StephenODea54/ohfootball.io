@@ -10,7 +10,9 @@ export function formatDate(isoDate: string) {
 
 /** A shorter form for dates read next to a season heading, where the year is already known. */
 export function formatDayAndMonth(isoDate: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(
-    new Date(`${isoDate}T00:00:00Z`),
-  )
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${isoDate}T00:00:00Z`))
 }

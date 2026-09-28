@@ -4,9 +4,16 @@ import { twJoin } from "tailwind-merge"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ProgressBar, ProgressBarTrack } from "@/components/ui/progress-bar"
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
-import { formatDayAndMonth } from "@/utils/format"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import type { Game, Team } from "@/types/api"
+import { formatDayAndMonth } from "@/utils/format"
 
 /** Every game a school plays in a season, with the prediction made for it. */
 export function TeamScheduleTable({ team }: { team: Pick<Team, "name" | "schedule"> }) {
@@ -40,20 +47,34 @@ export function TeamScheduleTable({ team }: { team: Pick<Team, "name" | "schedul
                     </TableCell>
                     <TableCell>
                       {game.prediction ? (
-                        <Badge intent={game.prediction.predictedResult === "WIN" ? "success" : "danger"} isCircle={false} className="text-sm/5 font-semibold">
+                        <Badge
+                          intent={game.prediction.predictedResult === "WIN" ? "success" : "danger"}
+                          isCircle={false}
+                          className="text-sm/5 font-semibold"
+                        >
                           {game.prediction.predictedResult === "WIN" ? "W" : "L"}
                         </Badge>
-                      ) : <span className="text-muted-fg">—</span>}
+                      ) : (
+                        <span className="text-muted-fg">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {probability !== null ? (
                         <div className="flex items-center gap-3">
-                          <ProgressBar aria-label={`${probability}% win probability`} value={probability} className="w-auto">
+                          <ProgressBar
+                            aria-label={`${probability}% win probability`}
+                            value={probability}
+                            className="w-auto"
+                          >
                             <ProgressBarTrack className="min-w-24 max-w-24 [--progress-content-bg:var(--color-success)]" />
                           </ProgressBar>
-                          <span className="font-medium text-sm/5 text-muted-fg">{probability}%</span>
+                          <span className="font-medium text-sm/5 text-muted-fg">
+                            {probability}%
+                          </span>
                         </div>
-                      ) : <span className="text-muted-fg text-sm/5">Not Rated</span>}
+                      ) : (
+                        <span className="text-muted-fg text-sm/5">Not Rated</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-end">
                       <GameResult game={game} />
@@ -78,16 +99,23 @@ function GameResult({ game }: { game: Game }) {
   }
 
   const label = game.result === "WIN" ? "W" : game.result === "LOSS" ? "L" : "T"
-  const score = game.teamScore !== null && game.opponentScore !== null
-    ? ` ${game.teamScore}–${game.opponentScore}`
-    : ""
-  const color = game.result === "WIN"
-    ? "text-success-subtle-fg"
-    : game.result === "LOSS"
-      ? "text-danger-subtle-fg"
-      : "text-muted-fg"
+  const score =
+    game.teamScore !== null && game.opponentScore !== null
+      ? ` ${game.teamScore}–${game.opponentScore}`
+      : ""
+  const color =
+    game.result === "WIN"
+      ? "text-success-subtle-fg"
+      : game.result === "LOSS"
+        ? "text-danger-subtle-fg"
+        : "text-muted-fg"
 
-  return <p className={twJoin("font-semibold text-sm/5", color)}>{label}{score}</p>
+  return (
+    <p className={twJoin("font-semibold text-sm/5", color)}>
+      {label}
+      {score}
+    </p>
+  )
 }
 
 function locationLabel(game: Game) {

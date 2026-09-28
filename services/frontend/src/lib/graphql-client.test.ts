@@ -37,7 +37,10 @@ describe("graphqlRequest", () => {
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe("http://api.test/graphql")
     expect(init.method).toBe("POST")
-    expect(JSON.parse(init.body as string)).toEqual({ query: "{ currentSeason }", variables: { a: 1 } })
+    expect(JSON.parse(init.body as string)).toEqual({
+      query: "{ currentSeason }",
+      variables: { a: 1 },
+    })
   })
 
   it("sends no key when none is set", async () => {
@@ -45,7 +48,10 @@ describe("graphqlRequest", () => {
 
     await graphqlRequest("{ x }")
 
-    expect(headersOf(fetch)).toEqual({ "content-type": "application/json", "user-agent": userAgent })
+    expect(headersOf(fetch)).toEqual({
+      "content-type": "application/json",
+      "user-agent": userAgent,
+    })
   })
 
   it("names a contact in the User-Agent, as the API asks", () => {

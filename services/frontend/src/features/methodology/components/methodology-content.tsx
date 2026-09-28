@@ -68,8 +68,10 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
             </p>
             <Heading className="mt-3 text-4xl/none sm:text-5xl/none">How The Ratings Work</Heading>
             <Text className="mt-5 text-base/7 sm:text-lg/8">
-              The ratings are calculated using a modified <TextLink href="https://en.wikipedia.org/wiki/Elo_rating_system">elo</TextLink> system.
-              This page is meant to serve as an overview of the model, its parameters, and its known limits.
+              The ratings are calculated using a modified{" "}
+              <TextLink href="https://en.wikipedia.org/wiki/Elo_rating_system">elo</TextLink>{" "}
+              system. This page is meant to serve as an overview of the model, its parameters, and
+              its known limits.
             </Text>
           </section>
 
@@ -78,8 +80,8 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               The Update Rule
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              Before a game, each team has a rating. The expected score for team A against team B is a
-              logistic function of the gap between them:
+              Before a game, each team has a rating. The expected score for team A against team B is
+              a logistic function of the gap between them:
             </Text>
             <Formula
               className="mt-4"
@@ -143,8 +145,7 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               <InlineMath label="S sub a">
                 <Var sub="a">S</Var>
               </InlineMath>{" "}
-              is 1 for a win and 0 for a loss. Team B receives the exact opposite
-              change.
+              is 1 for a win and 0 for a loss. Team B receives the exact opposite change.
             </Text>
           </section>
 
@@ -153,8 +154,9 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Production Parameters
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              These values are used for the published snapshots. Each parameter was tuned independently
-              using the 2000–2023 seasons as the training/validation set, with final performance evaluated on the 2024–2025 seasons as the test set.
+              These values are used for the published snapshots. Each parameter was tuned
+              independently using the 2000–2023 seasons as the training/validation set, with final
+              performance evaluated on the 2024–2025 seasons as the test set.
             </Text>
             {children}
           </section>
@@ -164,8 +166,8 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Where A Season Starts
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              A team's preseason rating is built from its division, then pulled toward what the program
-              finished with in the most recent season it played:
+              A team's preseason rating is built from its division, then pulled toward what the
+              program finished with in the most recent season it played:
             </Text>
             <Formula
               className="mt-4"
@@ -200,14 +202,15 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
             </Formula>
             <Text className="mt-4 text-base/7 sm:text-base/7">
               Division I sits 420 points above the baseline and Division VII sits 420 below it, with
-              Division IV at the baseline. Independent teams get no division adjustment. A program that
-              has never played stays at its prior.
+              Division IV at the baseline. Independent teams get no division adjustment. A program
+              that has never played stays at its prior.
             </Text>
             <Text className="mt-4 text-base/7 sm:text-base/7">
               A program that stops for a season or more keeps the rating it last earned rather than
-              starting again at its prior, because a team that comes back is not a new team. The pull
-              toward the prior is applied once, however long the program was away. A program that
-              returns in a different division is pulled toward the prior of the division it returns in.
+              starting again at its prior, because a team that comes back is not a new team. The
+              pull toward the prior is applied once, however long the program was away. A program
+              that returns in a different division is pulled toward the prior of the division it
+              returns in.
             </Text>
           </section>
 
@@ -216,11 +219,11 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Early Season Behavior
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              For a team's first three games, the K factor is multiplied by a boost that starts at 1.6
-              and decays linearly to 1.0. Both teams in a game share one multiplier, taken from
+              For a team's first three games, the K factor is multiplied by a boost that starts at
+              1.6 and decays linearly to 1.0. Both teams in a game share one multiplier, taken from
               whichever team is further from settled. This is an attempt to reduce the amount of
-              variance in early season matchups since the model doesn't take into account things like
-              roster changes, injuries, coaching changes, etc.
+              variance in early season matchups since the model doesn't take into account things
+              like roster changes, injuries, coaching changes, etc.
             </Text>
           </section>
 
@@ -229,9 +232,10 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               What Counts
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              A win, a loss, and a tie all move ratings, with a tie counted as half a win for both teams.
-              A forfeit never moves a rating, because no team played the game. Cancellations are excluded
-              for the same reason. Upcoming games get a probability but never change a rating.
+              A win, a loss, and a tie all move ratings, with a tie counted as half a win for both
+              teams. A forfeit never moves a rating, because no team played the game. Cancellations
+              are excluded for the same reason. Upcoming games get a probability but never change a
+              rating.
             </Text>
           </section>
 
@@ -243,8 +247,8 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Every configuration is scored by replaying history one game at a time and grading the
               prediction that was made before the result was known. Three numbers are tracked: Brier
               score, log loss, and straight accuracy on games with a decided result. Brier score and
-              log loss both reward calibration, so a model that says 90% needs to be right about 90% of
-              the time, not merely on the correct side.
+              log loss both reward calibration, so a model that says 90% needs to be right about 90%
+              of the time, not merely on the correct side.
             </Text>
           </section>
 
@@ -253,8 +257,9 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Where The Data Comes From
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              The data is sourced from a combination of <TextLink href="https://joeeitel.com/hsfoot">Joe Eitel</TextLink> and the
-              {" "}<TextLink href="https://ohhsfbdb.net/">Ohio Highschool Football Database</TextLink>.
+              The data is sourced from a combination of{" "}
+              <TextLink href="https://joeeitel.com/hsfoot">Joe Eitel</TextLink> and the{" "}
+              <TextLink href="https://ohhsfbdb.net/">Ohio Highschool Football Database</TextLink>.
             </Text>
           </section>
 
@@ -264,8 +269,12 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
               Idk. Historical accuracy sits around 80%, so it's better than a coin flip. I think a
-              definition of "good" would be when it's able to consistently outpredict humans. An example might be
-              checking if the model's predictions are better than <TextLink href="https://www.wfmj.com/sports/local-sports/dana-s-2026-high-school-football-predictions/article_9bd3f21d-8129-415a-b822-e6127661f01a.html">WFMJ's predictions</TextLink>.
+              definition of "good" would be when it's able to consistently outpredict humans. An
+              example might be checking if the model's predictions are better than{" "}
+              <TextLink href="https://www.wfmj.com/sports/local-sports/dana-s-2026-high-school-football-predictions/article_9bd3f21d-8129-415a-b822-e6127661f01a.html">
+                WFMJ's predictions
+              </TextLink>
+              .
             </Text>
           </section>
 

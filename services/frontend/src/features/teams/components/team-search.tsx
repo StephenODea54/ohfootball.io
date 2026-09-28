@@ -2,12 +2,7 @@
 
 import { compareItems, rankItem } from "@tanstack/match-sorter-utils"
 import { useMemo, useState } from "react"
-import {
-  ComboBox,
-  ComboBoxContent,
-  ComboBoxInput,
-  ComboBoxItem,
-} from "@/components/ui/combo-box"
+import { ComboBox, ComboBoxContent, ComboBoxInput, ComboBoxItem } from "@/components/ui/combo-box"
 import { Label } from "@/components/ui/field"
 import { openTeam } from "@/features/teams/utils/open-team"
 import type { TeamSummary } from "@/types/api"
