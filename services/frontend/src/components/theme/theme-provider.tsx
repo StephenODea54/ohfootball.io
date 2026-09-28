@@ -13,23 +13,40 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
+/** The theme the visitor chose. The build has no browser, so it reads "system". */
+function savedTheme(): Theme {
+  try {
+    const theme = window.localStorage.getItem("theme")
+    if (theme === "dark" || theme === "light" || theme === "system") return theme
+  } catch {
+    // The build has no window, and a browser can refuse access to its storage.
+  }
+  return "system"
+}
+
+function resolve(theme: Theme): ResolvedTheme {
+  if (theme !== "system") return theme
+  if (typeof window === "undefined") return "light"
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+/**
+ * Holds the theme and applies it to the page.
+ *
+ * The state starts from the saved theme and not from a default. Otherwise the first effect would
+ * apply the default and remove the theme that the script in the head of the page set, and the
+ * page would flash. No markup depends on the theme, so the state can differ from the build
+ * without a hydration mismatch.
+ */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system")
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light")
-
-  useEffect(() => {
-    const savedTheme = window.localStorage.getItem("theme")
-
-    if (savedTheme === "dark" || savedTheme === "light" || savedTheme === "system") {
-      setThemeState(savedTheme)
-    }
-  }, [])
+  const [theme, setThemeState] = useState<Theme>(savedTheme)
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolve(theme))
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
 
     const applyTheme = () => {
-      const nextTheme = theme === "system" ? (mediaQuery.matches ? "dark" : "light") : theme
+      const nextTheme = resolve(theme)
 
       document.documentElement.classList.toggle("dark", nextTheme === "dark")
       document.documentElement.style.colorScheme = nextTheme
@@ -43,7 +60,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme])
 
   const setTheme = (nextTheme: Theme) => {
-    window.localStorage.setItem("theme", nextTheme)
+    try {
+      window.localStorage.setItem("theme", nextTheme)
+    } catch {
+      // The choice then lasts only until the next page load.
+    }
     setThemeState(nextTheme)
   }
 
