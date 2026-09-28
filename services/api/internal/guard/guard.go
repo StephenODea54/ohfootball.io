@@ -149,6 +149,11 @@ func (guard *Guard) Limit(next http.Handler) http.Handler {
 
 // RequireContact refuses a request that names no contact with 400. It logs the contact of each
 // request that passes.
+//
+// A request that reads only the schema needs no contact, so the playground and the tools that
+// read the schema work before the caller writes a contact. Such a request reads nothing from the
+// store, but it is not free. Put Limit in front of this handler, so these requests count toward
+// the rate limits too, and cap the size of the query in the next handler.
 func (guard *Guard) RequireContact(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if guard.isBuild(request) {
@@ -157,6 +162,11 @@ func (guard *Guard) RequireContact(next http.Handler) http.Handler {
 		}
 		key := ClientKey(request)
 		contact, found := Contact(request.UserAgent(), request.Header.Get("From"))
+		if !found && asksForSchemaOnly(request) {
+			guard.logger.Info("request", "address", key, "schema", true, "path", request.URL.Path)
+			next.ServeHTTP(writer, request)
+			return
+		}
 		if !found {
 			guard.logRefusal("request refused: no contact", "address", key, "path", request.URL.Path)
 			writeError(writer, http.StatusBadRequest, CodeContactRequired, contactMessage)

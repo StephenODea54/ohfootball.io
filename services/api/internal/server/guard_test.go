@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -228,5 +229,42 @@ func TestNewUsesTheLimitsItIsGiven(t *testing.T) {
 	}
 	if recorder := post(t, handler, "{ currentSeason }"); recorder.Code != http.StatusTooManyRequests {
 		t.Fatalf("status = %d, want 429", recorder.Code)
+	}
+}
+
+func TestSchemaNeedsNoContact(t *testing.T) {
+	get := httptest.NewRequest(http.MethodGet, "/graphql?query="+url.QueryEscape("{ __typename }"), nil)
+	post := graphqlRequest(t, graphiqlIntrospection(t))
+	for name, request := range map[string]*http.Request{"a GET": get, "a POST": post} {
+		t.Run(name, func(t *testing.T) {
+			request.Header.Set("User-Agent", "curl/8.7.1")
+			recorder := serve(guardedHandler(t, &bytes.Buffer{}), request)
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200, body %q", recorder.Code, recorder.Body)
+			}
+			if response := decode(t, recorder); response["errors"] != nil || response["data"] == nil {
+				t.Fatalf("response %v holds no data or holds errors", response)
+			}
+		})
+	}
+}
+
+func TestSchemaQueriesCount(t *testing.T) {
+	handler := guardedHandler(t, &bytes.Buffer{})
+	send := func() int {
+		request := graphqlRequest(t, "{ __typename }")
+		request.Header.Del("User-Agent")
+		request.Header.Set("X-Real-Ip", "203.0.113.20")
+		return serve(handler, request).Code
+	}
+
+	// The default burst of one address is 20.
+	for index := range 20 {
+		if status := send(); status != http.StatusOK {
+			t.Fatalf("request %d: status = %d, want 200", index+1, status)
+		}
+	}
+	if status := send(); status != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429 after the burst of the address", status)
 	}
 }

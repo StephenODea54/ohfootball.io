@@ -39,6 +39,34 @@ there. The `From` header works in a browser only in the playground, because the 
 headers and `From` is not a header that a page on another site may send without them. The API logs the contact and the address of each request that passes, and never the other
 headers.
 
+A query that reads only the schema needs no contact, so the playground and the tools that read the
+schema, such as a code generator, work without one. The API reads the query from the `query`
+parameter of a GET, or from the JSON body of a POST. It reads at most 64 KiB of the body. The query
+must parse, each operation must be a query, and each top-level selection of each operation must
+be the field `__schema`, `__type`, or `__typename`. An alias does not change the field. A fragment
+spread or an inline fragment at the top level gets the contact rule, and so does a batch, a body
+that is not JSON, and a larger body. These queries count toward the rate limits, and the log
+marks them with `schema=true`. They also follow the limits on the size of a query below, because
+a short query can ask for the schema many times.
+
+Each query also has limits on its size. The API checks them before it validates or runs the query:
+
+- A request body to `/graphql` may have at most 1 MiB. A larger body gets 413 and a GraphQL error
+  with the code `BODY_TOO_LARGE`. A body that cannot be read gets 400 and `BODY_NOT_READ`.
+- A query may have at most 10000 tokens. A token is a name, a punctuation mark, or a value. A
+  longer query gets 422 and `TOKEN_LIMIT_EXCEEDED`. The introspection query of GraphiQL has about
+  160 tokens. gqlgen has its own token limit, but at v0.17.64 it runs the part of a longer query
+  that it parsed, so the API checks the limit itself.
+- A query may select at most `GRAPHQL_FIELD_LIMIT` fields, 300 by default. Each alias, each
+  `__typename`, and each field of a fragment each time the query uses the fragment counts as one
+  field. The count holds each operation of the document and each fragment that no operation uses.
+  A larger query gets 422 and `FIELD_LIMIT_EXCEEDED`. The complexity limit of gqlgen does not
+  count the fields of `__Schema`, so this limit is the one that holds for introspection. The
+  introspection query of GraphiQL selects 217 fields, and each query of the site selects at most
+  42.
+
+The complexity limit then runs, and a query over it gets 422 and `COMPLEXITY_LIMIT_EXCEEDED`.
+
 Each address stays inside the rate limits. One address may send 60 requests a minute: up to 20 at
 once, and then one more each second. All callers together may send 20 requests a second, with up
 to 40 at once. The burst of one address may not be larger than the total burst, so one address
@@ -51,12 +79,12 @@ total limit holds for it too. The limits are counted in memory, so a restart sta
 again.
 
 The playground page needs no contact, because a browser cannot send one when it opens the page.
-It counts toward the limits. When it opens, it asks for the schema with the text in the `From`
-header, which holds no contact, so it shows the 400 message. After the caller writes a contact
-there, queries work at once. GraphiQL does not ask for the schema again by itself, so the caller
-selects Re-fetch GraphQL schema in the bar on the left, or presses `Shift+Ctrl+R`. A reload puts
-the text back in the header. `/healthz` and `/readyz` skip both rules, because the health checks
-of Docker send no contact.
+It counts toward the limits. When it opens, it loads the schema, so the documentation and the
+completion work at once. The query editor shows an example query with comments that tell the
+caller to write a contact in the `From` header before a query runs. GraphiQL keeps the Headers
+pane in the local storage of the browser, so the contact stays after a reload. The placeholder
+shows only on the first visit. `/healthz` and `/readyz` skip both rules, because the health
+checks of Docker send no contact.
 
 The build of the site skips both rules when it sends `Authorization: Bearer <key>` and the key
 equals `SITE_BUILD_KEY`. The API compares the two in constant time. The build sends the GitHub
@@ -78,6 +106,7 @@ playground is on the origin of the API, so a page on another origin cannot read 
 | `RATE_LIMIT_TOTAL_PER_SECOND` | `20` | The requests all callers together may send each second. |
 | `RATE_LIMIT_TOTAL_BURST` | `40` | The requests all callers together may send at once. |
 | `GRAPHQL_COMPLEXITY_LIMIT` | `1000` | The highest cost of one operation. |
+| `GRAPHQL_FIELD_LIMIT` | `300` | The most fields that one query may select. It must be a whole number of at least 1. |
 | `ELO_HOME_ADVANTAGE`, `ELO_RATING_SCALE` | `30`, `400` | The settings of the win chance. |
 
 Each limit is a whole number of at least 1. The server does not start when a setting is not valid.

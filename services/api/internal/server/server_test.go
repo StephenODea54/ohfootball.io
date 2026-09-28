@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -21,11 +22,16 @@ const siteBuildKey = "probe-build-key-123456"
 type fakeStore struct {
 	season  int
 	pingErr error
+	// calls counts the calls of CurrentSeason, so a test can tell that no resolver ran.
+	calls int
 }
 
 func (fake *fakeStore) Ping(context.Context) error { return fake.pingErr }
 
-func (fake *fakeStore) CurrentSeason(context.Context) (int, error) { return fake.season, nil }
+func (fake *fakeStore) CurrentSeason(context.Context) (int, error) {
+	fake.calls++
+	return fake.season, nil
+}
 
 func (fake *fakeStore) Seasons(context.Context) ([]int, error) { return nil, nil }
 
@@ -58,6 +64,17 @@ func graphqlRequest(t *testing.T, query string) *http.Request {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("User-Agent", contactAgent)
 	return request
+}
+
+// graphiqlIntrospection reads the introspection query that GraphiQL sends. The package guard holds
+// the file, because its tests use the query too.
+func graphiqlIntrospection(t *testing.T) string {
+	t.Helper()
+	query, err := os.ReadFile("../guard/testdata/graphiql-introspection.graphql")
+	if err != nil {
+		t.Fatalf("read the introspection query: %v", err)
+	}
+	return string(query)
 }
 
 func serve(handler http.Handler, request *http.Request) *httptest.ResponseRecorder {
@@ -102,7 +119,7 @@ func TestQuery(t *testing.T) {
 func TestIntrospectionStaysInsideTheDefaultComplexityLimit(t *testing.T) {
 	handler := newHandler(t, &fakeStore{}, Options{})
 
-	recorder := post(t, handler, introspectionQuery)
+	recorder := post(t, handler, graphiqlIntrospection(t))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d, body %q", recorder.Code, http.StatusOK, recorder.Body)
 	}
@@ -184,21 +201,6 @@ func TestReadyz(t *testing.T) {
 	}
 }
 
-func TestPlayground(t *testing.T) {
-	handler := newHandler(t, &fakeStore{}, Options{})
-
-	request := httptest.NewRequest(http.MethodGet, "/", nil)
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
-	}
-	if !strings.Contains(recorder.Body.String(), "ohfootball.io GraphQL") {
-		t.Fatal("the playground page does not carry the API title")
-	}
-}
-
 // No page of ohfootball.io calls the API from a browser, and the playground is on the origin of
 // the API. So the API sends no CORS headers, and a page on another origin cannot read it.
 func TestNoCORSHeaders(t *testing.T) {
@@ -234,68 +236,3 @@ func TestWebsocketTransportIsNotAdvertised(t *testing.T) {
 		t.Fatal("the server accepted a websocket upgrade")
 	}
 }
-
-const introspectionQuery = `
-query IntrospectionQuery {
-  __schema {
-    queryType { name }
-    mutationType { name }
-    subscriptionType { name }
-    types { ...FullType }
-    directives { name description locations args { ...InputValue } }
-  }
-}
-fragment FullType on __Type {
-  kind
-  name
-  description
-  fields(includeDeprecated: true) {
-    name
-    description
-    args { ...InputValue }
-    type { ...TypeRef }
-    isDeprecated
-    deprecationReason
-  }
-  inputFields { ...InputValue }
-  interfaces { ...TypeRef }
-  enumValues(includeDeprecated: true) {
-    name
-    description
-    isDeprecated
-    deprecationReason
-  }
-  possibleTypes { ...TypeRef }
-}
-fragment InputValue on __InputValue {
-  name
-  description
-  type { ...TypeRef }
-  defaultValue
-}
-fragment TypeRef on __Type {
-  kind
-  name
-  ofType {
-    kind
-    name
-    ofType {
-      kind
-      name
-      ofType {
-        kind
-        name
-        ofType {
-          kind
-          name
-          ofType {
-            kind
-            name
-            ofType { kind name ofType { kind name } }
-          }
-        }
-      }
-    }
-  }
-}
-`

@@ -45,6 +45,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	fieldLimit, err := readFieldLimit()
+	if err != nil {
+		return err
+	}
 	limits, err := readLimits()
 	if err != nil {
 		return err
@@ -67,6 +71,7 @@ func run() error {
 
 	handler, err := server.New(database, server.Options{
 		ComplexityLimit: complexityLimit,
+		FieldLimit:      fieldLimit,
 		Limits:          limits,
 		SiteBuildKey:    siteBuildKey,
 	})
@@ -98,6 +103,19 @@ func run() error {
 		}
 		return err
 	}
+}
+
+// readFieldLimit reads the most fields that one operation may select. It must be a whole number of
+// at least 1.
+func readFieldLimit() (int, error) {
+	limit, err := config.Int("GRAPHQL_FIELD_LIMIT", server.DefaultFieldLimit)
+	if err != nil {
+		return 0, err
+	}
+	if limit < 1 {
+		return 0, errors.New("GRAPHQL_FIELD_LIMIT must be at least 1")
+	}
+	return limit, nil
 }
 
 // readLimits reads the rate limits. A limit that is not a whole number more than zero is an

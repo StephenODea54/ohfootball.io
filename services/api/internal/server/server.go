@@ -13,7 +13,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/StephenODea54/services/api/graph"
 	"github.com/StephenODea54/services/api/internal/guard"
 	"github.com/StephenODea54/services/api/internal/ratelimit"
@@ -46,16 +45,14 @@ type Store interface {
 	Ping(context.Context) error
 }
 
-// playgroundHeaders fill the Headers pane of the playground. A browser does not let a page set
-// User-Agent, so the playground names the caller in the From header. The value holds no contact,
-// so the first request fails with the message that tells the caller what to write there.
-var playgroundHeaders = map[string]string{"From": "your email address or the URL of your site"}
-
 // Options collects the settings that differ between deployments.
 type Options struct {
 	// ComplexityLimit caps the cost of one operation. A value of zero or less selects
 	// DefaultComplexityLimit.
 	ComplexityLimit int
+	// FieldLimit caps the number of fields that one query selects. A value of zero or less
+	// selects DefaultFieldLimit.
+	FieldLimit int
 	// Limits are the rate limits. The zero value selects ratelimit.DefaultLimits.
 	Limits ratelimit.Limits
 	// SiteBuildKey lets the build of the site skip the contact rule and the rate limits. An
@@ -72,7 +69,8 @@ type Options struct {
 //
 // The health endpoints skip the guard, because the health checks of Docker and the host send no
 // contact. The playground page counts toward the rate limits but needs no contact, because a
-// browser that opens it cannot set one. The GraphQL endpoint needs both.
+// browser that opens it cannot set one. The GraphQL endpoint needs both, but a query that reads
+// only the schema needs no contact.
 func New(store Store, options Options) (http.Handler, error) {
 	limits := options.Limits
 	if limits == (ratelimit.Limits{}) {
@@ -92,6 +90,10 @@ func New(store Store, options Options) (http.Handler, error) {
 	if limit <= 0 {
 		limit = DefaultComplexityLimit
 	}
+	fields := options.FieldLimit
+	if fields <= 0 {
+		fields = DefaultFieldLimit
+	}
 
 	graphql := handler.New(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &graph.Resolver{Store: store},
@@ -103,17 +105,20 @@ func New(store Store, options Options) (http.Handler, error) {
 	graphql.AddTransport(transport.GET{})
 	graphql.AddTransport(transport.POST{})
 	graphql.SetQueryCache(lru.New[*ast.QueryDocument](queryCacheSize))
+	// queryLimits gives the clear error. The parser limit stops the parser at the same point if
+	// a query ever gets past it.
+	graphql.SetParserTokenLimit(parserTokenLimit)
 	graphql.Use(extension.Introspection{})
 	graphql.Use(extension.AutomaticPersistedQuery{Cache: lru.New[string](persistedQuerySize)})
-	// The endpoint is public and needs no credentials, so the cost of an operation is capped
-	// before the schema reads any data.
+	// The endpoint is public and needs no credentials, so the size and the cost of an operation
+	// are capped before the schema reads any data. The field limit also holds for introspection,
+	// which the complexity limit does not count.
+	graphql.Use(queryLimits{tokens: parserTokenLimit, fields: fields})
 	graphql.Use(extension.FixedComplexityLimit(limit))
 
 	mux := http.NewServeMux()
-	mux.Handle("/graphql", rules.Limit(rules.RequireContact(graphql)))
-	mux.Handle("/", rules.Limit(
-		playground.HandlerWithHeaders("ohfootball.io GraphQL", "/graphql", nil, playgroundHeaders),
-	))
+	mux.Handle("/graphql", rules.Limit(rules.RequireContact(limitBody(graphql))))
+	mux.Handle("/", rules.Limit(playgroundHandler("ohfootball.io GraphQL", "/graphql")))
 	mux.HandleFunc("GET /healthz", func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusNoContent)
 	})

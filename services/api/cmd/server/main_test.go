@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/StephenODea54/services/api/internal/ratelimit"
+	"github.com/StephenODea54/services/api/internal/server"
 )
 
 func TestReadLimitsDefaults(t *testing.T) {
@@ -67,6 +68,28 @@ func TestReadLimitsRefusesBadValues(t *testing.T) {
 			_, err := readLimits()
 			if err == nil || !strings.Contains(err.Error(), testCase.name) || !strings.Contains(err.Error(), testCase.want) {
 				t.Fatalf("error = %v, want one that names %s and says %q", err, testCase.name, testCase.want)
+			}
+		})
+	}
+}
+
+func TestReadFieldLimit(t *testing.T) {
+	if limit, err := readFieldLimit(); err != nil || limit != server.DefaultFieldLimit {
+		t.Fatalf("readFieldLimit = %d, %v, want the default %d", limit, err, server.DefaultFieldLimit)
+	}
+	t.Setenv("GRAPHQL_FIELD_LIMIT", "250")
+	if limit, err := readFieldLimit(); err != nil || limit != 250 {
+		t.Fatalf("readFieldLimit = %d, %v, want 250", limit, err)
+	}
+}
+
+func TestReadFieldLimitRefusesBadValues(t *testing.T) {
+	for value, want := range map[string]string{"0": "at least 1", "-5": "at least 1", "many": "whole number"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("GRAPHQL_FIELD_LIMIT", value)
+			_, err := readFieldLimit()
+			if err == nil || !strings.Contains(err.Error(), "GRAPHQL_FIELD_LIMIT") || !strings.Contains(err.Error(), want) {
+				t.Fatalf("error = %v, want one that names GRAPHQL_FIELD_LIMIT and says %q", err, want)
 			}
 		})
 	}
