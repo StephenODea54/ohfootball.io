@@ -80,7 +80,7 @@ main is deployed even when a check fails.
 | --- | --- |
 | `go` | format, vet, and test the API and the scraper |
 | `python` | vet and test the rating, the dataset, the request that builds the site, the output of the site build, and the migration files |
-| `frontend` | type check the site |
+| `frontend` | type check the site and its Astro pages, and run its unit tests |
 | `migrations` | build the migration image, apply every migration to an empty database, apply them again, and validate the record |
 
 Each application has automatic deploys on. A push to main builds every application again and
@@ -95,10 +95,11 @@ It also starts from the Actions tab of the repository, or with
 `gh workflow run site.yml --ref main`.
 
 The workflow type checks the site, builds it against `https://api.ohfootball.io/graphql`, and runs
-`make pages` in `services/frontend`. That target checks the output and writes the two 404 pages.
-Wrangler then sends `services/frontend/.output/public` to the Pages project `ohfootball` as a
-production deployment. A step that fails stops the run before the upload, and Pages keeps the
-deployment it served before.
+`make pages` in `services/frontend`. That target checks that the build wrote each page as a file,
+that it wrote a real not-found page in `404.html`, and that no file names the API or holds its key.
+It then writes the 404 page for missing assets. Wrangler then sends `services/frontend/dist` to the
+Pages project `ohfootball` as a production deployment. A step that fails stops the run before the
+upload, and Pages keeps the deployment it served before.
 
 One run goes at a time. A new run waits for the run in progress and does not stop it. The workflow
 runs only on main, because the upload names main as its branch and a run on another branch would
@@ -207,7 +208,7 @@ not the site.
 ```mermaid
 flowchart LR
     visitor(["Visitor"]) --> pages["Cloudflare Pages<br/>ohfootball.io"] --> files[["prerendered HTML"]]
-    caller(["Browser or API user"]) --> proxy["Traefik<br/>api.ohfootball.io"] --> api["api"] --> warehouse[("PostgreSQL")]
+    caller(["API user"]) --> proxy["Traefik<br/>api.ohfootball.io"] --> api["api"] --> warehouse[("PostgreSQL")]
 ```
 
 Every page of the current season is a file that the build wrote ahead of time. Each page is a file
@@ -218,8 +219,11 @@ not play the current season is not written.
 | --- | --- |
 | a page of the current season, such as `/leaderboard` | the page, 200 |
 | the same address with a slash at the end or with `.html` | 308 to the address without them, path only |
-| an address with no page, such as a team that did not play the current season | `404.html`, a copy of the home page, with 404; the browser then draws the page from the API |
+| an address with no page, such as a team that did not play the current season | `404.html`, the not-found page, with 404 |
 | a missing file under `/assets/` | one line of plain text, with 404 |
+
+The site shows only the current season. An old address with `?season=` in its search gets the page
+of the current season, because no page reads the search.
 
 A file under `/assets/` carries a hash of its content in its name, so Pages sends it with
 `Cache-Control: public, max-age=31536000, immutable`. A page gets the Pages default,
@@ -236,15 +240,15 @@ without reading anything. `/readyz` reads the store.
 ## Things that hold this together
 
 **The site is built against the public API.** The build runs in GitHub Actions and reads
-`VITE_GRAPHQL_URL` to learn which pages to draw, and the same value goes into the script the
-browser runs. So it is `https://api.ohfootball.io/graphql`. The API must answer on its public
+`GRAPHQL_URL`, which is `https://api.ohfootball.io/graphql`. The API must answer on its public
 name, and the warehouse must hold data, before the first build of the site. A build that cannot
 read the API fails, and Pages keeps the site it served before.
 
-**The API allows one origin.** `CORS_ORIGIN` on the API is `https://ohfootball.io`. A browser on
-any other origin cannot read the API. This includes the addresses that Pages gives the project,
-such as `ohfootball.pages.dev`. On those addresses the prerendered pages show, but a page drawn in
-the browser gets no data.
+**Only the build reads the API.** Every page is drawn while the site is built, and the browser
+never calls the API. No page and no script holds the address of the API or its key, and
+`make pages` stops the upload when a file does. So `CORS_ORIGIN` on the API no longer affects the
+site. The addresses that Pages gives the project, such as `ohfootball.pages.dev`, show the same
+pages as `ohfootball.io`.
 
 **The name of the API is DNS only.** Pages serves an apex domain only from a zone on the same
 Cloudflare account, so `ohfootball.io` is a Cloudflare zone. The A record of `api`, and its
@@ -297,6 +301,7 @@ in its run on main.
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | a Cloudflare API token with the permission Account, Cloudflare Pages, Edit |
 | `CLOUDFLARE_ACCOUNT_ID` | the ID of the Cloudflare account that holds the Pages project |
+| `GRAPHQL_API_KEY` | the key the API asks for. Leave it unset until the API asks for a key. |
 
 `.github/workflows/site.yml` names the Pages project `ohfootball` and the address of the API.
 
@@ -335,7 +340,7 @@ project of their own. Do these steps in this order.
    Encrypt certificate. Deploy it. `https://api.ohfootball.io/healthz` answers when it is up.
 5. Create the Pages project with
    `npx wrangler pages project create ohfootball --production-branch=main`. Make the Cloudflare
-   API token. In GitHub, add the two repository secrets. See the settings of the `site`
+   API token. In GitHub, add the two Cloudflare repository secrets. See the settings of the `site`
    workflow.
 6. Make the fine-grained token in the settings of the GitHub account that owns the repository.
    Select Only select repositories and `StephenODea54/ohfootball.io`. Under Repository
