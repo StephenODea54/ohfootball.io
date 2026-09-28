@@ -19,7 +19,7 @@
 -- its own copy of the game, where this school resolves.
 
 WITH latest_run AS (
-    SELECT id AS scrape_run_id FROM {{ ohhsfbdb_latest_run() }} AS run(id)
+    SELECT id AS scrape_run_id FROM {{ ohhsfbdb_latest_run() }} AS run (id)
 ),
 
 games AS (
@@ -35,11 +35,15 @@ sheet_teams AS (
 -- Every name that leads to a sheet, whether it carries the years of a name
 -- change or not.
 index_names AS (
-    SELECT school_name AS name, sheet
+    SELECT
+        school_name AS name,
+        sheet
     FROM {{ ref('stg_ohhsfbdb_index') }}
     WHERE scrape_run_id = (SELECT scrape_run_id FROM latest_run)
     UNION
-    SELECT display_name AS name, sheet
+    SELECT
+        display_name AS name,
+        sheet
     FROM {{ ref('stg_ohhsfbdb_index') }}
     WHERE scrape_run_id = (SELECT scrape_run_id FROM latest_run)
 ),
@@ -47,7 +51,9 @@ index_names AS (
 -- A name that leads to exactly one sheet. A name that leads to more than one
 -- resolves nothing, because the warehouse must not guess which school it was.
 unique_index_names AS (
-    SELECT name, MIN(sheet) AS sheet
+    SELECT
+        name,
+        MIN(sheet) AS sheet
     FROM index_names
     GROUP BY name
     HAVING COUNT(DISTINCT sheet) = 1
@@ -55,9 +61,15 @@ unique_index_names AS (
 
 -- The names by which a sheet may be called on the sheet of another school.
 sheet_aliases AS (
-    SELECT sheet, name FROM index_names
+    SELECT
+        sheet,
+        name
+    FROM index_names
     UNION
-    SELECT sheet, short_name AS name FROM sheet_teams WHERE short_name IS NOT NULL
+    SELECT
+        sheet,
+        short_name AS name
+    FROM sheet_teams WHERE short_name IS NOT NULL
 ),
 
 -- The row of the other school, for the same game.
@@ -68,16 +80,18 @@ mirrors AS (
         COUNT(DISTINCT b.sheet) AS candidate_count
     FROM games AS a
     INNER JOIN games AS b
-        ON b.season = a.season
-       AND b.game_date = a.game_date
-       AND b.sheet <> a.sheet
-       AND b.source_team_score IS NOT DISTINCT FROM a.opponent_score
-       AND b.opponent_score IS NOT DISTINCT FROM a.source_team_score
-       AND b.is_source_team_home = a.is_opponent_team_home
-       AND b.is_opponent_team_home = a.is_source_team_home
+        ON
+            b.season = a.season
+            AND b.game_date = a.game_date
+            AND b.sheet <> a.sheet
+            AND b.source_team_score IS NOT DISTINCT FROM a.opponent_score
+            AND b.opponent_score IS NOT DISTINCT FROM a.source_team_score
+            AND b.is_source_team_home = a.is_opponent_team_home
+            AND b.is_opponent_team_home = a.is_source_team_home
     INNER JOIN sheet_aliases AS alias
-        ON alias.sheet = a.sheet
-       AND alias.name = b.opponent_name
+        ON
+            alias.sheet = a.sheet
+            AND alias.name = b.opponent_name
     GROUP BY a.game_record_id
 ),
 
@@ -110,7 +124,8 @@ with_identifiers AS (
             opponent_team.team_id,
             CASE
                 WHEN resolved.opponent_resolved_by = 'out of state'
-                THEN '{{ var("ohhsfbdb_minted_prefix", "ohhsfbdb:") }}' || resolved.opponent_name
+                    THEN
+                        '{{ var("ohhsfbdb_minted_prefix", "ohhsfbdb:") }}' || resolved.opponent_name
             END
         ) AS opponent_team_id,
         resolved.opponent_name,

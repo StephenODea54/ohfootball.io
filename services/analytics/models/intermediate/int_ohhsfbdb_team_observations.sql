@@ -7,7 +7,7 @@
 -- The site names no mascot, city, county, or colour, so those are empty.
 
 WITH latest_run AS (
-    SELECT id AS scrape_run_id FROM {{ ohhsfbdb_latest_run() }} AS run(id)
+    SELECT id AS scrape_run_id FROM {{ ohhsfbdb_latest_run() }} AS run (id)
 ),
 
 run_observed_at AS (
@@ -24,10 +24,20 @@ games AS (
 
 -- Both sides of every game that resolved.
 appearances AS (
-    SELECT season, source_team_id AS team_id, sheet, NULL::TEXT AS opponent_division, NULL::TEXT AS opponent_region
+    SELECT
+        season,
+        source_team_id AS team_id,
+        sheet,
+        NULL::TEXT AS opponent_division,
+        NULL::TEXT AS opponent_region
     FROM games
     UNION ALL
-    SELECT season, opponent_team_id AS team_id, NULL AS sheet, opponent_division, opponent_region
+    SELECT
+        season,
+        opponent_team_id AS team_id,
+        NULL AS sheet,
+        opponent_division,
+        opponent_region
     FROM games
 ),
 
@@ -45,14 +55,21 @@ team_seasons AS (
 -- The season block of a sheet states the conference, the division, the region,
 -- and the rank of the school that owns the sheet.
 summaries AS (
-    SELECT sheet, season, division, region, conference
+    SELECT
+        sheet,
+        season,
+        division,
+        region,
+        conference
     FROM {{ ref('stg_ohhsfbdb_season_summaries') }}
     WHERE scrape_run_id = (SELECT scrape_run_id FROM latest_run)
 ),
 
 -- A school with no sheet takes the name the other school wrote for it.
 names_from_games AS (
-    SELECT opponent_team_id AS team_id, MIN(opponent_name) AS name
+    SELECT
+        opponent_team_id AS team_id,
+        MIN(opponent_name) AS name
     FROM games
     WHERE opponent_name IS NOT NULL
     GROUP BY opponent_team_id
@@ -82,18 +99,19 @@ observations AS (
         -- them as digits, so the two agree once the text is cast.
         CASE
             WHEN COALESCE(summaries.division, team_seasons.division_from_a_game) ~ '^[0-9]+$'
-            THEN COALESCE(summaries.division, team_seasons.division_from_a_game)::SMALLINT
+                THEN COALESCE(summaries.division, team_seasons.division_from_a_game)::SMALLINT
         END AS division,
         CASE
             WHEN COALESCE(summaries.region, team_seasons.region_from_a_game) ~ '^[0-9]+$'
-            THEN COALESCE(summaries.region, team_seasons.region_from_a_game)::SMALLINT
+                THEN COALESCE(summaries.region, team_seasons.region_from_a_game)::SMALLINT
         END AS region
     FROM team_seasons
     LEFT JOIN {{ ref('int_ohhsfbdb_sheet_teams') }} AS sheet_teams
         ON sheet_teams.sheet = team_seasons.sheet
     LEFT JOIN summaries
-        ON summaries.sheet = team_seasons.sheet
-       AND summaries.season = team_seasons.season
+        ON
+            summaries.sheet = team_seasons.sheet
+            AND summaries.season = team_seasons.season
     LEFT JOIN names_from_games
         ON names_from_games.team_id = team_seasons.team_id
 )

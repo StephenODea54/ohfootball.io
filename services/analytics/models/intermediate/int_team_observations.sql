@@ -50,12 +50,13 @@ full_teams AS (
 kept_observations AS (
     SELECT observations.*
     FROM observations
-    WHERE NOT {{ joeeitel_is_placeholder('observations') }}
-       OR NOT EXISTS (
-           SELECT 1
-           FROM full_teams
-           WHERE full_teams.team_key = observations.team_key
-       )
+    WHERE
+        NOT {{ joeeitel_is_placeholder('observations') }}
+        OR NOT EXISTS (
+            SELECT 1
+            FROM full_teams
+            WHERE full_teams.team_key = observations.team_key
+        )
 )
 
 -- The two sites cover different seasons, so no team and season pair comes from

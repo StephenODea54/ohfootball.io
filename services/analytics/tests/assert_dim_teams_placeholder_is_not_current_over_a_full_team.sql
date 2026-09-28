@@ -18,5 +18,6 @@ full_teams AS (
 SELECT teams.*
 FROM {{ ref('dim_teams') }} AS teams
 INNER JOIN full_teams USING (team_key)
-WHERE teams.is_current
-  AND {{ joeeitel_is_placeholder('teams') }}
+WHERE
+    teams.is_current
+    AND {{ joeeitel_is_placeholder('teams') }}

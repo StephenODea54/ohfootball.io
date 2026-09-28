@@ -21,9 +21,10 @@ WITH games AS (
         notes,
         is_playoff_game
     FROM {{ ref('int_ohhsfbdb_games') }}
-    WHERE NOT is_opponent_unresolved
-      AND game_date IS NOT NULL
-      AND source_team_id <> opponent_team_id
+    WHERE
+        NOT is_opponent_unresolved
+        AND game_date IS NOT NULL
+        AND source_team_id <> opponent_team_id
 ),
 
 run_observed_at AS (
@@ -50,27 +51,42 @@ perspectives AS (
         team_a_id,
         team_b_id,
         source_team_id,
-        CASE WHEN source_team_id = team_a_id THEN source_team_score ELSE opponent_score END AS team_a_score,
-        CASE WHEN source_team_id = team_b_id THEN source_team_score ELSE opponent_score END AS team_b_score,
+        CASE WHEN source_team_id = team_a_id THEN source_team_score ELSE opponent_score END
+            AS team_a_score,
+        CASE WHEN source_team_id = team_b_id THEN source_team_score ELSE opponent_score END
+            AS team_b_score,
         -- The scores decide the result when the sheet holds both, because the
         -- site is kept by hand and a few rows record a letter that the scores
         -- contradict. The letter stands only when a score is missing.
         CASE
-            WHEN source_team_score IS NOT NULL AND opponent_score IS NOT NULL THEN
-                CASE
-                    WHEN source_team_id = team_a_id AND source_team_score > opponent_score THEN 'W'
-                    WHEN source_team_id = team_a_id AND source_team_score < opponent_score THEN 'L'
-                    WHEN source_team_id = team_b_id AND source_team_score > opponent_score THEN 'L'
-                    WHEN source_team_id = team_b_id AND source_team_score < opponent_score THEN 'W'
-                    ELSE 'T'
-                END
+            WHEN source_team_score IS NOT NULL AND opponent_score IS NOT NULL
+                THEN
+                    CASE
+                        WHEN
+                            source_team_id = team_a_id AND source_team_score > opponent_score
+                            THEN 'W'
+                        WHEN
+                            source_team_id = team_a_id AND source_team_score < opponent_score
+                            THEN 'L'
+                        WHEN
+                            source_team_id = team_b_id AND source_team_score > opponent_score
+                            THEN 'L'
+                        WHEN
+                            source_team_id = team_b_id AND source_team_score < opponent_score
+                            THEN 'W'
+                        ELSE 'T'
+                    END
             WHEN source_team_id = team_a_id THEN result
             WHEN result = 'W' THEN 'L'
             WHEN result = 'L' THEN 'W'
             ELSE result
         END AS team_a_result,
-        CASE WHEN source_team_id = team_a_id THEN is_source_team_home ELSE is_opponent_team_home END AS is_team_a_home,
-        CASE WHEN source_team_id = team_b_id THEN is_source_team_home ELSE is_opponent_team_home END AS is_team_b_home,
+        CASE
+            WHEN source_team_id = team_a_id THEN is_source_team_home ELSE is_opponent_team_home
+        END AS is_team_a_home,
+        CASE
+            WHEN source_team_id = team_b_id THEN is_source_team_home ELSE is_opponent_team_home
+        END AS is_team_b_home,
         result AS source_result,
         notes,
         is_playoff_game
@@ -92,10 +108,11 @@ canonicalized AS (
         -- was forfeited by both. The other source states the same thing with a
         -- note, and the fact table keeps one convention for it.
         CASE
-            WHEN COUNT(*) FILTER (WHERE source_result = 'L') = COUNT(*)
-                 AND COUNT(team_a_score) = 0
-                 AND COUNT(team_b_score) = 0
-            THEN 'L'
+            WHEN
+                COUNT(*) FILTER (WHERE source_result = 'L') = COUNT(*)
+                AND COUNT(team_a_score) = 0
+                AND COUNT(team_b_score) = 0
+                THEN 'L'
             ELSE MIN(team_a_result)
         END AS team_a_result,
         -- Both schools claim the ground on one game of the whole backfill.

@@ -21,8 +21,9 @@ WITH ordered_observations AS (
 changes AS (
     SELECT *
     FROM ordered_observations
-    WHERE previous_state_hash IS NULL
-       OR state_hash IS DISTINCT FROM previous_state_hash
+    WHERE
+        previous_state_hash IS NULL
+        OR state_hash IS DISTINCT FROM previous_state_hash
 ),
 
 versioned AS (
@@ -36,7 +37,9 @@ versioned AS (
 )
 
 SELECT
-    {{ ohfootball_uuid("CONCAT('https://ohfootball.io/game-versions/', game_key, '/', scrape_run_id)") }} AS game_version_key,
+    {{ ohfootball_uuid(
+        "CONCAT('https://ohfootball.io/game-versions/', game_key, '/', scrape_run_id)"
+    ) }} AS game_version_key,
     game_key,
     TO_CHAR(game_date, 'YYYYMMDD')::INTEGER AS game_date_key,
     {{ team_key('season', 'team_a_id') }} AS team_a_key,

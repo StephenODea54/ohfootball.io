@@ -14,14 +14,14 @@ staged AS (
         -- year that is a slip of the keyboard.
         CASE
             WHEN NULLIF(TRIM(game_date), '') ~ '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{2}$'
-            THEN TO_DATE(
-                CONCAT(
-                    season, '/',
-                    SPLIT_PART(TRIM(game_date), '/', 1), '/',
-                    SPLIT_PART(TRIM(game_date), '/', 2)
-                ),
-                'YYYY/MM/DD'
-            )
+                THEN TO_DATE(
+                    CONCAT(
+                        season, '/',
+                        SPLIT_PART(TRIM(game_date), '/', 1), '/',
+                        SPLIT_PART(TRIM(game_date), '/', 2)
+                    ),
+                    'YYYY/MM/DD'
+                )
         END AS game_date,
         -- A game on neither ground leaves both flags false, which is how the
         -- other source records the same thing.

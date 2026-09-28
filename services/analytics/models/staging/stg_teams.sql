@@ -17,7 +17,7 @@ staged AS (
         UPPER(NULLIF(TRIM(secondary_color), '')) AS secondary_color_hex,
         CASE
             WHEN NULLIF(TRIM(division), '') ~ '^[0-9]+$'
-            THEN TRIM(division)::SMALLINT
+                THEN TRIM(division)::SMALLINT
             ELSE {{ roman_numeral_to_int('division') }}
         END AS division,
         NULLIF(TRIM(region), '')::SMALLINT AS region

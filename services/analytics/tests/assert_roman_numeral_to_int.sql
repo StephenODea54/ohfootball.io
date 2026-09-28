@@ -1,15 +1,15 @@
-WITH test_cases(roman_numeral, expected_value) AS (
+WITH test_cases (roman_numeral, expected_value) AS (
     VALUES
-        ('I', 1),
-        ('IV', 4),
-        ('VII', 7),
-        ('ix', 9),
-        ('XLIX', 49),
-        ('MCMXCIV', 1994),
-        ('MMMCMXCIX', 3999),
-        ('IIII', NULL),
-        ('not a numeral', NULL),
-        ('', NULL)
+    ('I', 1),
+    ('IV', 4),
+    ('VII', 7),
+    ('ix', 9),
+    ('XLIX', 49),
+    ('MCMXCIV', 1994),
+    ('MMMCMXCIX', 3999),
+    ('IIII', NULL),
+    ('not a numeral', NULL),
+    ('', NULL)
 ),
 
 actual AS (
