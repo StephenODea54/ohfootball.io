@@ -189,6 +189,13 @@ class TheMetadata(unittest.TestCase):
         for mart in MARTS:
             self.assertIn(f"`{mart.file_name}`: {mart.description}", body["description"])
 
+    def test_links_the_website_and_the_code(self) -> None:
+        description = dataset_description()
+        self.assertIn("(https://ohfootball.io)", description)
+        self.assertIn("(https://github.com/StephenODea54/ohfootball.io)", description)
+        self.assertIn("(https://github.com/StephenODea54/ohfootball.io/issues)", description)
+        self.assertIn("https://github.com/StephenODea54/ohfootball.io", SOURCES)
+
     def test_names_no_column_or_file_in_the_description_that_is_not_published(self) -> None:
         published = {mart.name for mart in MARTS}
         published.update(name for mart in MARTS for name in mart.column_names)

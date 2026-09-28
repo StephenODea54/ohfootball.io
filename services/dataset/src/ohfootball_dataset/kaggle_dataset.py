@@ -41,12 +41,24 @@ SOURCES = (
     "([joeeitel.com/hsfoot](https://joeeitel.com/hsfoot)). The seasons before those pages begin "
     "come from the Ohio Highschool Football Database ([ohhsfbdb.net](https://ohhsfbdb.net/)). "
     "[ohfootball.io](https://ohfootball.io) cleans the records, joins the two views of each game "
-    "into one row, and calculates the Elo ratings."
+    "into one row, and calculates the Elo ratings. The code is on "
+    "[GitHub](https://github.com/StephenODea54/ohfootball.io)."
 )
+
+WEBSITE = "https://ohfootball.io"
+REPOSITORY = "https://github.com/StephenODea54/ohfootball.io"
 
 _INTRODUCTION = """
 The game record of Ohio high school football, the teams that played it, and an Elo rating for
 every team in every season. Rebuilt and published once a week from the ohfootball.io warehouse.
+""".strip()
+
+_LINKS = f"""
+Links:
+
+- The website, with the ratings and predictions of the current season: [ohfootball.io]({WEBSITE})
+- The code of the scraper, the warehouse, the model, and this dataset: [GitHub]({REPOSITORY})
+- A wrong score or a missing school: [open an issue]({REPOSITORY}/issues)
 """.strip()
 
 _NOTES = """
@@ -107,7 +119,7 @@ def validate_dataset_id(dataset_id: str) -> str:
 def dataset_description(marts: Iterable[Mart] = MARTS) -> str:
     """The description of the dataset, with one line for each published file."""
     files = "\n".join(f"- `{mart.file_name}`: {mart.description}" for mart in marts)
-    return f"{_INTRODUCTION}\n\nFiles:\n\n{files}\n\n{_NOTES}"
+    return f"{_INTRODUCTION}\n\n{_LINKS}\n\nFiles:\n\n{files}\n\n{_NOTES}"
 
 
 def resources(marts: Iterable[Mart] = MARTS) -> list[dict[str, Any]]:
