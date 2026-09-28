@@ -16,6 +16,11 @@ checks what it cannot fix.
 
 `make tools` installs ruff and sqlfluff with uv. The hook stops when either is missing. The site
 checks need the packages of the site. A machine without pnpm skips them, and CI runs them.
+`make doctor` names each tool that the repository needs and that is missing.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) lists the tools and their versions, the checks, the editor
+settings and the form of a commit message. [SECURITY.md](SECURITY.md) tells you how to report a
+security fault.
 
 ## How it fits together
 
