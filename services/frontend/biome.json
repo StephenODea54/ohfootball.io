@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": false },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!!**/dist",
+      "!!**/.astro",
+      "!!**/.wrangler",
+      "!src/components/ui",
+      "!**/*.astro",
+      "!**/*.css"
+    ]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "lineWidth": 100 },
+  "javascript": {
+    "formatter": { "quoteStyle": "double", "semicolons": "asNeeded", "trailingCommas": "all" }
+  },
+  "linter": { "enabled": true, "rules": { "recommended": true } },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+}

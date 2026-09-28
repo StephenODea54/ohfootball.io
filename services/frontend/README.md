@@ -48,15 +48,28 @@ and set the same value as `GRAPHQL_API_KEY` in `.env`. Use at least 16 character
 ## Check the site
 
 ```sh
+pnpm lint
 pnpm typecheck
 pnpm test
 ```
+
+`pnpm lint` checks the format and the lint rules and changes nothing. `pnpm fmt` fixes what it
+can. Biome lints and formats the TypeScript and the JSON, and sorts the imports. Prettier with
+`prettier-plugin-astro` formats the Astro pages, because Biome formats only the frontmatter of an
+Astro file. The two tools share one style: double quotes, no semicolons, trailing commas, and 100
+columns. `biome.json` holds the settings of Biome, and the `prettier` key of `package.json` holds
+the settings of Prettier.
+
+The tools do not read two parts of the site. The components in `src/components/ui` come from the
+Intent UI registry, and the shadcn command line writes over them, so they keep the layout of the
+registry. The stylesheet uses the variant rules of Tailwind v4, and Biome cannot parse them.
 
 `pnpm typecheck` runs `astro check`, which checks the Astro pages and the React components.
 `pnpm test` runs the unit tests with Vitest. The tests need no API and no build. They replace the
 settings that Astro gives the build with the fixed values in `src/test/astro-env-server.ts`.
 
-From the root of the repository, `make site-check` runs both, and `make site-test` checks
+From the root of the repository, `make site-lint` and `make site-fmt` run `pnpm lint` and
+`pnpm fmt`. `make site-check` runs the type check and the tests, and `make site-test` checks
 `make pages` and the rules in `public/_headers`. `make test` and the pre-commit hook run both
 targets. On a machine without pnpm, `make site-check` prints a message and checks nothing. CI
 runs the same checks.

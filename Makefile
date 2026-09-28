@@ -1,5 +1,6 @@
 .PHONY: build test vet fmt hooks db-up db-down db-logs db-migrate db-baseline \
 	tools lint-tools lint lint-go lint-python lint-sql fmt-go fmt-python fmt-sql \
+	site-lint site-fmt \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
@@ -52,7 +53,7 @@ lint-tools:
 
 # Checks the format and the lint rules of each language and changes nothing. make fmt fixes what
 # it can.
-lint: lint-go lint-python lint-sql
+lint: lint-go lint-python lint-sql site-lint
 
 lint-go:
 	@unformatted=$$(gofmt -l $$(git ls-files '*.go')); \
@@ -68,7 +69,7 @@ lint-python: lint-tools
 lint-sql: lint-tools
 	sqlfluff lint services/analytics infra/postgres/migrations
 
-fmt: fmt-go fmt-python fmt-sql
+fmt: fmt-go fmt-python fmt-sql site-fmt
 
 fmt-go:
 	$(MAKE) -C services/scraper fmt
@@ -80,6 +81,22 @@ fmt-python: lint-tools
 
 fmt-sql: lint-tools
 	sqlfluff fix services/analytics
+
+# Lints the site and fixes its format. They follow the rule of site-check, so a machine without
+# pnpm skips them.
+site-lint:
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm -C services/frontend lint; \
+	else \
+		echo "site-lint: pnpm is not installed, so the site is not linted" >&2; \
+	fi
+
+site-fmt:
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm -C services/frontend fmt; \
+	else \
+		echo "site-fmt: pnpm is not installed, so the site is not formatted" >&2; \
+	fi
 
 hooks:
 	git config core.hooksPath .githooks

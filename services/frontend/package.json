@@ -8,7 +8,9 @@
     "typecheck": "astro check",
     "test": "vitest run",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "lint": "biome ci . && prettier --check \"src/**/*.astro\"",
+    "fmt": "biome check --write . && prettier --write \"src/**/*.astro\""
   },
   "dependencies": {
     "@astrojs/react": "^7.0.0",
@@ -29,13 +31,33 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@biomejs/biome": "2.5.14",
     "@rolldown/plugin-babel": "^0.2.3",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
+    "prettier": "3.9.9",
+    "prettier-plugin-astro": "1.1.0",
     "typescript": "^6.0.2",
     "vitest": "^5.0.2"
+  },
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-astro"
+    ],
+    "printWidth": 100,
+    "semi": false,
+    "singleQuote": false,
+    "trailingComma": "all",
+    "overrides": [
+      {
+        "files": "*.astro",
+        "options": {
+          "parser": "astro"
+        }
+      }
+    ]
   }
 }
