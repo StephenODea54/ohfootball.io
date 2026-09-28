@@ -24,7 +24,8 @@ OUTPUT ?= dist
 #
 # Every page is drawn while the site is built, and the browser never calls the API. So no file of
 # the output may name the API. When GRAPHQL_API_KEY is set, no file may hold the key either. The
-# check prints only the names of such files and never the key.
+# check prints only the names of such files and never the key. A key shorter than 16 characters
+# is refused, because it is weak and the search for it could match text that is not the key.
 pages:
 	@test -f "$(OUTPUT)/index.html" || { \
 		echo "the build wrote no pages to $(OUTPUT)" >&2; \
@@ -58,6 +59,10 @@ pages:
 	if [ -n "$$named" ]; then \
 		echo "these files name the API, and a browser must not call it:" >&2; \
 		echo "$$named" >&2; \
+		exit 1; \
+	fi
+	@if [ -n "$$GRAPHQL_API_KEY" ] && [ $${#GRAPHQL_API_KEY} -lt 16 ]; then \
+		echo "GRAPHQL_API_KEY is shorter than 16 characters. Set a longer key." >&2; \
 		exit 1; \
 	fi
 	@if [ -n "$$GRAPHQL_API_KEY" ]; then \

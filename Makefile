@@ -2,7 +2,7 @@
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
-	pipeline pipeline-build pipeline-test postgres-test site-test
+	pipeline pipeline-build pipeline-test postgres-test site-test site-check
 
 DBT := docker compose run --rm dbt
 
@@ -17,6 +17,7 @@ test:
 	$(MAKE) -C services/dataset test
 	$(MAKE) pipeline-test
 	$(MAKE) site-test
+	$(MAKE) site-check
 	$(MAKE) postgres-test
 
 vet:
@@ -133,6 +134,17 @@ pipeline-test:
 # that Pages sends. It needs no build and no API, so it is part of the top level test target.
 site-test:
 	python3 -m unittest discover -s services/frontend/tests
+
+# Type checks the site and runs its unit tests. They need Node and the packages of the site, but no
+# build and no API. A machine without pnpm skips them, so the other checks still run there. The
+# frontend job in CI runs them.
+site-check:
+	@if command -v pnpm >/dev/null 2>&1; then \
+		ASTRO_TELEMETRY_DISABLED=1 pnpm -C services/frontend typecheck && \
+		pnpm -C services/frontend test; \
+	else \
+		echo "site-check: pnpm is not installed, so the site is not checked" >&2; \
+	fi
 
 # Checks the files that the migrate image holds. The tests need no image, no database and no
 # package outside the standard library, so they are part of the top level test target.

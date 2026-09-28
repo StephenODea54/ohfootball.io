@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "typecheck": "astro check",
+    "test": "vitest run",
     "build": "astro build",
     "preview": "astro preview"
   },
@@ -34,6 +35,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^5.0.2"
   }
 }

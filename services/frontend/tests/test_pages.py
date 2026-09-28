@@ -186,6 +186,25 @@ class TheOutputOfTheBuild(unittest.TestCase):
 
         self.assertEqual(finished.returncode, 0, finished.stderr)
 
+    def test_refuses_a_short_key(self) -> None:
+        output = build(self.directory, "leaderboard.html")
+
+        finished = pages(output, {**os.environ, "GRAPHQL_API_KEY": "short-key"})
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("shorter than 16 characters", finished.stderr)
+        self.assertNotIn("short-key", finished.stderr + finished.stdout)
+        self.assertFalse((output / "assets" / "404.html").exists())
+
+    def test_passes_with_an_empty_key(self) -> None:
+        # The site workflow sets the variable from a secret, and an unset secret is empty.
+        output = build(self.directory, "leaderboard.html")
+        (output / "assets" / "main-abc123.js").write_text(f'const key = "{KEY}"')
+
+        finished = pages(output, {**os.environ, "GRAPHQL_API_KEY": ""})
+
+        self.assertEqual(finished.returncode, 0, finished.stderr)
+
     def test_passes_with_no_key_set(self) -> None:
         output = build(self.directory, "leaderboard.html")
         (output / "assets" / "main-abc123.js").write_text(f'const key = "{KEY}"')

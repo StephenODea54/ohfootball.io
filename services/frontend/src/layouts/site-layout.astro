@@ -2,6 +2,7 @@
 import '@/styles.css'
 import { AppFooter } from '@/components/layouts/app-footer'
 import { AppNavbar } from '@/components/layouts/app-navbar'
+import { visitorPathname } from '@/utils/pathname'
 
 interface Props {
   title: string
@@ -12,9 +13,7 @@ interface Props {
 
 const { title, description, noindex = false } = Astro.props
 
-// The build draws each page to a file such as leaderboard.html, and the address it reports can
-// end in .html or /index. The navigation compares the address a visitor sees.
-const pathname = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '/') || '/'
+const pathname = visitorPathname(Astro.url.pathname)
 ---
 
 <!doctype html>
