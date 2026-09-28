@@ -56,7 +56,7 @@ and the descriptions come from `marts.py`:
 | `subtitle`                | 20 to 80 characters                                           |
 | `description`             | The dataset, a line for each file, and how the files join     |
 | `licenses`                | `CC0-1.0`                                                     |
-| `keywords`                | `american football`, `sports`, `united states`                |
+| `keywords`                | `sports`, `united states`                                     |
 | `expectedUpdateFrequency` | `weekly`                                                      |
 | `userSpecifiedSources`    | joeeitel.com and ohhsfbdb.net, and what ohfootball.io adds    |
 | `resources`               | A description for each file and for each of its columns       |

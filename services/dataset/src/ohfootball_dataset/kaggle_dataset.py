@@ -32,7 +32,9 @@ LICENSE = "CC0-1.0"
 # Each keyword must be the name of a tag that Kaggle already has. Kaggle drops a name it does not
 # know and reports it, and the run prints that report. "football" is not used, because on Kaggle
 # that tag is association football.
-KEYWORDS = ("american football", "sports", "united states")
+# Kaggle refuses the whole metadata update when one keyword is not one of its tags. It refused
+# "american football", and "football" there means association football.
+KEYWORDS = ("sports", "united states")
 
 EXPECTED_UPDATE_FREQUENCY = "weekly"
 
