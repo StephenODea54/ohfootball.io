@@ -9,7 +9,7 @@ vi.mock("astro:env/server", () => ({
   },
 }))
 
-import { graphqlRequest } from "@/lib/graphql-client"
+import { graphqlRequest, userAgent } from "@/lib/graphql-client"
 
 function answer(body: unknown, status = 200) {
   const fetch = vi.fn(async () => new Response(JSON.stringify(body), { status }))
@@ -45,7 +45,11 @@ describe("graphqlRequest", () => {
 
     await graphqlRequest("{ x }")
 
-    expect(headersOf(fetch)).toEqual({ "content-type": "application/json" })
+    expect(headersOf(fetch)).toEqual({ "content-type": "application/json", "user-agent": userAgent })
+  })
+
+  it("names a contact in the User-Agent, as the API asks", () => {
+    expect(userAgent).toMatch(/\(https:\/\/ohfootball\.io\)$/)
   })
 
   it("sends the key as a bearer token when one is set", async () => {

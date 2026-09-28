@@ -19,6 +19,12 @@ export const paths = {
     path: "/methodology",
     getHref: () => "/methodology",
   },
+  // The page that tells people how to call the API. Its address is in features/api-docs, because
+  // the navigation bar sends this file to the browser.
+  api: {
+    path: "/api",
+    getHref: () => "/api",
+  },
   team: {
     path: "/teams/[teamId]",
     getHref: (teamId: string) => `/teams/${teamId}`,

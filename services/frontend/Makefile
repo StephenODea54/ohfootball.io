@@ -9,6 +9,9 @@
 # The directory the build writes the site to.
 OUTPUT ?= dist
 
+# The page that tells callers how to use the API. It is the only file that may name the API.
+API_DOCS_PAGE ?= api.html
+
 # Pages serves an address from the file of the same name with .html added. It serves a directory
 # only when the address ends with a slash, and it sends every other form of the address to the
 # served one with a 308. So each page has to be a file such as leaderboard.html and not
@@ -23,9 +26,12 @@ OUTPUT ?= dist
 # assets/404.html is plain text.
 #
 # Every page is drawn while the site is built, and the browser never calls the API. So no file of
-# the output may name the API. When GRAPHQL_API_KEY is set, no file may hold the key either. The
-# check prints only the names of such files and never the key. A key shorter than 16 characters
-# is refused, because it is weak and the search for it could match text that is not the key.
+# the output may name the API except API_DOCS_PAGE, the page that tells people how to call it.
+# That keeps the name out of every script and stylesheet under assets/ and out of every other page.
+# The search looks for the name of the API host and for "graphql", in any case. When GRAPHQL_API_KEY is set, no file of the output may hold the key,
+# the API page included. The check prints only the names of such files and never the key. A key
+# shorter than 16 characters is refused, because it is weak and the search for it could match text
+# that is not the key.
 pages:
 	@test -f "$(OUTPUT)/index.html" || { \
 		echo "the build wrote no pages to $(OUTPUT)" >&2; \
@@ -55,9 +61,10 @@ pages:
 		echo "set build.format to 'file' in astro.config.ts" >&2; \
 		exit 1; \
 	fi
-	@named=$$(grep -rlIiF -e 'api.ohfootball.io' -e graphql "$(OUTPUT)"); \
+	@named=$$(cd "$(OUTPUT)" && grep -rlIiF -e 'api.ohfootball.io' -e graphql . | \
+		grep -vxF "./$(API_DOCS_PAGE)"); \
 	if [ -n "$$named" ]; then \
-		echo "these files name the API, and a browser must not call it:" >&2; \
+		echo "these files name the API, and only $(API_DOCS_PAGE) may:" >&2; \
 		echo "$$named" >&2; \
 		exit 1; \
 	fi

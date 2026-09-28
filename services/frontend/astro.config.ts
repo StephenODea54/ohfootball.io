@@ -31,7 +31,8 @@ export default defineConfig({
     // or a script.
     schema: {
       GRAPHQL_URL: envField.string({ context: 'server', access: 'public', url: true }),
-      // The API does not ask for a key yet. When it does, the build sends this one.
+      // The build key. With it, the API lets the build skip the contact rule and the rate limits.
+      // It must equal SITE_BUILD_KEY of the API.
       GRAPHQL_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       // Draws only this many team pages, to keep a build on a laptop short. Leave it unset for a
       // build that publishes.

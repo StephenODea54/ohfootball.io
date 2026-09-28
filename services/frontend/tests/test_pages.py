@@ -3,7 +3,8 @@
 The workflow that publishes the site runs this target after the build and before the upload. A
 check that fails stops the upload, and Pages keeps the site it served before. A check that passes
 when it should not publishes a site that sends each page through a redirect, that answers an
-unknown address with the home page, or that tells a browser where the API is.
+unknown address with the home page, or that tells a browser where the API is. Only the API page,
+which tells people how to call the API, may name it.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ HEADERS = SITE_DIRECTORY / "public" / "_headers"
 HOME = "<!DOCTYPE html><html><body>home<script src=/assets/main.js></script></body></html>"
 NOT_FOUND = "<!DOCTYPE html><html><body>Page Not Found</body></html>"
 KEY = "probe-key-123456"
+API_PAGE = "<html><p>Send requests to https://api.ohfootball.io/graphql</p></html>"
 
 
 def build(directory: Path, *pages: str) -> Path:
@@ -167,6 +169,80 @@ class TheOutputOfTheBuild(unittest.TestCase):
 
         self.assertNotEqual(finished.returncode, 0)
         self.assertIn("assets/x.js", finished.stderr)
+
+    def test_fails_when_a_script_names_the_host_of_the_api(self) -> None:
+        output = build(self.directory)
+        (output / "assets" / "x.js").write_text('fetch("https://API.ohfootball.io/")')
+
+        finished = pages(output)
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("assets/x.js", finished.stderr)
+
+    def test_lets_the_api_page_name_the_api(self) -> None:
+        output = build(self.directory, "leaderboard.html")
+        (output / "api.html").write_text(API_PAGE)
+
+        finished = pages(output)
+
+        self.assertEqual(finished.returncode, 0, finished.stderr)
+        self.assertIn("3 pages", finished.stdout)
+
+    def test_fails_when_another_page_names_the_api_next_to_the_api_page(self) -> None:
+        output = build(self.directory, "about.html")
+        (output / "api.html").write_text(API_PAGE)
+        (output / "about.html").write_text(API_PAGE)
+
+        finished = pages(output)
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("about.html", finished.stderr)
+        self.assertNotIn("./api.html", finished.stderr.splitlines())
+
+    def test_fails_when_a_page_in_a_directory_has_the_name_of_the_api_page(self) -> None:
+        # Only the page at the root is the API page.
+        output = build(self.directory, "teams/api.html")
+        (output / "teams" / "api.html").write_text(API_PAGE)
+
+        finished = pages(output)
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("teams/api.html", finished.stderr)
+
+    def test_fails_when_an_asset_has_the_name_of_the_api_page(self) -> None:
+        output = build(self.directory)
+        (output / "assets" / "api.html").write_text(API_PAGE)
+
+        finished = pages(output)
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("assets/api.html", finished.stderr)
+
+    def test_takes_the_name_of_the_api_page_from_a_setting(self) -> None:
+        output = build(self.directory, "developers.html")
+        (output / "developers.html").write_text(API_PAGE)
+        env = {name: value for name, value in os.environ.items() if name != "GRAPHQL_API_KEY"}
+
+        finished = subprocess.run(
+            ["make", "-f", str(SITE), "pages", f"OUTPUT={output}", "API_DOCS_PAGE=developers.html"],
+            capture_output=True,
+            text=True,
+            cwd=SITE_DIRECTORY,
+            env=env,
+        )
+
+        self.assertEqual(finished.returncode, 0, finished.stderr)
+
+    def test_fails_when_the_api_page_holds_the_key(self) -> None:
+        output = build(self.directory)
+        (output / "api.html").write_text(f"<html>{API_PAGE}<p>{KEY}</p></html>")
+
+        finished = pages(output, with_key())
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("hold the API key", finished.stderr)
+        self.assertIn("api.html", finished.stderr)
+        self.assertNotIn(KEY, finished.stderr + finished.stdout)
 
     def test_fails_when_a_file_holds_the_key(self) -> None:
         output = build(self.directory)

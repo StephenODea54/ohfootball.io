@@ -1,0 +1,13 @@
+---
+import SiteLayout from '@/layouts/site-layout.astro'
+import { ApiDocsContent } from '@/features/api-docs/components/api-docs-content'
+---
+
+<SiteLayout
+  title="API | ohfootball.io"
+  description="How to read the ratings and the predictions from the public API, and the rules that each caller follows."
+>
+  <!-- The content of the page runs no script. Only the navigation bar runs in the browser, as on
+  every page. This is the only page that may name the API. -->
+  <ApiDocsContent />
+</SiteLayout>

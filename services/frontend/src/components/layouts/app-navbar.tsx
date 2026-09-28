@@ -23,6 +23,7 @@ const navItems = [
   { label: "About", ...paths.about },
   { label: "Leaderboard", ...paths.leaderboard },
   { label: "Methodology", ...paths.methodology },
+  { label: "API", ...paths.api },
 ]
 
 /** A team page belongs to Home, because a school is found from the home page. */
@@ -31,7 +32,7 @@ function isCurrentPage(itemPath: string, pathname: string) {
 }
 
 /**
- * The page links on a narrow screen. The four links and the theme switch do not fit in one row
+ * The page links on a narrow screen. The links and the theme switch do not fit in one row
  * there, and the row made the whole page scroll to the side. A menu holds the links instead.
  */
 function PageMenu({ pathname }: { pathname: string }) {

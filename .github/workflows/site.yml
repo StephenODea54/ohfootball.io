@@ -35,10 +35,11 @@ jobs:
     permissions:
       contents: read
     env:
-      # Only the build reads the API. No page and no script that a browser loads holds its address
-      # or its key, and make pages checks this.
+      # Only the build reads the API. No script that a browser loads holds its address, no page
+      # except the API page names it, and no file holds its key. make pages checks this.
       GRAPHQL_URL: https://api.ohfootball.io/graphql
-      # The key the API asks for. The secret can stay unset until the API asks for a key.
+      # The build key. It must equal SITE_BUILD_KEY of the API, which then lets the build skip the
+      # contact rule and the rate limits. Without it, the build gets 429 and fails.
       GRAPHQL_API_KEY: ${{ secrets.GRAPHQL_API_KEY }}
       ASTRO_TELEMETRY_DISABLED: "1"
     steps:
@@ -59,8 +60,8 @@ jobs:
         working-directory: services/frontend
       - run: pnpm build
         working-directory: services/frontend
-      # Checks that the build wrote the pages in the form Pages serves and that no file names the
-      # API or holds its key, and writes the 404 page for assets.
+      # Checks that the build wrote the pages in the form Pages serves, that no file except the API
+      # page names the API, and that no file holds its key. Then writes the 404 page for assets.
       - run: make pages
         working-directory: services/frontend
       # The project has to exist in Pages before the first run. docs/architecture.md tells how to

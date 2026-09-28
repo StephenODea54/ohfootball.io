@@ -10,9 +10,18 @@ interface GraphQLResponse<T> {
   errors?: Array<{ message: string }>
 }
 
+/**
+ * The API asks each caller to name a contact. The build key lets the build skip that rule and the
+ * rate limits, but a build without a key, such as one on a laptop, still needs the contact.
+ */
+export const userAgent = "ohfootball.io site build (https://ohfootball.io)"
+
 export async function graphqlRequest<T>(query: string, variables?: object): Promise<T> {
-  const headers: Record<string, string> = { "content-type": "application/json" }
-  // The API does not ask for a key yet. The header is sent only when a key is set.
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "user-agent": userAgent,
+  }
+  // The build key lets the build skip the rate limits. The header is sent only when a key is set.
   if (GRAPHQL_API_KEY) headers.authorization = `Bearer ${GRAPHQL_API_KEY}`
 
   const response = await fetch(GRAPHQL_URL, {

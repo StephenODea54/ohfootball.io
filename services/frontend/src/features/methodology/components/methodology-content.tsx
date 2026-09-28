@@ -51,7 +51,7 @@ const limits = [
 interface MethodologyContentProps {
   /**
    * The table of the tuned parameters. The page passes it in as an island of its own, so that the
-   * table works with the keyboard and the rest of the page sends no script.
+   * table works with the keyboard. The rest of the content of the page runs no script.
    */
   children: React.ReactNode
 }

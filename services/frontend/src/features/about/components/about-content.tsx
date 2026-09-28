@@ -108,8 +108,8 @@ export function AboutContent() {
             published each week as a <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
           </Text>
           <Text className="mt-3 text-base/7">
-            A public API is in progress. When it is ready, you will be able to sign in, make a key,
-            and read the ratings and predictions from your own code.
+            To read the ratings and predictions from your own code, see the{' '}
+            <TextLink href={paths.api.getHref()}>API page</TextLink>.
           </Text>
           <Text className="mt-3 text-base/7">
             Found a wrong score or a missing school? Please{' '}
