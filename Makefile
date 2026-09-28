@@ -1,5 +1,5 @@
 .PHONY: build test vet fmt hooks db-up db-down db-logs db-migrate db-baseline \
-	tools lint-tools lint lint-go lint-python fmt-go fmt-python \
+	tools lint-tools lint lint-go lint-python lint-sql fmt-go fmt-python fmt-sql \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
@@ -52,7 +52,7 @@ lint-tools:
 
 # Checks the format and the lint rules of each language and changes nothing. make fmt fixes what
 # it can.
-lint: lint-go lint-python
+lint: lint-go lint-python lint-sql
 
 lint-go:
 	@unformatted=$$(gofmt -l $$(git ls-files '*.go')); \
@@ -64,7 +64,11 @@ lint-python: lint-tools
 	ruff format --check .
 	ruff check .
 
-fmt: fmt-go fmt-python
+# The migrations are linted and never fixed. See infra/postgres/.sqlfluff.
+lint-sql: lint-tools
+	sqlfluff lint services/analytics infra/postgres/migrations
+
+fmt: fmt-go fmt-python fmt-sql
 
 fmt-go:
 	$(MAKE) -C services/scraper fmt
@@ -73,6 +77,9 @@ fmt-go:
 fmt-python: lint-tools
 	ruff format .
 	ruff check --fix .
+
+fmt-sql: lint-tools
+	sqlfluff fix services/analytics
 
 hooks:
 	git config core.hooksPath .githooks

@@ -47,6 +47,8 @@
 
 # And files with no extension that a tool reads
 !.python-version
+!.sqlfluff
+!.sqlfluffignore
 
 # dbt-generated artifacts
 services/analytics/.user.yml

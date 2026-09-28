@@ -1,0 +1,7 @@
+# The warehouse holds the migrations already applied, and sustained refuses a migration whose text
+# changes, so no tool may fix these files. The layout rules that their aligned column lists break
+# stay off here, and so does the rule that refuses their column names. This list replaces the list
+# of the root config, so it names those rules again. Every other rule holds for a new migration.
+
+[sqlfluff]
+exclude_rules = AL05, LT01, LT02, LT14, RF02, RF03, RF04, ST03, ST06, ST07, ST09, ST11

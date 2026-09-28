@@ -1,0 +1,36 @@
+# sqlfluff lints the SQL of the dbt project and of the migrations. make lint-sql checks it, and
+# make fmt-sql fixes the dbt project.
+
+[sqlfluff]
+dialect = postgres
+templater = jinja
+max_line_length = 100
+# The rules that stay off. RF02 and RF03 want each column qualified in a join, and the models name
+# the relation only where two relations share a column. RF04 refuses the columns name, status,
+# result and position, which the warehouse holds. ST06 changes the order of the columns of a
+# table. ST07 wants USING in a join. AL05, LT14, ST03, ST09 and ST11 need hand edits in the models
+# that fail them today.
+exclude_rules = AL05, LT14, RF02, RF03, RF04, ST03, ST06, ST07, ST09, ST11
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = upper
+# The functions of uuid-ossp, written as the extension names them.
+ignore_words = uuid_generate_v4, uuid_generate_v5, uuid_ns_url
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = upper
+
+[sqlfluff:templater:jinja]
+# ref, source, config and var render without a warehouse.
+apply_dbt_builtins = True
+# The macros of the dbt project. The path is relative to this file.
+load_macros_from_path = services/analytics/macros

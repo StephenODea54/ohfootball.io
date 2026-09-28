@@ -1,0 +1,7 @@
+# A file of macros renders to nothing, so there is nothing in it to lint. The models read the
+# macros as a library.
+services/analytics/macros/
+# What dbt writes
+services/analytics/target/
+services/analytics/dbt_packages/
+services/analytics/logs/
