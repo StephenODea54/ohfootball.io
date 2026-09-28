@@ -67,8 +67,8 @@ services/frontend/.wrangler/
 .venv/
 
 # Files of coding assistants. They stay on the machine and out of the repository.
-.claude/
-.agents/
-.mcp.json
-CLAUDE.md
-skills-lock.json
+/.claude/
+/.agents/
+/.mcp.json
+/CLAUDE.md
+/skills-lock.json

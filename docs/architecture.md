@@ -332,9 +332,8 @@ Dokploy shows for the database as `DATABASE_URL`.
 ### `site` workflow
 
 Set these as repository secrets in the settings of the GitHub repository, under Secrets and
-variables, Actions. The repository is private, and a private repository on the free plan of GitHub
-has no environments, so the secrets are not held by an environment. The workflow reads them only
-in its run on main.
+variables, Actions. The secrets are repository secrets and are not held by an environment. The
+workflow reads them only in its run on main.
 
 | Secret | Value |
 | --- | --- |

@@ -47,8 +47,14 @@ Prettier for the Astro pages. Each one reads its settings from a file in the rep
 `services/frontend/package.json`.
 
 The pre-commit hook runs `make lint`, `make vet` and `make test`. It stops when ruff or sqlfluff
-is missing. A machine without pnpm skips the checks of the site. CI runs the same checks on each
-pull request and each push to `main`, so a check that the hook skips still runs there.
+is missing or is not the version that the Makefile names. A machine without pnpm skips the checks
+of the site. CI runs the same checks on each pull request and each push to `main`, so a check that
+the hook skips still runs there.
+
+The hook checks the files in the working tree, and not only the staged content. An unformatted
+file that you do not commit can stop the commit. A staged file that is not formatted can pass the
+hook when the copy in the working tree is formatted, and then CI stops it. Run `make fmt` and
+stage the result to keep the two the same.
 
 ## Editor
 
@@ -58,6 +64,11 @@ pull request and each push to `main`, so a check that the hook skips still runs 
 - The sqlfluff extension runs the `sqlfluff` on the PATH of the editor. An editor that starts from
   the Dock on macOS may not have `~/.local/bin` on its PATH. If the extension cannot find
   sqlfluff, set `sqlfluff.executablePath` to the full path in your user settings.
+- The sqlfluff extension formats a file through standard input. It gives sqlfluff the name of the
+  file only when it finds sqlfluff 3.0.6 or later. With the name, sqlfluff reads
+  `infra/postgres/.sqlfluff`, and a save of an applied migration changes nothing. Without the
+  name, a save can change a migration. The digest test in `make test` then stops the commit.
+  Undo the change with `git checkout` on the file.
 - The Biome extension reads the binary and the config of the site. It works only after
   `pnpm -C services/frontend install`.
 

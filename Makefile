@@ -43,12 +43,16 @@ tools:
 	$(TOOL_INSTALL) ruff==$(RUFF_VERSION)
 	$(TOOL_INSTALL) sqlfluff==$(SQLFLUFF_VERSION)
 
-# Stops with a message when a tool is missing. The fix is one command, so the check does not skip
-# the tool the way site-check skips a machine without pnpm.
+# Stops with a message when a tool is missing or has a different version. The fix is one command,
+# so the check does not skip the tool the way site-check skips a machine without pnpm.
 lint-tools:
-	@for tool in ruff sqlfluff; do \
+	@for pair in ruff:$(RUFF_VERSION) sqlfluff:$(SQLFLUFF_VERSION); do \
+		tool=$${pair%%:*}; want=$${pair#*:}; \
 		command -v $$tool >/dev/null 2>&1 || { \
 			echo "$$tool is not installed. Run: make tools" >&2; exit 1; }; \
+		have=$$($$tool --version | awk '{print $$NF}'); \
+		[ "$$have" = "$$want" ] || { \
+			echo "$$tool is $$have and not $$want. Run: make tools" >&2; exit 1; }; \
 	done
 
 # Checks the format and the lint rules of each language and changes nothing. make fmt fixes what
@@ -83,19 +87,27 @@ fmt-sql: lint-tools
 	sqlfluff fix services/analytics
 
 # Lints the site and fixes its format. They follow the rule of site-check, so a machine without
-# pnpm skips them.
+# pnpm skips them. They stop when pnpm is installed but the packages of the site are not.
+SITE_BIOME := services/frontend/node_modules/.bin/biome
+
 site-lint:
-	@if command -v pnpm >/dev/null 2>&1; then \
-		pnpm -C services/frontend lint; \
-	else \
+	@if ! command -v pnpm >/dev/null 2>&1; then \
 		echo "site-lint: pnpm is not installed, so the site is not linted" >&2; \
+	elif [ ! -x $(SITE_BIOME) ]; then \
+		echo "site-lint: the packages of the site are missing. Run: pnpm -C services/frontend install" >&2; \
+		exit 1; \
+	else \
+		pnpm -C services/frontend lint; \
 	fi
 
 site-fmt:
-	@if command -v pnpm >/dev/null 2>&1; then \
-		pnpm -C services/frontend fmt; \
-	else \
+	@if ! command -v pnpm >/dev/null 2>&1; then \
 		echo "site-fmt: pnpm is not installed, so the site is not formatted" >&2; \
+	elif [ ! -x $(SITE_BIOME) ]; then \
+		echo "site-fmt: the packages of the site are missing. Run: pnpm -C services/frontend install" >&2; \
+		exit 1; \
+	else \
+		pnpm -C services/frontend fmt; \
 	fi
 
 hooks:
