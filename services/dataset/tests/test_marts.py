@@ -151,6 +151,25 @@ class ThePublishedSet(unittest.TestCase):
                 if column.name.startswith("is_"):
                     self.assertIn("::int", selected, column.name)
 
+    def test_types_every_column_as_it_is_written(self) -> None:
+        # A key and a date are text, a flag is 0 or 1, and a column that is cast to neither is
+        # text only when it holds words.
+        words = {
+            "source_id", "name", "mascot", "city", "state_code", "county", "primary_color_hex",
+            "secondary_color_hex", "month_name", "day_name", "team_a_result", "team_b_result",
+            "notes",
+        }  # fmt: skip
+        for mart in MARTS:
+            for column in mart.columns:
+                selected = column.select()
+                if "::text" in selected or column.name in words:
+                    expected = "string"
+                elif "::int" in selected:
+                    expected = "boolean"
+                else:
+                    expected = "numeric"
+                self.assertEqual(column.kaggle_type, expected, f"{mart.name}.{column.name}")
+
 
 class TheStatements(unittest.TestCase):
     def test_select_the_named_columns_in_order(self) -> None:

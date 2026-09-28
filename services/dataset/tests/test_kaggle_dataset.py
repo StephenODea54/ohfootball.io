@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import tempfile
@@ -12,6 +13,7 @@ from unittest import mock
 
 from ohfootball_dataset import kaggle_dataset
 from ohfootball_dataset.kaggle_dataset import (
+    COLUMN_TYPES,
     EXPECTED_UPDATE_FREQUENCY,
     KEYWORDS,
     LICENSE,
@@ -57,11 +59,62 @@ class FakeResult:
         self.invalid_tags = invalid_tags or []
 
 
+def stored_metadata(marts: tuple[Mart, ...] = MARTS) -> dict[str, object]:
+    """The metadata that Kaggle returns when it holds every description."""
+    return {
+        "data": [
+            {
+                "name": mart.file_name,
+                "description": mart.description,
+                "columns": [
+                    {"name": c.name, "description": c.description, "type": c.kaggle_type}
+                    for c in mart.columns
+                ],
+            }
+            for mart in marts
+        ]
+    }
+
+
+class FakeColumn:
+    def __init__(self, name: str, description: str = "") -> None:
+        self.name = name
+        self.description = description
+
+
+class FakeFile:
+    def __init__(self, name: str, description: str, columns: list[FakeColumn] | None) -> None:
+        self.name = name
+        self.description = description
+        self.columns = columns
+
+
+class FakeListing:
+    def __init__(self, files: list[FakeFile] | None, error_message: str = "") -> None:
+        self.files = files
+        self.error_message = error_message
+
+
+def listed_files(marts: tuple[Mart, ...] = MARTS) -> list[FakeFile]:
+    """The list of files that Kaggle returns when it holds every description."""
+    return [
+        FakeFile(
+            mart.file_name,
+            mart.description,
+            [FakeColumn(c.name, c.description) for c in mart.columns],
+        )
+        for mart in marts
+    ]
+
+
 class FakeApi:
     """Stands in for the Kaggle client.
 
     The first status request answers whether the dataset exists. The requests after it take their
     answers from `statuses` in turn, and an answer that is an error is raised.
+
+    The metadata read back after the update is `read_back`, written as the client writes it, in an
+    object named info. The list of files is `listing`.
     """
 
     def __init__(
@@ -72,6 +125,10 @@ class FakeApi:
         create_result: object = None,
         version_result: object = None,
         metadata_error: BaseException | None = None,
+        read_back: dict[str, object] | None = None,
+        read_back_error: Exception | None = None,
+        wrap_info: bool = True,
+        listing: FakeListing | None = None,
     ) -> None:
         self.status_error = status_error
         self.statuses = list(statuses) if statuses is not None else ["ready"]
@@ -82,6 +139,12 @@ class FakeApi:
         self.created: list[tuple[str, dict[str, object]]] = []
         self.versioned: list[tuple[str, dict[str, object]]] = []
         self.metadata_updates: list[tuple[str, str]] = []
+        self.read_back = read_back if read_back is not None else stored_metadata()
+        self.read_back_error = read_back_error
+        self.wrap_info = wrap_info
+        self.listing = listing if listing is not None else FakeListing([])
+        self.metadata_reads: list[tuple[str, str]] = []
+        self.listing_calls: list[tuple[str, int]] = []
 
     def dataset_status(self, dataset_id: str) -> object:
         self.status_calls.append(dataset_id)
@@ -106,6 +169,20 @@ class FakeApi:
         self.metadata_updates.append((dataset_id, path))
         if self.metadata_error is not None:
             raise self.metadata_error
+
+    def dataset_metadata(self, dataset_id: str, path: str) -> str:
+        self.metadata_reads.append((dataset_id, path))
+        if self.read_back_error is not None:
+            raise self.read_back_error
+        os.makedirs(path, exist_ok=True)
+        body = {"info": self.read_back} if self.wrap_info else self.read_back
+        meta_file = Path(path) / METADATA_FILE
+        meta_file.write_text(json.dumps(body), encoding="utf-8")
+        return str(meta_file)
+
+    def dataset_list_files(self, dataset_id: str, page_size: int = 20) -> FakeListing:
+        self.listing_calls.append((dataset_id, page_size))
+        return self.listing
 
 
 class FakeClock:
@@ -211,6 +288,13 @@ class TheMetadata(unittest.TestCase):
             self.assertEqual([field["name"] for field in fields], list(mart.column_names))
             for field, column in zip(fields, mart.columns, strict=True):
                 self.assertEqual(field["description"], column.description)
+                self.assertEqual(field["type"], column.kaggle_type)
+
+    def test_sends_only_the_column_types_the_client_sends_unchanged(self) -> None:
+        self.assertEqual(COLUMN_TYPES, {"string", "numeric", "boolean", "datetime"})
+        for resource in resources():
+            for field in resource["schema"]["fields"]:
+                self.assertIn(field["type"], COLUMN_TYPES, field["name"])
 
     def test_has_a_subtitle_and_keywords_that_kaggle_takes(self) -> None:
         self.assertGreaterEqual(len(SUBTITLE), 20)
@@ -251,6 +335,19 @@ class TheMetadata(unittest.TestCase):
             resources([undescribed_file])
         with self.assertRaisesRegex(ValueError, "dim_dates.date_key has no description"):
             resources([undescribed_column])
+
+    def test_is_refused_for_a_column_with_no_type_or_a_type_the_client_changes(self) -> None:
+        for kaggle_type in ("", "uuid", "date"):
+            mart = Mart(
+                name="dim_dates",
+                columns=(Column("date_key", description="The key.", kaggle_type=kaggle_type),),
+                order_by=("date_key",),
+                description="The calendar.",
+            )
+            with self.assertRaisesRegex(
+                ValueError, "dim_dates.date_key has no Kaggle type", msg=kaggle_type
+            ):
+                resources([mart])
 
     def test_takes_a_title_and_a_license_when_it_is_given_them(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -311,7 +408,7 @@ class TheQuestionOfWhetherItExists(unittest.TestCase):
 class ThePublication(unittest.TestCase):
     def test_creates_a_public_dataset_the_first_time(self) -> None:
         api = FakeApi(status_error=FakeHttpError(404))
-        self.assertEqual(_publish(api), Publication("created", "updated"))
+        self.assertEqual(_publish(api), Publication("created", "updated", (), "stored"))
         folder, options = api.created[0]
         self.assertEqual(folder, "/tmp/export")
         self.assertIs(options["public"], True)
@@ -329,7 +426,7 @@ class ThePublication(unittest.TestCase):
             sleep=timer.sleep,
             clock=timer,
         )
-        self.assertEqual(publication, Publication("versioned", "updated"))
+        self.assertEqual(publication, Publication("versioned", "updated", (), "stored"))
         folder, options = api.versioned[0]
         self.assertEqual(folder, "/tmp/export")
         self.assertEqual(options["version_notes"], "marts as of 2026-08-19")
@@ -360,7 +457,9 @@ class ThePublication(unittest.TestCase):
         timer = FakeClock()
         publication = _publish(api, timer, ready_timeout=60.0, poll_interval=15.0)
         self.assertEqual(publication, Publication("versioned", "not ready"))
+        self.assertEqual(publication.descriptions, "not read")
         self.assertEqual(api.metadata_updates, [])
+        self.assertEqual(api.metadata_reads, [])
         self.assertEqual(sum(timer.sleeps), 60.0)
 
     def test_fails_when_kaggle_could_not_process_the_version(self) -> None:
@@ -404,6 +503,117 @@ class ThePublication(unittest.TestCase):
     def test_is_refused_for_a_name_that_is_not_owner_and_slug(self) -> None:
         with self.assertRaises(ValueError):
             publish("/tmp/export", "ohfootball", version_notes="notes", api=FakeApi())
+
+
+class TheReadBack(unittest.TestCase):
+    def test_reports_stored_when_kaggle_holds_every_description(self) -> None:
+        api = FakeApi()
+        publication = _publish(api)
+        self.assertEqual(publication.descriptions, "stored")
+        self.assertEqual(publication.missing_descriptions, ())
+        self.assertEqual(api.listing_calls, [])
+        # The client writes what it downloads to a file with the name of the uploaded one, so the
+        # download goes to a directory of its own, which is gone when the read is done.
+        dataset_id, directory = api.metadata_reads[0]
+        self.assertEqual(dataset_id, DATASET)
+        self.assertNotEqual(directory, "/tmp/export")
+        self.assertFalse(Path(directory).exists())
+
+    def test_names_each_file_and_column_that_has_no_description(self) -> None:
+        stored = stored_metadata()
+        files = {file["name"]: file for file in stored["data"]}  # type: ignore[union-attr]
+        del files["dim_teams.csv"]["description"]
+        files["dim_dates.csv"]["columns"] = [
+            column
+            for column in files["dim_dates.csv"]["columns"]
+            if column["name"] != "is_weekend"
+        ]
+        files["fct_games.csv"]["columns"][-1]["description"] = ""
+        stored["data"] = [f for f in stored["data"] if f["name"] != "fct_game_predictions.csv"]
+        publication = _publish(FakeApi(read_back=stored))
+        predictions = next(mart for mart in MARTS if mart.name == "fct_game_predictions")
+        self.assertEqual(publication.descriptions, "missing")
+        self.assertEqual(
+            publication.missing_descriptions,
+            (
+                "dim_teams.csv",
+                "dim_dates.csv:is_weekend",
+                "fct_games.csv:notes",
+                "fct_game_predictions.csv",
+                *(f"fct_game_predictions.csv:{name}" for name in predictions.column_names),
+            ),
+        )
+        self.assertEqual(publication.metadata, "updated")
+
+    def test_counts_a_file_with_no_columns_as_missing_every_column(self) -> None:
+        stored = stored_metadata()
+        del stored["data"][0]["columns"]  # type: ignore[index]
+        publication = _publish(FakeApi(read_back=stored))
+        self.assertEqual(
+            publication.missing_descriptions,
+            tuple(f"dim_teams.csv:{name}" for name in MARTS[0].column_names),
+        )
+
+    def test_reads_the_metadata_whether_or_not_it_is_in_an_object_named_info(self) -> None:
+        self.assertEqual(_publish(FakeApi(wrap_info=False)).descriptions, "stored")
+
+    def test_asks_for_the_files_when_the_metadata_lists_none(self) -> None:
+        api = FakeApi(read_back={"title": TITLE}, listing=FakeListing(listed_files()))
+        self.assertEqual(_publish(api).descriptions, "stored")
+        self.assertEqual(api.listing_calls, [(DATASET, 100)])
+
+    def test_names_what_is_missing_from_the_list_of_files_too(self) -> None:
+        files = listed_files()
+        files[1].description = ""
+        files[2].columns[0].description = ""  # type: ignore[index]
+        files[3].columns = None
+        self.assertEqual(files[3].name, "fct_team_elo_ratings.csv")
+        api = FakeApi(read_back={}, listing=FakeListing(files))
+        publication = _publish(api)
+        self.assertEqual(publication.descriptions, "missing")
+        self.assertEqual(
+            publication.missing_descriptions,
+            (
+                "dim_dates.csv",
+                "fct_games.csv:game_key",
+                *(f"fct_team_elo_ratings.csv:{name}" for name in MARTS[3].column_names),
+            ),
+        )
+
+    def test_does_not_fail_the_run_when_the_metadata_cannot_be_read(self) -> None:
+        for api, reason in (
+            (FakeApi(read_back_error=RuntimeError("no network")), "RuntimeError: no network"),
+            (FakeApi(read_back={}), "ValueError: Kaggle returned no columns"),
+            (FakeApi(read_back={}, listing=FakeListing(None)), "ValueError: Kaggle returned no"),
+            (
+                FakeApi(read_back={}, listing=FakeListing(listed_files(), error_message="denied")),
+                "RuntimeError: Kaggle refused the list of files: denied",
+            ),
+        ):
+            publication = _publish(api)
+            self.assertEqual(publication.metadata, "updated")
+            self.assertEqual(publication.descriptions, "not read")
+            self.assertEqual(publication.missing_descriptions, ())
+            self.assertTrue(publication.read_error.startswith(reason), publication.read_error)
+
+    def test_does_not_count_a_list_of_files_with_no_columns_as_missing_every_column(self) -> None:
+        # The list of files may leave the columns out. That says nothing about their descriptions.
+        files = listed_files()
+        for file in files:
+            file.columns = []
+        publication = _publish(FakeApi(read_back={}, listing=FakeListing(files)))
+        self.assertEqual(publication.descriptions, "not read")
+        self.assertIn("no columns", publication.read_error)
+
+    def test_reports_no_error_when_the_read_succeeds(self) -> None:
+        self.assertEqual(_publish(FakeApi()).read_error, "")
+
+    def test_reads_back_only_the_marts_it_is_given(self) -> None:
+        dates = tuple(mart for mart in MARTS if mart.name == "dim_dates")
+        api = FakeApi(read_back=stored_metadata(dates))
+        self.assertEqual(_publish(api, marts=dates).descriptions, "stored")
+        every_mart = _publish(FakeApi(read_back=stored_metadata(dates)))
+        self.assertEqual(every_mart.descriptions, "missing")
 
 
 class TheKaggleClient(unittest.TestCase):

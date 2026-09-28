@@ -19,9 +19,10 @@ One CSV file per mart, current rows only, keys and dates as text and flags as 0 
 is read from that one file. The casts match the ones the API snapshot uses, so a reader of the
 dataset and a reader of the site see the same values.
 
-`marts.py` also holds the description of each file and of each column. Kaggle shows that text next
-to the data. A column cannot be added without a description, because the tests fail for a column
-that has none and for a description that names a column the dataset does not publish.
+`marts.py` also holds the description of each file, and the description and the Kaggle type of each
+column. Kaggle shows that text next to the data. A column cannot be added without a description and
+a type, because the tests fail for a column that has none and for a description that names a column
+the dataset does not publish.
 
 Two of the marts keep a version of every observation. The dataset carries the current version only
 and drops `valid_from`, `valid_to`, and `is_current`, because a reader wants the record of a game
@@ -59,10 +60,15 @@ and the descriptions come from `marts.py`:
 | `keywords`                | `sports`, `united states`                                     |
 | `expectedUpdateFrequency` | `weekly`                                                      |
 | `userSpecifiedSources`    | joeeitel.com and ohhsfbdb.net, and what ohfootball.io adds    |
-| `resources`               | A description for each file and for each of its columns       |
+| `resources`               | A description of each file and of each column, with its type  |
 
 The command refuses a title, a subtitle, or a frequency that Kaggle would refuse, before it sends
 anything.
+
+A column has one of four types: `string`, `numeric`, `boolean`, or `datetime`. The Kaggle client
+sends these four unchanged. A key and a date are `string`, because they are written as text. A flag
+is `boolean`, because it holds only 0 and 1. The command refuses a column with no type or with
+another type.
 
 Kaggle reads this file two times in a run. The upload reads the title, the subtitle, the
 description, the keywords, and the descriptions of the files and the columns. The upload does not
@@ -72,8 +78,16 @@ fields. The command waits up to 10 minutes for the version. If the version is no
 time, the command does not fail. It prints `"metadata": "not ready"`, and the next run sends the
 metadata again.
 
-A keyword must be the name of a tag that Kaggle already has. Kaggle drops a name that it does not
-know, and the command prints the dropped names under `invalid_tags`. `football` is not used,
+After the update, the command reads the metadata back from Kaggle. It prints `descriptions` as
+`stored`, `missing`, or `not read`. `missing_descriptions` names each file, and each column as
+`file:column`, that Kaggle holds no description for. A file that Kaggle does not list counts as
+missing, and so does each of its columns. When the read fails, `read_error` holds the reason. A
+missing or unread description does not fail the run, because a failure after the upload makes a
+second version on the next run. Read the list in the log of the run.
+
+A keyword must be the name of a tag that Kaggle already has. The upload drops a name that it does
+not know, and the command prints the dropped names under `invalid_tags`. The metadata update
+refuses the whole update for such a name. `football` is not used,
 because on Kaggle that tag is association football.
 
 The update replaces the metadata on Kaggle. A change made on the Kaggle site to the title, the

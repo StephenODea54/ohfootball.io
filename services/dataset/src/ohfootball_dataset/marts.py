@@ -8,6 +8,9 @@ that knows nothing about Postgres.
 Two of the marts keep a version of every observation. The dataset carries the current version
 only, because a reader wants the record of a game rather than the record of the scrapes that found
 it.
+
+Each column also names its type on Kaggle. The metadata sends the type of each column with its
+description.
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ class Column:
     name: str
     expression: str | None = None
     description: str = ""
+    kaggle_type: str = ""
 
     def select(self) -> str:
         if not _IDENTIFIER.fullmatch(self.name):
@@ -96,7 +100,9 @@ class Mart:
 # The published set. A file is added here and nowhere else.
 #
 # The descriptions are the text that Kaggle shows for each file and each column. They are kept
-# next to the columns, so a column cannot be published without one.
+# next to the columns, with the type of each column on Kaggle, so a column cannot be published
+# without both. A key and a date are "string", because they are written as text. A flag is
+# "boolean", because it holds only 0 and 1.
 MARTS: tuple[Mart, ...] = (
     Mart(
         name="dim_teams",
@@ -110,8 +116,13 @@ MARTS: tuple[Mart, ...] = (
                 "team_key::text",
                 "The key of the team in one season, as a UUID. A school has a different key in "
                 "each season. The other files refer to a team by this key.",
+                kaggle_type="string",
             ),
-            Column("season", description="The year of the season, for example 2025."),
+            Column(
+                "season",
+                description="The year of the season, for example 2025.",
+                kaggle_type="numeric",
+            ),
             Column(
                 "source_id",
                 description=(
@@ -119,15 +130,18 @@ MARTS: tuple[Mart, ...] = (
                     "season, so it links the seasons of one school. A school that closed before "
                     "that site began has an identifier that starts with ohhsfbdb:."
                 ),
+                kaggle_type="string",
             ),
-            Column("name", description="The name of the school."),
+            Column("name", description="The name of the school.", kaggle_type="string"),
             Column(
                 "mascot",
                 description="The nickname of the team. Empty when the source does not state it.",
+                kaggle_type="string",
             ),
             Column(
                 "city",
                 description="The city of the school. Empty when the source does not state it.",
+                kaggle_type="string",
             ),
             Column(
                 "state_code",
@@ -135,10 +149,12 @@ MARTS: tuple[Mart, ...] = (
                     "The two-letter postal code of the state or province of the school, OH for "
                     "Ohio. Empty when the source does not state it."
                 ),
+                kaggle_type="string",
             ),
             Column(
                 "county",
                 description="The county of the school. Empty when the source does not state it.",
+                kaggle_type="string",
             ),
             Column(
                 "division",
@@ -146,6 +162,7 @@ MARTS: tuple[Mart, ...] = (
                     "The OHSAA division of the team in that season, as a whole number. Division 1 "
                     "holds the largest schools. Empty when the source does not state it."
                 ),
+                kaggle_type="numeric",
             ),
             Column(
                 "region",
@@ -153,6 +170,7 @@ MARTS: tuple[Mart, ...] = (
                     "The OHSAA playoff region of the team in that season, as a whole number. "
                     "Empty when the source does not state it."
                 ),
+                kaggle_type="numeric",
             ),
             Column(
                 "primary_color_hex",
@@ -160,6 +178,7 @@ MARTS: tuple[Mart, ...] = (
                     "The first color of the school, as a hexadecimal color code. Empty when the "
                     "source does not state it."
                 ),
+                kaggle_type="string",
             ),
             Column(
                 "secondary_color_hex",
@@ -167,6 +186,7 @@ MARTS: tuple[Mart, ...] = (
                     "The second color of the school, as a hexadecimal color code. Empty when the "
                     "source does not state it."
                 ),
+                kaggle_type="string",
             ),
         ),
         order_by=("season", "team_key"),
@@ -182,30 +202,62 @@ MARTS: tuple[Mart, ...] = (
             Column(
                 "date_key",
                 description="The date as a whole number, YYYYMMDD, for example 20250829.",
+                kaggle_type="numeric",
             ),
-            Column("date_day", "date_day::text", "The date, as YYYY-MM-DD."),
+            Column("date_day", "date_day::text", "The date, as YYYY-MM-DD.", kaggle_type="string"),
             Column(
                 "iso_year",
                 description=(
                     "The ISO 8601 year of the date. In the first and last days of a year it can "
                     "differ from calendar_year."
                 ),
+                kaggle_type="numeric",
             ),
-            Column("iso_week", description="The ISO 8601 week of the year, from 1 to 53."),
-            Column("calendar_year", description="The calendar year of the date."),
-            Column("calendar_quarter", description="The quarter of the year, from 1 to 4."),
-            Column("month_number", description="The month of the year, from 1 to 12."),
-            Column("month_name", description="The English name of the month, for example August."),
-            Column("day_of_month", description="The day of the month, from 1 to 31."),
+            Column(
+                "iso_week",
+                description="The ISO 8601 week of the year, from 1 to 53.",
+                kaggle_type="numeric",
+            ),
+            Column(
+                "calendar_year",
+                description="The calendar year of the date.",
+                kaggle_type="numeric",
+            ),
+            Column(
+                "calendar_quarter",
+                description="The quarter of the year, from 1 to 4.",
+                kaggle_type="numeric",
+            ),
+            Column(
+                "month_number",
+                description="The month of the year, from 1 to 12.",
+                kaggle_type="numeric",
+            ),
+            Column(
+                "month_name",
+                description="The English name of the month, for example August.",
+                kaggle_type="string",
+            ),
+            Column(
+                "day_of_month",
+                description="The day of the month, from 1 to 31.",
+                kaggle_type="numeric",
+            ),
             Column(
                 "iso_day_of_week",
                 description="The ISO 8601 day of the week, from 1 for Monday to 7 for Sunday.",
+                kaggle_type="numeric",
             ),
-            Column("day_name", description="The English name of the day, for example Friday."),
+            Column(
+                "day_name",
+                description="The English name of the day, for example Friday.",
+                kaggle_type="string",
+            ),
             Column(
                 "is_weekend",
                 "is_weekend::int",
                 "1 when the date is a Saturday or a Sunday, and 0 when it is not.",
+                kaggle_type="boolean",
             ),
         ),
         order_by=("date_key",),
@@ -222,22 +274,30 @@ MARTS: tuple[Mart, ...] = (
                 "game_key::text",
                 "The key of the game, as a UUID. It is made from the season, the date, and the two "
                 "teams.",
+                kaggle_type="string",
             ),
-            Column("season", description="The year of the season, for example 2025."),
+            Column(
+                "season",
+                description="The year of the season, for example 2025.",
+                kaggle_type="numeric",
+            ),
             Column(
                 "game_date_key",
                 description="The date of the game, as YYYYMMDD. It matches date_key in dim_dates.",
+                kaggle_type="numeric",
             ),
             Column(
                 "team_a_key",
                 "team_a_key::text",
                 "The team_key of team A. Team A is the team whose source_id sorts first. It is not "
                 "always the home team or the winner.",
+                kaggle_type="string",
             ),
             Column(
                 "team_b_key",
                 "team_b_key::text",
                 "The team_key of team B, the other team in the game.",
+                kaggle_type="string",
             ),
             Column(
                 "team_a_score",
@@ -245,6 +305,7 @@ MARTS: tuple[Mart, ...] = (
                     "The points of team A. Empty for a canceled game, a forfeit, or a game with "
                     "no score in the source."
                 ),
+                kaggle_type="numeric",
             ),
             Column(
                 "team_b_score",
@@ -252,6 +313,7 @@ MARTS: tuple[Mart, ...] = (
                     "The points of team B. Empty for a canceled game, a forfeit, or a game with "
                     "no score in the source."
                 ),
+                kaggle_type="numeric",
             ),
             Column(
                 "team_a_result",
@@ -259,6 +321,7 @@ MARTS: tuple[Mart, ...] = (
                     "The result for team A. W is a win, L is a loss, T is a tie, and C is a "
                     "canceled game. unknown means the source does not state the result."
                 ),
+                kaggle_type="string",
             ),
             Column(
                 "team_b_result",
@@ -266,23 +329,27 @@ MARTS: tuple[Mart, ...] = (
                     "The result for team B, with the same codes as team_a_result. After a double "
                     "forfeit both teams have L."
                 ),
+                kaggle_type="string",
             ),
             Column(
                 "is_team_a_home",
                 "is_team_a_home::int",
                 "1 when team A played at home, and 0 when it did not. A game on neither ground "
                 "has 0 for both teams.",
+                kaggle_type="boolean",
             ),
             Column(
                 "is_team_b_home",
                 "is_team_b_home::int",
                 "1 when team B played at home, and 0 when it did not. A game on neither ground "
                 "has 0 for both teams.",
+                kaggle_type="boolean",
             ),
             Column(
                 "is_playoff_game",
                 "is_playoff_game::int",
                 "1 for an OHSAA playoff game, and 0 for a regular season game.",
+                kaggle_type="boolean",
             ),
             Column(
                 "notes",
@@ -290,6 +357,7 @@ MARTS: tuple[Mart, ...] = (
                     "A note from the source in lower case, for example overtime, forfeit, double "
                     "forfeit, or canceled. Empty for most games."
                 ),
+                kaggle_type="string",
             ),
         ),
         order_by=("season", "game_date_key", "game_key"),
@@ -306,17 +374,24 @@ MARTS: tuple[Mart, ...] = (
                 "team_key",
                 "team_key::text",
                 "The team_key of the team. It matches team_key in dim_teams.",
+                kaggle_type="string",
             ),
-            Column("season", description="The year of the season, for example 2025."),
+            Column(
+                "season",
+                description="The year of the season, for example 2025.",
+                kaggle_type="numeric",
+            ),
             Column(
                 "as_of_date",
                 "as_of_date::text",
                 "The date the rating was taken, as YYYY-MM-DD. The rating counts the games before "
                 "this date and no game on it.",
+                kaggle_type="string",
             ),
             Column(
                 "elo_rating",
                 description="The Elo rating of the team. A higher rating is a stronger team.",
+                kaggle_type="numeric",
             ),
         ),
         order_by=("season", "as_of_date", "team_key"),
@@ -332,21 +407,41 @@ MARTS: tuple[Mart, ...] = (
                 "game_key",
                 "game_key::text",
                 "The game_key of the game. It matches game_key in fct_games.",
+                kaggle_type="string",
             ),
-            Column("season", description="The year of the season, for example 2025."),
-            Column("game_date", "game_date::text", "The date of the game, as YYYY-MM-DD."),
+            Column(
+                "season",
+                description="The year of the season, for example 2025.",
+                kaggle_type="numeric",
+            ),
+            Column(
+                "game_date",
+                "game_date::text",
+                "The date of the game, as YYYY-MM-DD.",
+                kaggle_type="string",
+            ),
             Column(
                 "team_a_key",
                 "team_a_key::text",
                 "The team_key of team A. It is the same team A as in fct_games.",
+                kaggle_type="string",
             ),
             Column(
                 "team_b_key",
                 "team_b_key::text",
                 "The team_key of team B. It is the same team B as in fct_games.",
+                kaggle_type="string",
             ),
-            Column("team_a_rating", description="The Elo rating team A carried into the game."),
-            Column("team_b_rating", description="The Elo rating team B carried into the game."),
+            Column(
+                "team_a_rating",
+                description="The Elo rating team A carried into the game.",
+                kaggle_type="numeric",
+            ),
+            Column(
+                "team_b_rating",
+                description="The Elo rating team B carried into the game.",
+                kaggle_type="numeric",
+            ),
             Column(
                 "team_a_win_probability",
                 description=(
@@ -354,6 +449,7 @@ MARTS: tuple[Mart, ...] = (
                     "The rating model can add an advantage for the home team, so this can differ "
                     "from a probability read from the two ratings alone."
                 ),
+                kaggle_type="numeric",
             ),
         ),
         order_by=("season", "game_date", "game_key"),

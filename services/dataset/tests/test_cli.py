@@ -92,7 +92,9 @@ class ThePublishCommand(unittest.TestCase):
         def fake_publish(directory: str, dataset_id: str, *, version_notes: str) -> Publication:
             seen["publish_directory"] = directory
             seen["notes"] = version_notes
-            return Publication("versioned", "updated", ("hsfb",))
+            return Publication(
+                "versioned", "updated", ("hsfb",), "missing", ("dim_teams.csv:team_key",)
+            )
 
         with mock.patch.object(cli, "export_marts", fake_export):
             with mock.patch.object(cli, "write_metadata", fake_metadata):
@@ -104,6 +106,9 @@ class ThePublishCommand(unittest.TestCase):
         self.assertEqual(body["action"], "versioned")
         self.assertEqual(body["metadata"], "updated")
         self.assertEqual(body["invalid_tags"], ["hsfb"])
+        self.assertEqual(body["descriptions"], "missing")
+        self.assertEqual(body["missing_descriptions"], ["dim_teams.csv:team_key"])
+        self.assertEqual(body["read_error"], "")
         self.assertEqual(body["as_of_date"], "2026-08-19")
         self.assertEqual(body["dataset"], DATASET)
         self.assertEqual(body["rows"], ROWS)

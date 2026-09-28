@@ -9,6 +9,10 @@ the files and the columns. They do not send the expected update frequency or the
 call that updates the metadata of a dataset sends those, so each run makes that call too, after
 Kaggle has finished the new version.
 
+After the update, each run reads the metadata back from Kaggle and reports each file and each
+column that still has no description. A read that fails is reported, not raised. The files are
+already uploaded at that point, and a failed run would add a second version when it is run again.
+
 The Kaggle client reads its credentials when it is built, and it raises if it finds none. It is
 therefore built inside a function rather than when this module is read, so the command line and the
 tests work on a machine that holds no credentials.
@@ -17,6 +21,7 @@ tests work on a machine that holds no credentials.
 from __future__ import annotations
 
 import json
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,11 +34,9 @@ TITLE = "Ohio High School Football: Games and Elo Ratings"
 SUBTITLE = "Ohio high school football games, teams, and Elo ratings, updated weekly"
 LICENSE = "CC0-1.0"
 
-# Each keyword must be the name of a tag that Kaggle already has. Kaggle drops a name it does not
-# know and reports it, and the run prints that report. "football" is not used, because on Kaggle
-# that tag is association football.
-# Kaggle refuses the whole metadata update when one keyword is not one of its tags. It refused
-# "american football", and "football" there means association football.
+# Each keyword must be the name of a tag that Kaggle already has. Kaggle refuses the whole metadata
+# update when one keyword is not one of its tags. It refused "american football". "football" is not
+# used, because on Kaggle that tag is association football.
 KEYWORDS = ("sports", "united states")
 
 EXPECTED_UPDATE_FREQUENCY = "weekly"
@@ -81,6 +84,8 @@ SUBTITLE_LENGTH = range(20, 81)
 UPDATE_FREQUENCIES = frozenset(
     {"not specified", "never", "annually", "quarterly", "monthly", "weekly", "daily", "hourly"}
 )
+# The column types that the Kaggle client sends unchanged, in the upload and in the metadata update.
+COLUMN_TYPES = frozenset({"string", "numeric", "boolean", "datetime"})
 
 # Kaggle answers a request for a dataset it does not hold with either of these, so either one
 # means the dataset has still to be created.
@@ -93,6 +98,12 @@ READY_POLL_SECONDS = 15.0
 _READY = "ready"
 _BROKEN = frozenset({"failed", "deleted"})
 
+# What the read of the metadata after the update found.
+STORED = "stored"
+MISSING = "missing"
+NOT_READ = "not read"
+READ_BACK_PAGE_SIZE = 100
+
 
 @dataclass(frozen=True, slots=True)
 class Publication:
@@ -101,11 +112,19 @@ class Publication:
     `action` is "created" or "versioned". `metadata` is "updated" when the metadata was updated
     after the upload, or "not ready" when Kaggle did not finish the version in time.
     `invalid_tags` holds the keywords that Kaggle did not know.
+
+    `descriptions` is "stored" when Kaggle holds a description for every file and every column. It
+    is "missing" when some have none, and `missing_descriptions` then names each of them, a file as
+    `dim_teams.csv` and a column as `dim_teams.csv:team_key`. It is "not read" when the metadata was
+    not updated or could not be read back, and `read_error` then holds the reason the read failed.
     """
 
     action: str
     metadata: str
     invalid_tags: tuple[str, ...] = ()
+    descriptions: str = NOT_READ
+    missing_descriptions: tuple[str, ...] = ()
+    read_error: str = ""
 
 
 def validate_dataset_id(dataset_id: str) -> str:
@@ -125,10 +144,11 @@ def dataset_description(marts: Iterable[Mart] = MARTS) -> str:
 
 
 def resources(marts: Iterable[Mart] = MARTS) -> list[dict[str, Any]]:
-    """The description of each file and of each of its columns, in the order of the columns.
+    """The description of each file, and the description and type of each of its columns.
 
-    Kaggle matches the columns by their order, so every column is listed. A file or a column with
-    no description is refused, because Kaggle counts each one that has none against the dataset.
+    Kaggle matches the columns by their order, so every column is listed in order. A file or a
+    column with no description is refused, because Kaggle counts each one that has none against the
+    dataset. A column with no type, or a type the client does not send unchanged, is refused too.
     """
     listed = []
     for mart in marts:
@@ -138,7 +158,18 @@ def resources(marts: Iterable[Mart] = MARTS) -> list[dict[str, Any]]:
         for column in mart.columns:
             if not column.description:
                 raise ValueError(f"{mart.name}.{column.name} has no description")
-            fields.append({"name": column.name, "description": column.description})
+            if column.kaggle_type not in COLUMN_TYPES:
+                raise ValueError(
+                    f"{mart.name}.{column.name} has no Kaggle type in {sorted(COLUMN_TYPES)}, "
+                    f"not {column.kaggle_type!r}"
+                )
+            fields.append(
+                {
+                    "name": column.name,
+                    "description": column.description,
+                    "type": column.kaggle_type,
+                }
+            )
         listed.append(
             {"path": mart.file_name, "description": mart.description, "schema": {"fields": fields}}
         )
@@ -214,8 +245,9 @@ def publish(
     poll_interval: float = READY_POLL_SECONDS,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
+    marts: Iterable[Mart] = MARTS,
 ) -> Publication:
-    """Create the dataset or add a version to it, then update its metadata."""
+    """Create the dataset or add a version to it, update its metadata, and read it back."""
     validate_dataset_id(dataset_id)
     folder = str(directory)
     client = api if api is not None else authenticated_api()
@@ -242,7 +274,8 @@ def publish(
     if not _wait_until_ready(client, dataset_id, ready_timeout, poll_interval, sleep, clock):
         return Publication(action, "not ready", invalid_tags)
     _update_metadata(client, dataset_id, folder)
-    return Publication(action, "updated", invalid_tags)
+    descriptions, missing, read_error = _stored_descriptions(client, dataset_id, tuple(marts))
+    return Publication(action, "updated", invalid_tags, descriptions, missing, read_error)
 
 
 def _wait_until_ready(
@@ -285,6 +318,85 @@ def _update_metadata(api: Any, dataset_id: str, folder: str) -> None:
         api.dataset_metadata_update(dataset_id, folder)
     except SystemExit as error:
         raise RuntimeError(f"Kaggle refused the metadata of {dataset_id}") from error
+
+
+def _stored_descriptions(
+    api: Any, dataset_id: str, marts: tuple[Mart, ...]
+) -> tuple[str, tuple[str, ...], str]:
+    """Read the metadata back, and name each file and column that still has no description.
+
+    A read that fails does not fail the run, because the files are already uploaded and the
+    metadata is already sent. The result is reported instead, with the reason the read failed.
+    """
+    try:
+        stored = _read_back(api, dataset_id)
+    except Exception as error:
+        return NOT_READ, (), f"{type(error).__name__}: {error}"
+    missing = _missing_descriptions(stored, marts)
+    return (MISSING, missing, "") if missing else (STORED, (), "")
+
+
+def _read_back(api: Any, dataset_id: str) -> dict[str, tuple[str, dict[str, str]]]:
+    """The description of each file and of each of its columns, as Kaggle holds them now.
+
+    The client writes the metadata it downloads to a file with the same name as the one that is
+    uploaded, so the download goes to a directory of its own. The client leaves an empty value out
+    of that file, and that includes an empty list of files. When the file lists no files, the list
+    of files is asked for on its own.
+
+    A list of files that holds no columns at all is not read as a list of columns with no
+    description. It is refused, because it cannot tell whether a description is missing.
+    """
+    with tempfile.TemporaryDirectory(prefix="ohfootball-dataset-read-back-") as directory:
+        path = Path(api.dataset_metadata(dataset_id, directory))
+        body = json.loads(path.read_text(encoding="utf-8"))
+    info = body.get("info") or body
+    files = info.get("data") or []
+    if files:
+        return {
+            str(file.get("name", "")): (
+                str(file.get("description") or ""),
+                {
+                    str(column.get("name", "")): str(column.get("description") or "")
+                    for column in file.get("columns") or []
+                },
+            )
+            for file in files
+        }
+    listing = api.dataset_list_files(dataset_id, page_size=READ_BACK_PAGE_SIZE)
+    if getattr(listing, "error_message", None):
+        raise RuntimeError(f"Kaggle refused the list of files: {listing.error_message}")
+    listed = getattr(listing, "files", None) or []
+    if not any(getattr(file, "columns", None) for file in listed):
+        raise ValueError("Kaggle returned no columns in the metadata or in the list of files")
+    return {
+        str(file.name): (
+            str(getattr(file, "description", None) or ""),
+            {
+                str(column.name): str(getattr(column, "description", None) or "")
+                for column in getattr(file, "columns", None) or []
+            },
+        )
+        for file in listed
+    }
+
+
+def _missing_descriptions(
+    stored: dict[str, tuple[str, dict[str, str]]], marts: tuple[Mart, ...]
+) -> tuple[str, ...]:
+    """Each published file and column that Kaggle holds no description for.
+
+    A file that Kaggle does not list counts as missing, and so does each of its columns.
+    """
+    missing = []
+    for mart in marts:
+        file_description, columns = stored.get(mart.file_name, ("", {}))
+        if not file_description:
+            missing.append(mart.file_name)
+        missing.extend(
+            f"{mart.file_name}:{name}" for name in mart.column_names if not columns.get(name)
+        )
+    return tuple(missing)
 
 
 def _status_code(error: BaseException) -> int | None:
