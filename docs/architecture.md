@@ -96,7 +96,8 @@ It also starts from the Actions tab of the repository, or with
 
 The workflow type checks the site, builds it against `https://api.ohfootball.io/graphql`, and runs
 `make pages` in `services/frontend`. That target checks that the build wrote each page as a file,
-that it wrote a real not-found page in `404.html`, and that no file names the API or holds its key.
+that it wrote a real not-found page in `404.html`, that no file names the API except the API page,
+and that no file holds its key.
 It then writes the 404 page for missing assets. Wrangler then sends `services/frontend/dist` to the
 Pages project `ohfootball` as a production deployment. A step that fails stops the run before the
 upload, and Pages keeps the deployment it served before.
@@ -237,6 +238,14 @@ after an address loses its page, Pages can still answer it with the old page and
 The API reads the warehouse on each request. It has two health endpoints. `/healthz` answers
 without reading anything. `/readyz` reads the store.
 
+The API needs no sign-in, but each caller of `/graphql` names a contact. The `User-Agent` header
+or the `From` header holds an email address or an http(s) URL. A request without one gets 400 with
+the code `CONTACT_REQUIRED`. One address may send 60 requests a minute, up to 20 of them at once,
+and all callers together may send 20 a second, up to 40 at once. A request over a limit gets 429 with the
+code `RATE_LIMITED` and a `Retry-After` header. The playground at `/` needs no contact, but it
+counts toward the limits. The health endpoints and the build of the site skip both rules.
+`services/api/README.md` has the details, and `/api` on the site tells callers the rules.
+
 ## Things that hold this together
 
 **The site is built against the public API.** The build runs in GitHub Actions and reads
@@ -245,10 +254,33 @@ name, and the warehouse must hold data, before the first build of the site. A bu
 read the API fails, and Pages keeps the site it served before.
 
 **Only the build reads the API.** Every page is drawn while the site is built, and the browser
-never calls the API. No page and no script holds the address of the API or its key, and
-`make pages` stops the upload when a file does. So `CORS_ORIGIN` on the API no longer affects the
-site. The addresses that Pages gives the project, such as `ohfootball.pages.dev`, show the same
+never calls the API. The API sends no CORS headers, so no page on another origin can read it. No
+script holds the address of the API, no page except the API page `/api` names it, and no file holds
+its key. `make pages` stops the upload when a file does. The addresses that Pages gives the project, such as `ohfootball.pages.dev`, show the same
 pages as `ohfootball.io`.
+
+**The build key is set on both sides.** The build makes about 700 requests in less than a minute,
+which is more than the rate limits allow. It sends the GitHub secret `GRAPHQL_API_KEY` as a bearer
+token, and the API lets a request skip the contact rule and the rate limits when the token equals
+its setting `SITE_BUILD_KEY`. The two values must be the same. When they differ, the build gets
+429 and fails, and Pages keeps the site it served before. A push to main deploys the API and
+builds the site at the same time, so set both values before the push that first deploys an API
+with the rate limits. To change the key later, set the new value in both places, then deploy the
+API again and run the site workflow.
+
+**The limits count in memory.** Each container of the API counts on its own, and a restart or a
+deploy starts every count again. The API is one container, so the limits hold as written.
+
+**The API reads the address of a caller from Traefik.** Traefik removes the `X-Real-Ip` and
+`X-Forwarded-*` headers that a client sends, because the entry points that Dokploy writes trust no
+sender. It then sets `X-Real-Ip` to the address that opened the connection, and the API counts
+each address by that header. Do not set `forwardedHeaders.insecure` or
+`forwardedHeaders.trustedIPs` on the entry points, and do not publish port 8082 of the `api`
+application on the host, or a client can choose its own address. If the record of `api` is ever
+proxied by Cloudflare, `X-Real-Ip` holds the address of a Cloudflare server, and many callers share
+one limit. With an AAAA record and no IPv6 on the Docker network, Traefik can see the bridge
+gateway for each IPv6 caller, and all IPv6 callers then share one limit.
+`services/api/README.md` tells how to check the header on the host over IPv4 and over IPv6.
 
 **The name of the API is DNS only.** Pages serves an apex domain only from a zone on the same
 Cloudflare account, so `ohfootball.io` is a Cloudflare zone. The A record of `api`, and its
@@ -284,7 +316,11 @@ Dokploy shows for the database as `DATABASE_URL`.
 | Variable | Value |
 | --- | --- |
 | `DATABASE_URL` | the internal connection URL of the database |
-| `CORS_ORIGIN` | `https://ohfootball.io` |
+| `SITE_BUILD_KEY` | the key that lets the build of the site skip the contact rule and the rate limits. It must equal the GitHub secret `GRAPHQL_API_KEY`, and it must have at least 16 characters. |
+| `RATE_LIMIT_ADDRESS_PER_MINUTE` | optional, default `60`, the requests one address may send each minute |
+| `RATE_LIMIT_ADDRESS_BURST` | optional, default `20`, the requests one address may send at once. It may not be larger than `RATE_LIMIT_TOTAL_BURST`. |
+| `RATE_LIMIT_TOTAL_PER_SECOND` | optional, default `20`, the requests all callers together may send each second |
+| `RATE_LIMIT_TOTAL_BURST` | optional, default `40`, the requests all callers together may send at once |
 | `HTTP_ADDR` | optional, default `:8082` |
 | `ELO_HOME_ADVANTAGE` | optional, default `30` |
 | `ELO_RATING_SCALE` | optional, default `400` |
@@ -301,7 +337,7 @@ in its run on main.
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | a Cloudflare API token with the permission Account, Cloudflare Pages, Edit |
 | `CLOUDFLARE_ACCOUNT_ID` | the ID of the Cloudflare account that holds the Pages project |
-| `GRAPHQL_API_KEY` | the key the API asks for. Leave it unset until the API asks for a key. |
+| `GRAPHQL_API_KEY` | the build key. It must equal `SITE_BUILD_KEY` of the `api` application. |
 
 `.github/workflows/site.yml` names the Pages project `ohfootball` and the address of the API.
 
@@ -336,12 +372,13 @@ project of their own. Do these steps in this order.
    connection URL.
 3. Create the `migrate` application and deploy it. Its log shows each migration as `applied`,
    and then the container stays up.
-4. Create the `api` application. Add the domain `api.ohfootball.io` on port 8082 with a Let's
-   Encrypt certificate. Deploy it. `https://api.ohfootball.io/healthz` answers when it is up.
+4. Make the build key with `openssl rand -base64 36 | tr -d '/+=' | cut -c1-40`. Create the `api`
+   application and set the key as `SITE_BUILD_KEY`. Add the domain `api.ohfootball.io` on port
+   8082 with a Let's Encrypt certificate. Deploy it. `https://api.ohfootball.io/healthz` answers when it is up.
 5. Create the Pages project with
    `npx wrangler pages project create ohfootball --production-branch=main`. Make the Cloudflare
-   API token. In GitHub, add the two Cloudflare repository secrets. See the settings of the `site`
-   workflow.
+   API token. In GitHub, add the two Cloudflare repository secrets, and add the build key as
+   `GRAPHQL_API_KEY`. See the settings of the `site` workflow.
 6. Make the fine-grained token in the settings of the GitHub account that owns the repository.
    Select Only select repositories and `StephenODea54/ohfootball.io`. Under Repository
    permissions, set Actions to Read and write. Set an expiry and write down the date.
