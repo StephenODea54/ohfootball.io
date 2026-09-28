@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/container'
 import { Heading } from '@/components/ui/heading'
 import { Link } from '@/components/ui/link'
 import { Text, TextLink } from '@/components/ui/text'
-import { paths } from '@/config/paths'
+import { links, paths } from '@/config/paths'
 
 const questions = [
   {
@@ -73,6 +73,22 @@ export function AboutContent() {
               </div>
             ))}
           </dl>
+        </section>
+
+        <section className="mt-14" aria-labelledby="data-heading">
+          <Heading id="data-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+            Data And Code
+          </Heading>
+          <Text className="mt-4 text-base/7">
+            The code of the site, the API, and the model is on{' '}
+            <TextLink href={links.repository}>GitHub</TextLink>. Every game and rating is also
+            published each week as a <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
+          </Text>
+          <Text className="mt-3 text-base/7">
+            Found a wrong score or a missing school? Please{' '}
+            <TextLink href={links.issues}>open an issue</TextLink>, or send an email to{' '}
+            <TextLink href={links.contact}>hey@ohfootball.io</TextLink>.
+          </Text>
         </section>
 
         <section className="mt-14 rounded-2xl bg-muted/60 px-6 py-8 sm:px-8 sm:py-10">

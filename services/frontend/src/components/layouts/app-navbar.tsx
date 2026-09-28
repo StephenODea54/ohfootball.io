@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/navbar"
 import { ThemeProvider } from "@/components/theme/theme-provider"
 import { ThemeSwitcher } from "@/components/theme/theme-switcher"
+import { Link } from "@/components/ui/link"
 import { paths } from "@/config/paths"
 
 const navItems = [
@@ -21,12 +22,15 @@ const navItems = [
   { label: "Methodology", ...paths.methodology },
 ]
 
-/** The wordmark. The suffix is tinted so the brand reads as one word with an accent. */
+/**
+ * The wordmark, which links to the home page. The suffix is tinted so the brand reads as one word
+ * with an accent.
+ */
 function Wordmark({ className }: { className?: string }) {
   return (
-    <span className={className}>
+    <Link href={paths.home.getHref()} className={className}>
       ohfootball<span className="text-primary">.io</span>
-    </span>
+    </Link>
   )
 }
 
@@ -67,14 +71,14 @@ export function AppNavbar({ pathname }: { pathname: string }) {
       <NavbarProvider style={{ "--navbar": "var(--color-bg)" } as React.CSSProperties}>
         <Navbar intent="default" isSticky>
           <NavbarStart>
-            <Wordmark className="font-semibold" />
+            <Wordmark className="font-semibold text-fg" />
           </NavbarStart>
           <NavbarSpacer />
           {controls}
         </Navbar>
 
         <NavbarMobile>
-          <Wordmark className="font-semibold text-sm" />
+          <Wordmark className="font-semibold text-fg text-sm" />
           <NavbarSpacer />
           {controls}
         </NavbarMobile>

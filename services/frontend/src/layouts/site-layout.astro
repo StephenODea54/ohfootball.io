@@ -1,5 +1,6 @@
 ---
 import '@/styles.css'
+import { AppFooter } from '@/components/layouts/app-footer'
 import { AppNavbar } from '@/components/layouts/app-navbar'
 
 interface Props {
@@ -42,5 +43,6 @@ const pathname = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '
   <body>
     <AppNavbar client:idle pathname={pathname} />
     <slot />
+    <AppFooter />
   </body>
 </html>

@@ -24,3 +24,11 @@ export const paths = {
     getHref: (teamId: string) => `/teams/${teamId}`,
   },
 } as const
+
+/** The places outside the site that the footer and the About page link to. */
+export const links = {
+  repository: "https://github.com/StephenODea54/ohfootball.io",
+  issues: "https://github.com/StephenODea54/ohfootball.io/issues",
+  dataset: "https://www.kaggle.com/datasets/stephenodea54/ohfootball",
+  contact: "mailto:hey@ohfootball.io",
+} as const
