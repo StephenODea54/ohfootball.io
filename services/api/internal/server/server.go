@@ -4,7 +4,9 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -13,6 +15,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/StephenODea54/services/api/graph"
+	"github.com/StephenODea54/services/api/internal/guard"
+	"github.com/StephenODea54/services/api/internal/ratelimit"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
@@ -42,18 +46,48 @@ type Store interface {
 	Ping(context.Context) error
 }
 
+// playgroundHeaders fill the Headers pane of the playground. A browser does not let a page set
+// User-Agent, so the playground names the caller in the From header. The value holds no contact,
+// so the first request fails with the message that tells the caller what to write there.
+var playgroundHeaders = map[string]string{"From": "your email address or the URL of your site"}
+
 // Options collects the settings that differ between deployments.
 type Options struct {
-	// CORSOrigin is the single origin allowed to call the API from a browser.
-	CORSOrigin string
 	// ComplexityLimit caps the cost of one operation. A value of zero or less selects
 	// DefaultComplexityLimit.
 	ComplexityLimit int
+	// Limits are the rate limits. The zero value selects ratelimit.DefaultLimits.
+	Limits ratelimit.Limits
+	// SiteBuildKey lets the build of the site skip the contact rule and the rate limits. An
+	// empty key lets no request skip them.
+	SiteBuildKey string
+	// Logger receives a line for each request that the guard counts. Nil selects slog.Default.
+	Logger *slog.Logger
+	// now reads the time. Nil selects time.Now. Only the tests of this package set it.
+	now func() time.Time
 }
 
 // New returns the complete handler for the API: the GraphQL endpoint, the playground, and the
-// health endpoints.
-func New(store Store, options Options) http.Handler {
+// health endpoints. It fails when a setting of the guard is not valid.
+//
+// The health endpoints skip the guard, because the health checks of Docker and the host send no
+// contact. The playground page counts toward the rate limits but needs no contact, because a
+// browser that opens it cannot set one. The GraphQL endpoint needs both.
+func New(store Store, options Options) (http.Handler, error) {
+	limits := options.Limits
+	if limits == (ratelimit.Limits{}) {
+		limits = ratelimit.DefaultLimits()
+	}
+	rules, err := guard.New(guard.Config{
+		Limits:   limits,
+		BuildKey: options.SiteBuildKey,
+		Logger:   options.Logger,
+		Now:      options.now,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	limit := options.ComplexityLimit
 	if limit <= 0 {
 		limit = DefaultComplexityLimit
@@ -76,8 +110,10 @@ func New(store Store, options Options) http.Handler {
 	graphql.Use(extension.FixedComplexityLimit(limit))
 
 	mux := http.NewServeMux()
-	mux.Handle("/graphql", graphql)
-	mux.Handle("/", playground.Handler("ohfootball.io GraphQL", "/graphql"))
+	mux.Handle("/graphql", rules.Limit(rules.RequireContact(graphql)))
+	mux.Handle("/", rules.Limit(
+		playground.HandlerWithHeaders("ohfootball.io GraphQL", "/graphql", nil, playgroundHeaders),
+	))
 	mux.HandleFunc("GET /healthz", func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusNoContent)
 	})
@@ -91,19 +127,5 @@ func New(store Store, options Options) http.Handler {
 		writer.WriteHeader(http.StatusNoContent)
 	})
 
-	return cors(mux, options.CORSOrigin)
-}
-
-func cors(next http.Handler, origin string) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Access-Control-Allow-Origin", origin)
-		writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		writer.Header().Add("Vary", "Origin")
-		if request.Method == http.MethodOptions {
-			writer.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(writer, request)
-	})
+	return mux, nil
 }

@@ -13,6 +13,11 @@ import (
 	"github.com/StephenODea54/services/api/graph/model"
 )
 
+// contactAgent is a User-Agent that names a contact, as the API asks of every caller.
+const contactAgent = "server-test/1.0 (test@example.com)"
+
+const siteBuildKey = "probe-build-key-123456"
+
 type fakeStore struct {
 	season  int
 	pingErr error
@@ -32,7 +37,18 @@ func (fake *fakeStore) ListTeams(
 
 func (fake *fakeStore) Team(context.Context, string, *int) (*model.Team, error) { return nil, nil }
 
-func post(t *testing.T, handler http.Handler, query string) *httptest.ResponseRecorder {
+func newHandler(t *testing.T, store Store, options Options) http.Handler {
+	t.Helper()
+	handler, err := New(store, options)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	return handler
+}
+
+// graphqlRequest builds a POST of the query that names a contact in its User-Agent. A test
+// changes or removes the headers when it checks the rules of the guard.
+func graphqlRequest(t *testing.T, query string) *http.Request {
 	t.Helper()
 	body, err := json.Marshal(map[string]string{"query": query})
 	if err != nil {
@@ -40,9 +56,19 @@ func post(t *testing.T, handler http.Handler, query string) *httptest.ResponseRe
 	}
 	request := httptest.NewRequest(http.MethodPost, "/graphql", strings.NewReader(string(body)))
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("User-Agent", contactAgent)
+	return request
+}
+
+func serve(handler http.Handler, request *http.Request) *httptest.ResponseRecorder {
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	return recorder
+}
+
+func post(t *testing.T, handler http.Handler, query string) *httptest.ResponseRecorder {
+	t.Helper()
+	return serve(handler, graphqlRequest(t, query))
 }
 
 func decode(t *testing.T, recorder *httptest.ResponseRecorder) map[string]any {
@@ -55,7 +81,7 @@ func decode(t *testing.T, recorder *httptest.ResponseRecorder) map[string]any {
 }
 
 func TestQuery(t *testing.T) {
-	handler := New(&fakeStore{season: 2025}, Options{CORSOrigin: "http://localhost:3000"})
+	handler := newHandler(t, &fakeStore{season: 2025}, Options{})
 
 	recorder := post(t, handler, "{ currentSeason }")
 	if recorder.Code != http.StatusOK {
@@ -74,7 +100,7 @@ func TestQuery(t *testing.T) {
 // The playground sends this query every time it loads. It has to stay inside the default limit, or
 // the public playground shows an error instead of the schema.
 func TestIntrospectionStaysInsideTheDefaultComplexityLimit(t *testing.T) {
-	handler := New(&fakeStore{}, Options{})
+	handler := newHandler(t, &fakeStore{}, Options{})
 
 	recorder := post(t, handler, introspectionQuery)
 	if recorder.Code != http.StatusOK {
@@ -87,7 +113,7 @@ func TestIntrospectionStaysInsideTheDefaultComplexityLimit(t *testing.T) {
 
 func TestComplexityLimitRejectsARepeatedQuery(t *testing.T) {
 	limit := 50
-	handler := New(&fakeStore{}, Options{ComplexityLimit: limit})
+	handler := newHandler(t, &fakeStore{}, Options{ComplexityLimit: limit})
 
 	var query strings.Builder
 	query.WriteString("{")
@@ -106,7 +132,7 @@ func TestComplexityLimitRejectsARepeatedQuery(t *testing.T) {
 }
 
 func TestComplexityLimitFallsBackToTheDefault(t *testing.T) {
-	handler := New(&fakeStore{}, Options{ComplexityLimit: 0})
+	handler := newHandler(t, &fakeStore{}, Options{ComplexityLimit: 0})
 
 	var query strings.Builder
 	query.WriteString("{")
@@ -124,7 +150,7 @@ func TestComplexityLimitFallsBackToTheDefault(t *testing.T) {
 }
 
 func TestHealthz(t *testing.T) {
-	handler := New(&fakeStore{pingErr: errors.New("unreachable")}, Options{})
+	handler := newHandler(t, &fakeStore{pingErr: errors.New("unreachable")}, Options{})
 
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	recorder := httptest.NewRecorder()
@@ -147,7 +173,7 @@ func TestReadyz(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			handler := New(&fakeStore{pingErr: testCase.pingErr}, Options{})
+			handler := newHandler(t, &fakeStore{pingErr: testCase.pingErr}, Options{})
 			request := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 			recorder := httptest.NewRecorder()
 			handler.ServeHTTP(recorder, request)
@@ -159,7 +185,7 @@ func TestReadyz(t *testing.T) {
 }
 
 func TestPlayground(t *testing.T) {
-	handler := New(&fakeStore{}, Options{})
+	handler := newHandler(t, &fakeStore{}, Options{})
 
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	recorder := httptest.NewRecorder()
@@ -173,34 +199,34 @@ func TestPlayground(t *testing.T) {
 	}
 }
 
-func TestCORS(t *testing.T) {
-	handler := New(&fakeStore{}, Options{CORSOrigin: "https://ohfootball.io"})
+// No page of ohfootball.io calls the API from a browser, and the playground is on the origin of
+// the API. So the API sends no CORS headers, and a page on another origin cannot read it.
+func TestNoCORSHeaders(t *testing.T) {
+	handler := newHandler(t, &fakeStore{}, Options{})
 
 	request := httptest.NewRequest(http.MethodOptions, "/graphql", nil)
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
+	request.Header.Set("Origin", "https://example.org")
+	request.Header.Set("User-Agent", contactAgent)
+	recorder := serve(handler, request)
 
-	if recorder.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusNoContent)
-	}
-	if origin := recorder.Header().Get("Access-Control-Allow-Origin"); origin != "https://ohfootball.io" {
-		t.Fatalf("Access-Control-Allow-Origin = %q, want %q", origin, "https://ohfootball.io")
-	}
-	if vary := recorder.Header().Get("Vary"); vary != "Origin" {
-		t.Fatalf("Vary = %q, want %q", vary, "Origin")
+	for name := range recorder.Header() {
+		if strings.HasPrefix(name, "Access-Control-") {
+			t.Fatalf("the API sent the CORS header %s", name)
+		}
 	}
 }
 
 // A function that returns one buffered response cannot hold a websocket open, so the websocket
 // transport must stay out of the transport list.
 func TestWebsocketTransportIsNotAdvertised(t *testing.T) {
-	handler := New(&fakeStore{}, Options{})
+	handler := newHandler(t, &fakeStore{}, Options{})
 
 	request := httptest.NewRequest(http.MethodGet, "/graphql", nil)
 	request.Header.Set("Upgrade", "websocket")
 	request.Header.Set("Connection", "Upgrade")
 	request.Header.Set("Sec-WebSocket-Version", "13")
 	request.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+	request.Header.Set("User-Agent", contactAgent)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 

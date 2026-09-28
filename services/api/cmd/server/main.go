@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,6 +14,8 @@ import (
 	"time"
 
 	"github.com/StephenODea54/services/api/internal/config"
+	"github.com/StephenODea54/services/api/internal/guard"
+	"github.com/StephenODea54/services/api/internal/ratelimit"
 	"github.com/StephenODea54/services/api/internal/server"
 	"github.com/StephenODea54/services/api/internal/store"
 )
@@ -42,6 +45,15 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	limits, err := readLimits()
+	if err != nil {
+		return err
+	}
+	// The key is checked before the database is opened, so a bad key stops the start at once.
+	siteBuildKey := config.String("SITE_BUILD_KEY", "")
+	if err := guard.CheckBuildKey(siteBuildKey); err != nil {
+		return fmt.Errorf("SITE_BUILD_KEY: %w", err)
+	}
 
 	database, err := store.Open(
 		ctx,
@@ -53,10 +65,14 @@ func run() error {
 	}
 	defer database.Close()
 
-	handler := server.New(database, server.Options{
-		CORSOrigin:      config.String("CORS_ORIGIN", "http://localhost:3000"),
+	handler, err := server.New(database, server.Options{
 		ComplexityLimit: complexityLimit,
+		Limits:          limits,
+		SiteBuildKey:    siteBuildKey,
 	})
+	if err != nil {
+		return err
+	}
 
 	httpServer := &http.Server{
 		Addr:              config.String("HTTP_ADDR", ":8082"),
@@ -82,4 +98,42 @@ func run() error {
 		}
 		return err
 	}
+}
+
+// readLimits reads the rate limits. A limit that is not a whole number more than zero is an
+// error, and so is a burst of one address that is larger than the total burst.
+func readLimits() (ratelimit.Limits, error) {
+	defaults := ratelimit.DefaultLimits()
+	settings := []struct {
+		name     string
+		fallback int
+		value    int
+	}{
+		{name: "RATE_LIMIT_ADDRESS_PER_MINUTE", fallback: int(defaults.PerAddress.PerSecond * 60)},
+		{name: "RATE_LIMIT_ADDRESS_BURST", fallback: defaults.PerAddress.Burst},
+		{name: "RATE_LIMIT_TOTAL_PER_SECOND", fallback: int(defaults.Total.PerSecond)},
+		{name: "RATE_LIMIT_TOTAL_BURST", fallback: defaults.Total.Burst},
+	}
+	for index := range settings {
+		value, err := config.Int(settings[index].name, settings[index].fallback)
+		if err != nil {
+			return ratelimit.Limits{}, err
+		}
+		if value < 1 {
+			return ratelimit.Limits{}, fmt.Errorf("%s must be at least 1", settings[index].name)
+		}
+		settings[index].value = value
+	}
+	// With a larger burst, one address could empty the total bucket and lock out every caller
+	// until it fills again.
+	if settings[1].value > settings[3].value {
+		return ratelimit.Limits{}, fmt.Errorf(
+			"RATE_LIMIT_ADDRESS_BURST (%d) must not be larger than RATE_LIMIT_TOTAL_BURST (%d)",
+			settings[1].value, settings[3].value,
+		)
+	}
+	return ratelimit.Limits{
+		PerAddress: ratelimit.Rate{PerSecond: float64(settings[0].value) / 60, Burst: settings[1].value},
+		Total:      ratelimit.Rate{PerSecond: float64(settings[2].value), Burst: settings[3].value},
+	}, nil
 }
