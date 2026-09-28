@@ -1,0 +1,56 @@
+{
+  "editor.formatOnSave": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+
+  "biome.configurationPath": "services/frontend/biome.json",
+  "biome.lsp.bin": "services/frontend/node_modules/@biomejs/biome/bin/biome",
+  "biome.requireConfiguration": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit",
+      "source.organizeImports.biome": "explicit"
+    }
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit",
+      "source.organizeImports.biome": "explicit"
+    }
+  },
+
+  "prettier.requireConfig": true,
+  "[astro]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  "sqlfluff.executablePath": "sqlfluff",
+  "sqlfluff.workingDirectory": "${workspaceFolder}",
+  "sqlfluff.linter.run": "onSave",
+  "sqlfluff.format.enabled": true,
+  "[sql]": {
+    "editor.defaultFormatter": "dorzey.vscode-sqlfluff"
+  },
+  "[jinja-sql]": {
+    "editor.defaultFormatter": "dorzey.vscode-sqlfluff"
+  },
+
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  },
+
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.ruff_cache": true
+  }
+}

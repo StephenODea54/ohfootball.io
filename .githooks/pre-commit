@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Runs the format check, the vet step, and the test suites before each commit.
+# Runs the lint step, the vet step, and the test suites before each commit.
 # Install with: make hooks
 #
 set -eu
@@ -10,14 +10,6 @@ fail() {
 	exit 1
 }
 
-go_files=$(git ls-files '*.go')
-if [ -n "$go_files" ]; then
-	unformatted=$(printf '%s\n' "$go_files" | xargs gofmt -l)
-	if [ -n "$unformatted" ]; then
-		printf 'These files are not formatted:\n%s\n' "$unformatted" >&2
-		fail 'run "make fmt"'
-	fi
-fi
-
+make lint || fail 'lint failed. Run "make fmt", then fix what "make lint" still reports'
 make vet || fail 'vet failed'
 make test || fail 'tests failed'

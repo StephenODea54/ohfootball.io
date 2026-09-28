@@ -24,13 +24,7 @@ jobs:
           cache-dependency-path: |
             services/api/go.sum
             services/scraper/go.sum
-      - name: format
-        run: |
-          unformatted=$(gofmt -l $(git ls-files '*.go'))
-          if [ -n "$unformatted" ]; then
-            printf 'These files are not formatted:\n%s\n' "$unformatted" >&2
-            exit 1
-          fi
+      - run: make lint-go
       - run: make -C services/api vet
       - run: make -C services/api test
       - run: make -C services/scraper vet
@@ -48,6 +42,8 @@ jobs:
       # The versions that the Makefile names for a workstation. pip installs them, because the
       # runner is used one time.
       - run: make tools TOOL_INSTALL="pip install"
+      - run: make lint-python
+      - run: make lint-sql
       - run: make -C services/elo vet
       - run: make -C services/elo test
       - run: make -C services/dataset vet
@@ -61,10 +57,11 @@ jobs:
       # Checks the settings of the migrations and the names and text of the migration files.
       - run: make postgres-test
 
-  # The site is drawn ahead of time against the API. astro check checks the types of the Astro
-  # pages and of the React components, and Vitest runs the unit tests, so a mistake there is found
-  # before the site is built. A build is not run here, because it needs an API to read. site.yml
-  # builds the site against the public API before it publishes it.
+  # The site is drawn ahead of time against the API. Biome and Prettier check the format and the
+  # lint rules of the site. astro check checks the types of the Astro pages and of the React
+  # components, and Vitest runs the unit tests, so a mistake there is found before the site is
+  # built. A build is not run here, because it needs an API to read. site.yml builds the site
+  # against the public API before it publishes it.
   frontend:
     name: frontend
     runs-on: ubuntu-latest
@@ -81,6 +78,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: services/frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        working-directory: services/frontend
+      - run: pnpm lint
         working-directory: services/frontend
       - run: pnpm typecheck
         working-directory: services/frontend

@@ -79,8 +79,8 @@ main is deployed even when a check fails.
 | Job in `checks.yml` | Does |
 | --- | --- |
 | `go` | format, vet, and test the API and the scraper |
-| `python` | vet and test the rating, the dataset, the request that builds the site, the output of the site build, and the migration files |
-| `frontend` | type check the site and its Astro pages, and run its unit tests |
+| `python` | lint and format check the Python and the SQL, then vet and test the rating, the dataset, the request that builds the site, the output of the site build, and the migration files |
+| `frontend` | lint and format check the site, type check the site and its Astro pages, and run its unit tests |
 | `migrations` | build the migration image, apply every migration to an empty database, apply them again, and validate the record |
 
 Each application has automatic deploys on. A push to main builds every application again and

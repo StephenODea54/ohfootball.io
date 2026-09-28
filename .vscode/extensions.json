@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "astro-build.astro-vscode",
+    "biomejs.biome",
+    "charliermarsh.ruff",
+    "dorzey.vscode-sqlfluff",
+    "esbenp.prettier-vscode",
+    "golang.go",
+    "ms-python.python"
+  ]
+}
