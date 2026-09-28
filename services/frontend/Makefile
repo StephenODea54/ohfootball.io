@@ -7,25 +7,28 @@
 .PHONY: pages
 
 # The directory the build writes the site to.
-OUTPUT ?= .output/public
+OUTPUT ?= dist
 
 # Pages serves an address from the file of the same name with .html added. It serves a directory
 # only when the address ends with a slash, and it sends every other form of the address to the
-# served one with a 308. The router removes the slash at the end of an address, so each page has
-# to be a file such as leaderboard.html and not leaderboard/index.html. autoSubfolderIndex in
-# vite.config.ts sets which of the two the build writes.
+# served one with a 308. So each page has to be a file such as leaderboard.html and not
+# leaderboard/index.html. build.format in astro.config.ts sets which of the two the build writes.
 #
-# Pages answers an address that has no file with the nearest 404.html and the status 404. The site
-# answers such an address with the application, and the application draws the page from the API.
-# A team that did not play the current season is reached this way. So 404.html at the root is a
-# copy of the home page.
+# Pages answers an address that has no file with the nearest 404.html and the status 404. The
+# build writes 404.html at the root from src/pages/404.astro. It is a real not-found page and not
+# a copy of the home page. A team that did not play the current season has no page, so its
+# address gets this page too.
 #
-# A missing file under assets/ is a missing script or stylesheet and not a page. The application
-# in its place would only fail later, so assets/404.html is plain text.
+# A missing file under assets/ is a missing script or stylesheet and not a page, so
+# assets/404.html is plain text.
+#
+# Every page is drawn while the site is built, and the browser never calls the API. So no file of
+# the output may name the API. When GRAPHQL_API_KEY is set, no file may hold the key either. The
+# check prints only the names of such files and never the key.
 pages:
 	@test -f "$(OUTPUT)/index.html" || { \
 		echo "the build wrote no pages to $(OUTPUT)" >&2; \
-		echo "check the prerender settings in vite.config.ts" >&2; \
+		echo "check the output settings in astro.config.ts" >&2; \
 		exit 1; \
 	}
 	@test -d "$(OUTPUT)/assets" || { \
@@ -36,14 +39,35 @@ pages:
 		echo "$(OUTPUT)/_headers is missing. The build copies it from public/_headers." >&2; \
 		exit 1; \
 	}
+	@test -f "$(OUTPUT)/404.html" || { \
+		echo "the build wrote no 404.html. src/pages/404.astro writes it." >&2; \
+		exit 1; \
+	}
+	@if cmp -s "$(OUTPUT)/index.html" "$(OUTPUT)/404.html"; then \
+		echo "404.html is a copy of the home page. src/pages/404.astro writes the real page." >&2; \
+		exit 1; \
+	fi
 	@nested=$$(find "$(OUTPUT)" -mindepth 2 -name index.html); \
 	if [ -n "$$nested" ]; then \
 		echo "these pages are directories, so Pages would redirect each of them:" >&2; \
 		echo "$$nested" >&2; \
-		echo "set autoSubfolderIndex to false in vite.config.ts" >&2; \
+		echo "set build.format to 'file' in astro.config.ts" >&2; \
 		exit 1; \
 	fi
+	@named=$$(grep -rlIiF -e 'api.ohfootball.io' -e graphql "$(OUTPUT)"); \
+	if [ -n "$$named" ]; then \
+		echo "these files name the API, and a browser must not call it:" >&2; \
+		echo "$$named" >&2; \
+		exit 1; \
+	fi
+	@if [ -n "$$GRAPHQL_API_KEY" ]; then \
+		held=$$(grep -rlF -e "$$GRAPHQL_API_KEY" "$(OUTPUT)"); \
+		if [ -n "$$held" ]; then \
+			echo "these files hold the API key:" >&2; \
+			echo "$$held" >&2; \
+			exit 1; \
+		fi; \
+	fi
 	@pages=$$(find "$(OUTPUT)" -name '*.html' ! -name 404.html | wc -l | tr -d ' '); \
-	cp "$(OUTPUT)/index.html" "$(OUTPUT)/404.html" && \
 	printf 'Not found\n' > "$(OUTPUT)/assets/404.html" && \
 	echo "$(OUTPUT) holds $$pages pages and is ready for Pages"

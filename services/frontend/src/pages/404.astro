@@ -1,0 +1,36 @@
+---
+import SiteLayout from '@/layouts/site-layout.astro'
+import { buttonStyles } from '@/components/ui/button'
+import { Container } from '@/components/ui/container'
+import { Heading } from '@/components/ui/heading'
+import { Link } from '@/components/ui/link'
+import { Text } from '@/components/ui/text'
+import { paths } from '@/config/paths'
+---
+
+<SiteLayout
+  title="Page Not Found | ohfootball.io"
+  description="No page has this address."
+  noindex
+>
+  <main>
+    <Container className="max-w-3xl py-16 sm:py-20 lg:py-24">
+      <Heading className="text-4xl/none sm:text-5xl/none">Page Not Found</Heading>
+      <Text className="mt-4 text-base/7 sm:text-lg/8">
+        No page has this address. A school that did not play this season has no page.
+      </Text>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        <Link href={paths.home.getHref()} className={buttonStyles({ intent: 'primary', size: 'lg' })}>
+          Back To Home
+        </Link>
+        <Link
+          href={paths.leaderboard.getHref()}
+          className={buttonStyles({ intent: 'outline', size: 'lg' })}
+        >
+          See The Rankings
+        </Link>
+      </div>
+    </Container>
+  </main>
+</SiteLayout>

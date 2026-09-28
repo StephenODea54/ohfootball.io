@@ -1,6 +1,5 @@
 "use client"
 
-import { useNavigate, useRouterState } from "@tanstack/react-router"
 import {
   Navbar,
   NavbarItem,
@@ -11,11 +10,9 @@ import {
   NavbarSpacer,
   NavbarStart,
 } from "@/components/ui/navbar"
-import { SeasonSelect } from "@/components/season-select"
+import { ThemeProvider } from "@/components/theme/theme-provider"
 import { ThemeSwitcher } from "@/components/theme/theme-switcher"
 import { paths } from "@/config/paths"
-import { useSeasons } from "@/hooks/use-seasons"
-import type { SeasonSearch } from "@/utils/season"
 
 const navItems = [
   { label: "Home", ...paths.home },
@@ -33,16 +30,11 @@ function Wordmark({ className }: { className?: string }) {
   )
 }
 
-export function AppNavbar() {
-  const navigate = useNavigate()
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  })
-  const season = useRouterState({
-    select: (state) => (state.location.search as SeasonSearch).season,
-  })
-  const seasons = useSeasons()
-
+/**
+ * The bar at the top of every page. The page tells it its own address, because each page is drawn
+ * ahead of time and there is no router to ask.
+ */
+export function AppNavbar({ pathname }: { pathname: string }) {
   const navigation = (
     <NavbarSection className="flex flex-row items-center gap-1 sm:gap-2.5">
       {navItems.map((item) => (
@@ -51,7 +43,7 @@ export function AppNavbar() {
             item.path === "/" ? pathname === "/" || pathname.startsWith("/teams/") : pathname === item.path
           }
           key={item.path}
-          href={item.getHref(season)}
+          href={item.getHref()}
         >
           {item.label}
         </NavbarItem>
@@ -59,43 +51,34 @@ export function AppNavbar() {
     </NavbarSection>
   )
 
-  const seasonSelect = (
-    <SeasonSelect
-      className="w-24"
-      onSeasonChange={(nextSeason) =>
-        navigate({ to: ".", search: (previous) => ({ ...previous, season: nextSeason }) })
-      }
-      season={season ?? seasons.at(0)}
-      seasons={seasons}
-    />
-  )
-
-  // The separators group the three controls on the right so they stop reading as one crowded row.
+  // The separator keeps the links apart from the theme switch.
   const controls = (
     <>
       {navigation}
-      <NavbarSeparator className="mx-3" />
-      {seasonSelect}
       <NavbarSeparator className="mx-3" />
       <ThemeSwitcher />
     </>
   )
 
+  // The theme switch is the only part of the site that reads the theme, so the provider lives in
+  // this island.
   return (
-    <NavbarProvider style={{ "--navbar": "var(--color-bg)" } as React.CSSProperties}>
-      <Navbar intent="default" isSticky>
-        <NavbarStart>
-          <Wordmark className="font-semibold" />
-        </NavbarStart>
-        <NavbarSpacer />
-        {controls}
-      </Navbar>
+    <ThemeProvider>
+      <NavbarProvider style={{ "--navbar": "var(--color-bg)" } as React.CSSProperties}>
+        <Navbar intent="default" isSticky>
+          <NavbarStart>
+            <Wordmark className="font-semibold" />
+          </NavbarStart>
+          <NavbarSpacer />
+          {controls}
+        </Navbar>
 
-      <NavbarMobile>
-        <Wordmark className="font-semibold text-sm" />
-        <NavbarSpacer />
-        {controls}
-      </NavbarMobile>
-    </NavbarProvider>
+        <NavbarMobile>
+          <Wordmark className="font-semibold text-sm" />
+          <NavbarSpacer />
+          {controls}
+        </NavbarMobile>
+      </NavbarProvider>
+    </ThemeProvider>
   )
 }

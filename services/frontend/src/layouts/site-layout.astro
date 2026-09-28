@@ -1,0 +1,46 @@
+---
+import '@/styles.css'
+import { AppNavbar } from '@/components/layouts/app-navbar'
+
+interface Props {
+  title: string
+  description: string
+  /** Tells search engines to leave the page out. */
+  noindex?: boolean
+}
+
+const { title, description, noindex = false } = Astro.props
+
+// The build draws each page to a file such as leaderboard.html, and the address it reports can
+// end in .html or /index. The navigation compares the address a visitor sees.
+const pathname = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '/') || '/'
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <!-- Sets the theme before the page is painted, so a dark page does not flash light first. -->
+    <script is:inline>
+      (function () {
+        try {
+          var theme = localStorage.getItem('theme')
+          var dark =
+            theme === 'dark' ||
+            ((!theme || theme === 'system') &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body>
+    <AppNavbar client:idle pathname={pathname} />
+    <slot />
+  </body>
+</html>

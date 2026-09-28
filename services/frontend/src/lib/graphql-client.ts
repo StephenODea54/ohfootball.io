@@ -1,11 +1,9 @@
 /**
- * The single place the front end talks to the API. Every feature goes through this function, so
- * the transport can be swapped without touching the code that asks for data.
+ * The single place the site talks to the API. Only the build and the development server run this
+ * code. No page and no script that a browser loads holds the address of the API or its key.
  */
 
-import { env } from "@/config/env"
-
-const DEFAULT_URL = "http://localhost:8082/graphql"
+import { GRAPHQL_API_KEY, GRAPHQL_URL } from "astro:env/server"
 
 interface GraphQLResponse<T> {
   data?: T
@@ -13,9 +11,13 @@ interface GraphQLResponse<T> {
 }
 
 export async function graphqlRequest<T>(query: string, variables?: object): Promise<T> {
-  const response = await fetch(env.VITE_GRAPHQL_URL ?? DEFAULT_URL, {
+  const headers: Record<string, string> = { "content-type": "application/json" }
+  // The API does not ask for a key yet. The header is sent only when a key is set.
+  if (GRAPHQL_API_KEY) headers.authorization = `Bearer ${GRAPHQL_API_KEY}`
+
+  const response = await fetch(GRAPHQL_URL, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify({ query, variables }),
   })
   if (!response.ok) throw new Error(`GraphQL request failed with status ${response.status}`)

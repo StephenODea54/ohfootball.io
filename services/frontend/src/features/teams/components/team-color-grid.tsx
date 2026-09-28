@@ -2,12 +2,12 @@
 
 import { GridList, GridListItem } from "@/components/ui/grid-list"
 import { teamSwatches } from "@/features/teams/utils/team-colors"
-import type { Team } from "@/types/api"
+import { openTeam } from "@/features/teams/utils/open-team"
+import type { TeamSummary } from "@/types/api"
 
 interface TeamColorGridProps {
   label: string
-  onSelectTeam: (teamId: string) => void
-  teams: Team[]
+  teams: TeamSummary[]
 }
 
 /**
@@ -15,7 +15,7 @@ interface TeamColorGridProps {
  * in two small swatches along the bottom, which is enough to recognize a school without letting
  * seven hundred unrelated colors take over the page.
  */
-export function TeamColorGrid({ label, onSelectTeam, teams }: TeamColorGridProps) {
+export function TeamColorGrid({ label, teams }: TeamColorGridProps) {
   return (
     <GridList
       aria-label={label}
@@ -24,7 +24,7 @@ export function TeamColorGrid({ label, onSelectTeam, teams }: TeamColorGridProps
       items={teams}
       // "grid" tells React Aria the items wrap, so the arrow keys move in two directions.
       layout="grid"
-      onAction={(teamId) => onSelectTeam(String(teamId))}
+      onAction={(teamId) => openTeam(String(teamId))}
       renderEmptyState={() => (
         <p className="col-span-full py-10 text-center text-muted-fg text-sm/6">
           No school matches those filters.

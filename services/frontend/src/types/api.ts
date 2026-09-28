@@ -60,3 +60,6 @@ export interface Team {
   ratingHistory: TeamRating[]
   schedule: Game[]
 }
+
+/** A team as the list of a season returns it, without its rating history and its schedule. */
+export type TeamSummary = Omit<Team, "ratingHistory" | "schedule">

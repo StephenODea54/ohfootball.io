@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import {
   Formula,
   FormulaLine,
@@ -15,20 +14,6 @@ import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/ui/table"
 import { Text, TextLink } from "@/components/ui/text"
-
-export const Route = createFileRoute('/methodology')({
-  head: () => ({
-    meta: [
-      { title: 'Methodology — ohfootball.io' },
-      {
-        name: 'description',
-        content:
-          'The rating model behind ohfootball.io: the update rule, the tuned parameters, and its known limits.',
-      },
-    ],
-  }),
-  component: MethodologyRoute,
-})
 
 const parameters = [
   {
@@ -122,7 +107,8 @@ const limits = [
   },
 ]
 
-function MethodologyRoute() {
+/** The model behind the ratings: the update rule, the tuned parameters, and its known limits. */
+export function MethodologyContent() {
   return (
     <main>
       <Container className="max-w-4xl py-12 sm:py-16 lg:py-20">

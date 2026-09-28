@@ -1,0 +1,67 @@
+---
+import type { GetStaticPaths } from 'astro'
+import { PRERENDER_TEAM_LIMIT } from 'astro:env/server'
+import SiteLayout from '@/layouts/site-layout.astro'
+import { Container } from '@/components/ui/container'
+import { Heading } from '@/components/ui/heading'
+import { Link } from '@/components/ui/link'
+import { paths } from '@/config/paths'
+import { getCurrentSeason } from '@/features/seasons/api/get-current-season'
+import { getTeam } from '@/features/teams/api/get-team'
+import { getTeams } from '@/features/teams/api/get-teams'
+import { RatingHistoryChart } from '@/features/teams/components/rating-history-chart'
+import { TeamHeader } from '@/features/teams/components/team-header'
+import { TeamScheduleTable } from '@/features/teams/components/team-schedule-table'
+
+/**
+ * One page for every team of the current season. A team address holds no season, so a team that
+ * did not play the current season has no page, and Pages answers its address with 404.html.
+ */
+export const getStaticPaths = (async () => {
+  const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
+
+  const ids = [...new Set(teams.map((team) => team.id))]
+  const drawn = PRERENDER_TEAM_LIMIT ? ids.slice(0, PRERENDER_TEAM_LIMIT) : ids
+  return drawn.map((teamId) => ({ params: { teamId }, props: { season } }))
+}) satisfies GetStaticPaths
+
+const { teamId } = Astro.params
+const { season } = Astro.props
+const team = await getTeam(teamId, season)
+
+// The chart is the only part of the page that runs in the browser, so it is sent only the data
+// it draws.
+const history = { season: team.season, rating: team.rating, ratingHistory: team.ratingHistory }
+---
+
+<SiteLayout
+  title={`${team.name} | ohfootball.io`}
+  description={`Ratings, schedule, and game predictions for ${team.name} in ${team.season}.`}
+>
+  <main>
+    <Container className="max-w-6xl py-10 sm:py-14 lg:py-16">
+      <Link
+        href={paths.leaderboard.getHref()}
+        className="inline-flex text-sm/6 text-muted-fg hover:text-fg"
+      >
+        {`← ${team.season} Leaderboard`}
+      </Link>
+
+      <TeamHeader team={team} />
+
+      <section class="mt-10" aria-labelledby="rating-history-heading">
+        <Heading id="rating-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
+          Rating By Season
+        </Heading>
+        <RatingHistoryChart client:visible team={history} />
+      </section>
+
+      <section class="mt-10" aria-labelledby="schedule-heading">
+        <Heading id="schedule-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
+          Schedule
+        </Heading>
+        <TeamScheduleTable team={team} />
+      </section>
+    </Container>
+  </main>
+</SiteLayout>

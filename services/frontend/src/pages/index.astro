@@ -1,0 +1,33 @@
+---
+import SiteLayout from '@/layouts/site-layout.astro'
+import { Container } from '@/components/ui/container'
+import { Heading } from '@/components/ui/heading'
+import { Text } from '@/components/ui/text'
+import { getCurrentSeason } from '@/features/seasons/api/get-current-season'
+import { getTeams } from '@/features/teams/api/get-teams'
+import { LastUpdatedStamp } from '@/features/teams/components/last-updated-stamp'
+import { TeamFinder } from '@/features/teams/components/team-finder'
+import { lastUpdated } from '@/features/teams/utils/format'
+
+const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
+---
+
+<SiteLayout
+  title="ohfootball.io | Ohio High School Football Ratings"
+  description="Look up any Ohio high school football team and see their statistical ratings and game predictions"
+>
+  <main>
+    <Container className="max-w-5xl py-16 sm:py-20 lg:py-24">
+      <Heading className="text-5xl/none sm:text-6xl/none">
+        ohfootball<span class="text-primary">.io</span>
+      </Heading>
+      <Text className="mt-4 text-base/7 sm:text-lg/8">
+        Statistical ratings and game predictions for every Ohio high school football team.
+      </Text>
+
+      <TeamFinder client:load season={season} teams={teams} />
+    </Container>
+
+    <LastUpdatedStamp isoDate={lastUpdated(teams)} />
+  </main>
+</SiteLayout>

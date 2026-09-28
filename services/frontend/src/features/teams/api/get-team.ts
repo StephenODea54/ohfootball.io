@@ -1,9 +1,9 @@
-import { queryOptions } from "@tanstack/react-query"
 import { teamFields } from "@/features/teams/api/team-fields"
 import { graphqlRequest } from "@/lib/graphql-client"
 import type { Team } from "@/types/api"
 
-export async function getTeam(id: string, season?: number): Promise<Team> {
+/** One team in one season, with its rating history and its schedule. */
+export async function getTeam(id: string, season: number): Promise<Team> {
   const data = await graphqlRequest<{ team: Team | null }>(
     `
       query Team($id: ID!, $season: Int) {
@@ -35,13 +35,6 @@ export async function getTeam(id: string, season?: number): Promise<Team> {
     `,
     { id, season },
   )
-  if (!data.team) throw new Error("Team not found")
+  if (!data.team) throw new Error(`the API has no team ${id} in season ${season}`)
   return data.team
-}
-
-export function getTeamQueryOptions(id: string, season?: number) {
-  return queryOptions({
-    queryKey: ["team", id, season] as const,
-    queryFn: () => getTeam(id, season),
-  })
 }

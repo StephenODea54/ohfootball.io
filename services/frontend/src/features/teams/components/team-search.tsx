@@ -9,18 +9,18 @@ import {
   ComboBoxItem,
 } from "@/components/ui/combo-box"
 import { Label } from "@/components/ui/field"
-import type { Team } from "@/types/api"
+import { openTeam } from "@/features/teams/utils/open-team"
+import type { TeamSummary } from "@/types/api"
 
 /** Enough matches to find the right school without rendering the whole state. */
 const MAX_MATCHES = 25
 
 interface TeamSearchProps {
-  onSelectTeam: (teamId: string) => void
-  teams: Team[]
+  teams: TeamSummary[]
 }
 
 /** A name search over every school in the loaded season. */
-export function TeamSearch({ onSelectTeam, teams }: TeamSearchProps) {
+export function TeamSearch({ teams }: TeamSearchProps) {
   const [query, setQuery] = useState("")
 
   // Matching happens here rather than inside the ComboBox so that the list can be ranked by how
@@ -46,7 +46,7 @@ export function TeamSearch({ onSelectTeam, teams }: TeamSearchProps) {
       items={matches}
       onInputChange={setQuery}
       onChange={(teamId) => {
-        if (teamId !== null) onSelectTeam(String(teamId))
+        if (teamId !== null) openTeam(String(teamId))
       }}
     >
       <Label>Find Your School</Label>

@@ -17,7 +17,11 @@ const chartConfig = {
  * A school's rating across the seasons it has played. Ratings are published once per season, so the
  * line is season by season rather than week by week. Seasons after the one being viewed are dropped.
  */
-export function RatingHistoryChart({ team }: { team: Team }) {
+export function RatingHistoryChart({
+  team,
+}: {
+  team: Pick<Team, "season" | "rating" | "ratingHistory">
+}) {
   const rating = team.rating ? Math.round(team.rating.value) : null
   const past = team.ratingHistory.filter((point) => point.season <= team.season)
   const history = past.map((point) => ({

@@ -1,0 +1,31 @@
+---
+import SiteLayout from '@/layouts/site-layout.astro'
+import { Container } from '@/components/ui/container'
+import { Heading } from '@/components/ui/heading'
+import { Text } from '@/components/ui/text'
+import { getCurrentSeason } from '@/features/seasons/api/get-current-season'
+import { getTeams } from '@/features/teams/api/get-teams'
+import { LastUpdatedStamp } from '@/features/teams/components/last-updated-stamp'
+import { LeaderboardTable } from '@/features/teams/components/leaderboard-table'
+import { lastUpdated } from '@/features/teams/utils/format'
+
+const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
+---
+
+<SiteLayout
+  title="Leaderboard | ohfootball.io"
+  description="Ohio high school football schools listed by rating."
+>
+  <main>
+    <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
+      <header class="max-w-4xl">
+        <Heading className="text-4xl/none sm:text-5xl/none">Leaderboard</Heading>
+        <Text className="mt-3 text-base/7 sm:text-base/7">Schools listed by rating.</Text>
+      </header>
+
+      <LeaderboardTable client:load season={season} teams={teams} />
+    </Container>
+
+    <LastUpdatedStamp isoDate={lastUpdated(teams)} />
+  </main>
+</SiteLayout>

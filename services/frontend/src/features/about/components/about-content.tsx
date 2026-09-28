@@ -1,24 +1,10 @@
 import { ArrowRightIcon } from '@heroicons/react/20/solid'
-import { createFileRoute } from '@tanstack/react-router'
 import { buttonStyles } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Heading } from '@/components/ui/heading'
 import { Link } from '@/components/ui/link'
 import { Text, TextLink } from '@/components/ui/text'
 import { paths } from '@/config/paths'
-
-export const Route = createFileRoute('/about')({
-  head: () => ({
-    meta: [
-      { title: 'About — ohfootball.io' },
-      {
-        name: 'description',
-        content: 'What the ratings mean, how to find your school, and when the numbers change.',
-      },
-    ],
-  }),
-  component: AboutRoute,
-})
 
 const questions = [
   {
@@ -47,9 +33,8 @@ const questions = [
   },
 ]
 
-function AboutRoute() {
-  const { season } = Route.useSearch()
-
+/** What the ratings mean, how to find a school, and when the numbers change. */
+export function AboutContent() {
   return (
     <main>
       <Container className="max-w-3xl py-12 sm:py-16 lg:py-20">
@@ -63,13 +48,13 @@ function AboutRoute() {
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href={paths.home.getHref(season)}
+            href={paths.home.getHref()}
             className={buttonStyles({ intent: 'primary', size: 'lg' })}
           >
             Find Your School <ArrowRightIcon />
           </Link>
           <Link
-            href={paths.leaderboard.getHref(season)}
+            href={paths.leaderboard.getHref()}
             className={buttonStyles({ intent: 'outline', size: 'lg' })}
           >
             See The Rankings
@@ -102,7 +87,7 @@ function AboutRoute() {
           </ul>
           <Text className="mt-6 text-sm/6">
             Want the math? Read the{' '}
-            <TextLink href={paths.methodology.getHref(season)}>methodology</TextLink>.
+            <TextLink href={paths.methodology.getHref()}>methodology</TextLink>.
           </Text>
         </section>
       </Container>

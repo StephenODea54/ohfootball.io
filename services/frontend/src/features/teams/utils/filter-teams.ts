@@ -1,4 +1,4 @@
-import type { Team } from "@/types/api"
+import type { TeamSummary } from "@/types/api"
 
 export const ALL_REGIONS = "all"
 export const UNASSIGNED_REGION = "unassigned"
@@ -18,7 +18,7 @@ export const EMPTY_TEAM_FILTERS: TeamFilterState = {
 }
 
 /** Filters teams. The text query matches the school name only, never the city or the mascot. */
-export function filterTeams(teams: Team[], filters: TeamFilterState) {
+export function filterTeams<T extends TeamSummary>(teams: T[], filters: TeamFilterState) {
   const query = filters.query.trim().toLowerCase()
 
   return teams.filter((team) => {

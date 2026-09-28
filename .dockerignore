@@ -12,3 +12,5 @@ coverage.out
 **/.output
 **/.nitro
 **/.vite
+**/.astro
+services/frontend/dist

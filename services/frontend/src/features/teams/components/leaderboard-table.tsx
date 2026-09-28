@@ -14,12 +14,12 @@ import {
   filterTeams,
   type TeamFilterState,
 } from "@/features/teams/utils/filter-teams"
-import type { Team, TeamRating } from "@/types/api"
+import type { TeamRating, TeamSummary } from "@/types/api"
 
-type RatedTeam = Team & { rating: TeamRating }
+type RatedTeam = TeamSummary & { rating: TeamRating }
 
 /** Every rated school for a season, ranked, with the filters that narrow the list. */
-export function LeaderboardTable({ season, teams }: { season: number | undefined; teams: Team[] }) {
+export function LeaderboardTable({ season, teams }: { season: number; teams: TeamSummary[] }) {
   const [filters, setFilters] = useState<TeamFilterState>(EMPTY_TEAM_FILTERS)
   const ratedTeams = useMemo(
     () => filterTeams(teams, filters).filter((team): team is RatedTeam => team.rating !== null),
@@ -42,7 +42,7 @@ export function LeaderboardTable({ season, teams }: { season: number | undefined
       {ratedTeams.length > 0 ? (
         <Card className="mt-8 gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
           <CardContent>
-            <Table aria-label={season ? `${season} Rating Leaderboard` : "Rating Leaderboard"} bleed>
+            <Table aria-label={`${season} Rating Leaderboard`} bleed>
               <TableHeader className="bg-muted/70 text-xs/5 uppercase tracking-wide">
                 <TableColumn isRowHeader className="w-16">Rank</TableColumn>
                 <TableColumn>School</TableColumn>
@@ -64,7 +64,7 @@ export function LeaderboardTable({ season, teams }: { season: number | undefined
                       <TableCell>
                         <div className="py-1">
                           <Link
-                            href={paths.team.getHref(team.id, season)}
+                            href={paths.team.getHref(team.id)}
                             className="font-semibold text-base/6 text-fg hover:text-primary-subtle-fg"
                           >
                             {team.name}
@@ -99,7 +99,7 @@ export function LeaderboardTable({ season, teams }: { season: number | undefined
       ) : (
         <Card className="mt-8 px-5 py-10 text-center shadow-none">
           <p className="font-medium text-fg text-sm/6">No Rated Schools Found</p>
-          <Text className="mt-1">Try another school name, region, division, or season.</Text>
+          <Text className="mt-1">Try another school name, region, or division.</Text>
         </Card>
       )}
     </>

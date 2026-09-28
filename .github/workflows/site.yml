@@ -35,9 +35,12 @@ jobs:
     permissions:
       contents: read
     env:
-      # The build reads this address to learn which pages to draw, and the same value goes into
-      # the script the browser runs.
-      VITE_GRAPHQL_URL: https://api.ohfootball.io/graphql
+      # Only the build reads the API. No page and no script that a browser loads holds its address
+      # or its key, and make pages checks this.
+      GRAPHQL_URL: https://api.ohfootball.io/graphql
+      # The key the API asks for. The secret can stay unset until the API asks for a key.
+      GRAPHQL_API_KEY: ${{ secrets.GRAPHQL_API_KEY }}
+      ASTRO_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
       # The repository root has no package.json. This step reads the pnpm version from the
@@ -56,7 +59,8 @@ jobs:
         working-directory: services/frontend
       - run: pnpm build
         working-directory: services/frontend
-      # Checks that the build wrote the pages in the form Pages serves, and writes the 404 pages.
+      # Checks that the build wrote the pages in the form Pages serves and that no file names the
+      # API or holds its key, and writes the 404 page for assets.
       - run: make pages
         working-directory: services/frontend
       # The project has to exist in Pages before the first run. docs/architecture.md tells how to
@@ -68,7 +72,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4"
           command: >-
-            pages deploy services/frontend/.output/public
+            pages deploy services/frontend/dist
             --project-name=ohfootball
             --branch=main
             --commit-dirty=true

@@ -30,6 +30,7 @@
 !*.mk
 
 # And filetypes
+!*.astro
 !*.conf
 !*.css
 !*.go
@@ -54,3 +55,6 @@ services/analytics/.user.yml
 services/analytics/dbt_packages/
 services/analytics/logs/
 services/analytics/target/
+
+# Astro writes its generated types here
+services/frontend/.astro/

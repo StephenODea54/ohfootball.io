@@ -10,11 +10,11 @@ import {
   UNASSIGNED_REGION,
   type TeamFilterState,
 } from "@/features/teams/utils/filter-teams"
-import type { Team } from "@/types/api"
+import type { TeamSummary } from "@/types/api"
 
 interface FilterSelectProps {
   onChange: (value: string) => void
-  teams: Team[]
+  teams: TeamSummary[]
   value: string
 }
 
@@ -73,7 +73,7 @@ export function DivisionSelect({ onChange, teams, value }: FilterSelectProps) {
 interface TeamFilterControlsProps {
   filters: TeamFilterState
   onChange: (filters: TeamFilterState) => void
-  teams: Team[]
+  teams: TeamSummary[]
 }
 
 export function TeamFilterControls({ filters, onChange, teams }: TeamFilterControlsProps) {

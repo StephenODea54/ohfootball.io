@@ -1,4 +1,4 @@
-import type { Team, TeamRecord } from "@/types/api"
+import type { TeamRecord, TeamSummary } from "@/types/api"
 
 export function formatRecord(record: TeamRecord) {
   return record.ties > 0
@@ -7,7 +7,7 @@ export function formatRecord(record: TeamRecord) {
 }
 
 /** The city, region, and division of a school, joined for one line of text. */
-export function teamMeta(team: Team) {
+export function teamMeta(team: TeamSummary) {
   return [team.city, team.region ? `Region ${team.region}` : null, formatDivision(team.division)]
     .filter(Boolean)
     .join(" · ")
@@ -23,7 +23,7 @@ function toRoman(value: number) {
 }
 
 /** The newest rating date across a set of teams. Returns null when none of them are rated. */
-export function lastUpdated(teams: Team[]) {
+export function lastUpdated(teams: TeamSummary[]) {
   const dates = teams.flatMap((team) => team.rating?.asOf ?? [])
   return dates.length > 0 ? dates.reduce((latest, date) => (date > latest ? date : latest)) : null
 }

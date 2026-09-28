@@ -13,20 +13,19 @@ import {
   ALL_REGIONS,
   filterTeams,
 } from "@/features/teams/utils/filter-teams"
-import type { Team } from "@/types/api"
+import type { TeamSummary } from "@/types/api"
 
 /** How many schools the grid shows before the visitor narrows it by region or division. */
 const UNFILTERED_TILES = 24
 
 interface TeamBrowserProps {
   className?: string
-  onSelectTeam: (teamId: string) => void
-  season: number | undefined
-  teams: Team[]
+  season: number
+  teams: TeamSummary[]
 }
 
 /** A grid of schools with region and division filters above it. */
-export function TeamBrowser({ className, onSelectTeam, season, teams }: TeamBrowserProps) {
+export function TeamBrowser({ className, season, teams }: TeamBrowserProps) {
   const [region, setRegion] = useState(ALL_REGIONS)
   const [division, setDivision] = useState(ALL_DIVISIONS)
 
@@ -48,8 +47,8 @@ export function TeamBrowser({ className, onSelectTeam, season, teams }: TeamBrow
           </Heading>
           <Text className="mt-1 text-sm/6">
             {isFiltered
-              ? `${tiles.length.toLocaleString()} schools${season ? ` in ${season}` : ""}.`
-              : `The ${UNFILTERED_TILES} best schools${season ? ` in ${season}` : ""}. Pick a region or division to see more.`}
+              ? `${tiles.length.toLocaleString()} schools in ${season}.`
+              : `The ${UNFILTERED_TILES} best schools in ${season}. Pick a region or division to see more.`}
           </Text>
         </div>
         <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:grid-cols-[11rem_11rem]">
@@ -61,7 +60,6 @@ export function TeamBrowser({ className, onSelectTeam, season, teams }: TeamBrow
       <div className="mt-6">
         <TeamColorGrid
           label={isFiltered ? "Matching Schools" : "Top Rated Schools"}
-          onSelectTeam={onSelectTeam}
           teams={tiles}
         />
       </div>

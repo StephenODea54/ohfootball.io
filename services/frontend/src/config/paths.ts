@@ -1,32 +1,26 @@
 /**
- * Every route in the site, in one place. A link built here carries the selected season, so a full
- * page load does not lose it. Without a season the link is left plain, and the API answers with
- * the season it considers current.
+ * Every page of the site, in one place. The site shows only the current season, so no address
+ * carries a season.
  */
-
-function withSeason(path: string, season?: number) {
-  return season === undefined ? path : `${path}?season=${season}`
-}
-
 export const paths = {
   home: {
     path: "/",
-    getHref: (season?: number) => withSeason("/", season),
+    getHref: () => "/",
   },
   about: {
     path: "/about",
-    getHref: (season?: number) => withSeason("/about", season),
+    getHref: () => "/about",
   },
   leaderboard: {
     path: "/leaderboard",
-    getHref: (season?: number) => withSeason("/leaderboard", season),
+    getHref: () => "/leaderboard",
   },
   methodology: {
     path: "/methodology",
-    getHref: (season?: number) => withSeason("/methodology", season),
+    getHref: () => "/methodology",
   },
   team: {
-    path: "/teams/$teamId",
-    getHref: (teamId: string, season?: number) => withSeason(`/teams/${teamId}`, season),
+    path: "/teams/[teamId]",
+    getHref: (teamId: string) => `/teams/${teamId}`,
   },
 } as const
