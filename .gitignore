@@ -9,6 +9,7 @@
 *.output
 *.tanstack
 */bin
+**/build/
 *dist
 *node_modules
 
