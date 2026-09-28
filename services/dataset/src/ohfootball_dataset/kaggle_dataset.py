@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 METADATA_FILE = "dataset-metadata.json"
-TITLE = "Ohio High School Football: Games, Teams, and Elo Ratings"
+TITLE = "Ohio High School Football: Games and Elo Ratings"
 LICENSE = "CC0-1.0"
 
 DESCRIPTION = """
@@ -42,6 +42,10 @@ The record covers games played by Ohio teams. An opponent from another state app
 games by state is not a count of Ohio teams.
 """.strip()
 
+# Kaggle refuses to create a dataset whose title or slug is shorter or longer than this. The checks
+# here stop such a name before a request is sent, with a message that names the limit.
+NAME_LENGTH = range(6, 51)
+
 # Kaggle answers a request for a dataset it does not hold with either of these, so either one
 # means the dataset has still to be created.
 _MISSING_STATUSES = frozenset({403, 404})
@@ -52,6 +56,8 @@ def validate_dataset_id(dataset_id: str) -> str:
     parts = dataset_id.split("/") if dataset_id else []
     if len(parts) != 2 or not all(parts):
         raise ValueError(f"a dataset is named owner/slug, not {dataset_id!r}")
+    if len(parts[1]) not in NAME_LENGTH:
+        raise ValueError(f"Kaggle takes a slug of 6 to 50 characters, not {parts[1]!r}")
     return dataset_id
 
 
@@ -65,6 +71,8 @@ def write_metadata(
 ) -> Path:
     """Write the file Kaggle reads the name, the license, and the description from."""
     validate_dataset_id(dataset_id)
+    if len(title) not in NAME_LENGTH:
+        raise ValueError(f"Kaggle takes a title of 6 to 50 characters, not {len(title)}")
     path = Path(directory) / METADATA_FILE
     body = {
         "id": dataset_id,

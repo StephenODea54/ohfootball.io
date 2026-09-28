@@ -13,6 +13,7 @@ from ohfootball_dataset import kaggle_dataset
 from ohfootball_dataset.kaggle_dataset import (
     LICENSE,
     METADATA_FILE,
+    TITLE,
     dataset_exists,
     publish,
     validate_dataset_id,
@@ -80,6 +81,15 @@ class TheDatasetName(unittest.TestCase):
             with self.assertRaises(ValueError, msg=name):
                 validate_dataset_id(name)
 
+    def test_is_refused_when_the_slug_is_too_short_or_too_long_for_kaggle(self) -> None:
+        for slug in ("slug5", "s" * 51):
+            with self.assertRaisesRegex(ValueError, "6 to 50", msg=slug):
+                validate_dataset_id(f"someone/{slug}")
+
+    def test_takes_a_slug_at_either_end_of_the_limit(self) -> None:
+        for slug in ("slug66", "s" * 50):
+            self.assertEqual(validate_dataset_id(f"someone/{slug}"), f"someone/{slug}")
+
 
 class TheMetadata(unittest.TestCase):
     def test_names_the_dataset_the_title_and_the_license(self) -> None:
@@ -111,6 +121,18 @@ class TheMetadata(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(ValueError):
                 write_metadata(directory, "ohfootball")
+
+    def test_has_a_title_that_kaggle_takes(self) -> None:
+        # Kaggle refuses to create a dataset whose title is outside 6 to 50 characters.
+        self.assertGreaterEqual(len(TITLE), 6)
+        self.assertLessEqual(len(TITLE), 50)
+
+    def test_is_refused_for_a_title_that_kaggle_would_refuse(self) -> None:
+        for title in ("Short", "T" * 51):
+            with tempfile.TemporaryDirectory() as directory:
+                with self.assertRaisesRegex(ValueError, "6 to 50", msg=title):
+                    write_metadata(directory, DATASET, title=title)
+                self.assertFalse((Path(directory) / METADATA_FILE).exists())
 
 
 class TheQuestionOfWhetherItExists(unittest.TestCase):
