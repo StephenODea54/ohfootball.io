@@ -16,7 +16,7 @@ dependencies = [
 # is not needed by `publish`, which is what the weekly run calls. Keeping it out of the required
 # set halves the number of packages an image needs to install to publish a rating.
 [project.optional-dependencies]
-tracking = ["mlflow==3.14.0"]
+tracking = ["mlflow==3.16.1"]
 
 [project.scripts]
 ohfootball-elo = "ohfootball_elo.cli:main"
