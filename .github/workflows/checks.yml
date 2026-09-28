@@ -43,7 +43,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          # The images build on Python 3.12, and this file names the same version.
+          python-version-file: .python-version
+      # The versions that the Makefile names for a workstation. pip installs them, because the
+      # runner is used one time.
+      - run: make tools TOOL_INSTALL="pip install"
       - run: make -C services/elo vet
       - run: make -C services/elo test
       - run: make -C services/dataset vet

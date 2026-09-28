@@ -1,10 +1,20 @@
 .PHONY: build test vet fmt hooks db-up db-down db-logs db-migrate db-baseline \
+	tools lint-tools lint lint-go lint-python fmt-go fmt-python \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
 	pipeline pipeline-build pipeline-test postgres-test site-test site-check
 
 DBT := docker compose run --rm dbt
+
+# The versions of the tools that lint and format the Python and the SQL. The hook and CI run these
+# versions. Dependabot does not read them, so raise them by hand.
+RUFF_VERSION := 0.16.9
+SQLFLUFF_VERSION := 4.3.0
+
+# The command that installs a tool. uv keeps each tool in an environment of its own and puts its
+# command in ~/.local/bin. CI sets it to pip install, because the runner is used one time.
+TOOL_INSTALL ?= uv tool install
 
 build:
 	$(MAKE) -C services/scraper build
@@ -27,9 +37,42 @@ vet:
 	$(MAKE) -C services/dataset vet
 	python3 -m compileall -q infra/pipeline/tests infra/postgres services/frontend/tests
 
-fmt:
+# Installs the tools that make lint and make fmt run for the Python and the SQL.
+tools:
+	$(TOOL_INSTALL) ruff==$(RUFF_VERSION)
+	$(TOOL_INSTALL) sqlfluff==$(SQLFLUFF_VERSION)
+
+# Stops with a message when a tool is missing. The fix is one command, so the check does not skip
+# the tool the way site-check skips a machine without pnpm.
+lint-tools:
+	@for tool in ruff sqlfluff; do \
+		command -v $$tool >/dev/null 2>&1 || { \
+			echo "$$tool is not installed. Run: make tools" >&2; exit 1; }; \
+	done
+
+# Checks the format and the lint rules of each language and changes nothing. make fmt fixes what
+# it can.
+lint: lint-go lint-python
+
+lint-go:
+	@unformatted=$$(gofmt -l $$(git ls-files '*.go')); \
+	if [ -n "$$unformatted" ]; then \
+		printf 'These files are not formatted:\n%s\n' "$$unformatted" >&2; exit 1; \
+	fi
+
+lint-python: lint-tools
+	ruff format --check .
+	ruff check .
+
+fmt: fmt-go fmt-python
+
+fmt-go:
 	$(MAKE) -C services/scraper fmt
 	$(MAKE) -C services/api fmt
+
+fmt-python: lint-tools
+	ruff format .
+	ruff check --fix .
 
 hooks:
 	git config core.hooksPath .githooks

@@ -45,6 +45,9 @@
 !*.yaml
 !*.yml
 
+# And files with no extension that a tool reads
+!.python-version
+
 # dbt-generated artifacts
 services/analytics/.user.yml
 services/analytics/dbt_packages/
@@ -56,6 +59,10 @@ services/frontend/.astro/
 
 # Wrangler writes its local state here while it serves the site
 services/frontend/.wrangler/
+
+# What ruff and uv write
+.ruff_cache/
+.venv/
 
 # Files of coding assistants. They stay on the machine and out of the repository.
 .claude/

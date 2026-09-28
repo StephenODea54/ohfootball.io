@@ -4,6 +4,8 @@
 **/__pycache__
 **/*.pyc
 coverage.out
+**/.venv
+**/.ruff_cache
 
 # No image copies the site. On a machine that built it, these directories hold hundreds of
 # megabytes, and each image is built with the repository root as its context, so a build would
