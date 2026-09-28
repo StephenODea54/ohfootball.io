@@ -12,11 +12,13 @@ import {
   exampleContact,
   exampleUserAgent,
   limits,
+  oneLine,
   playgroundHeadersExample,
   playgroundUrl,
   queryLimits,
   ruleErrors,
   schemaFields,
+  topTenQuery,
 } from "@/features/api-docs/api"
 import { CodeBlock } from "@/features/api-docs/components/code-block"
 
@@ -151,6 +153,17 @@ export function ApiDocsContent() {
             </Text>
             <CodeBlock label="A curl command" className="mt-4">
               {curlExample()}
+            </CodeBlock>
+            <Text className="mt-6 text-base/7">
+              This query asks for the ten teams with the highest rating this season, with the
+              record, the division, and the region of each team. Paste it into the playground:
+            </Text>
+            <CodeBlock label="The ten teams with the highest rating" className="mt-4">
+              {topTenQuery}
+            </CodeBlock>
+            <Text className="mt-4 text-base/7">Or send the same query with curl:</Text>
+            <CodeBlock label="A curl command for the ten teams with the highest rating" className="mt-4">
+              {curlExample(oneLine(topTenQuery))}
             </CodeBlock>
           </Section>
 

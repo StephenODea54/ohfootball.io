@@ -14,6 +14,24 @@ export const exampleUserAgent = "my-football-app/1.0 (me@example.com)"
 export const exampleContact = "me@example.com"
 export const exampleQuery = "{ currentSeason }"
 
+/** The ten teams with the highest rating in the current season, with their records. */
+export const topTenQuery = `query TopTen {
+  currentSeason
+  teams(sort: ELO, limit: 10) {
+    name
+    city
+    division
+    region
+    record { wins losses ties }
+    elo { rating rank }
+  }
+}`
+
+/** A query on one line, for a shell command. Each run of white space becomes one space. */
+export function oneLine(query: string): string {
+  return query.replace(/\s+/g, " ").trim()
+}
+
 /**
  * The top-level fields that read only the schema. A query that selects only these fields needs no
  * contact. They must agree with schemaFields in services/api.

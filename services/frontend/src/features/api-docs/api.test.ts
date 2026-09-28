@@ -4,11 +4,13 @@ import {
   curlExample,
   limits,
   errorExample,
+  oneLine,
   playgroundHeadersExample,
   playgroundUrl,
   queryLimits,
   ruleErrors,
   schemaFields,
+  topTenQuery,
 } from "@/features/api-docs/api"
 
 describe("the API page", () => {
@@ -26,6 +28,15 @@ describe("the API page", () => {
         `  -d '{"query":"{ currentSeason }"}'`,
       ].join("\n"),
     )
+  })
+
+  it("asks for the ten teams with the highest rating", () => {
+    expect(topTenQuery).toContain("teams(sort: ELO, limit: 10)")
+    expect(oneLine(topTenQuery)).toBe(
+      "query TopTen { currentSeason teams(sort: ELO, limit: 10) { name city division region record { wins losses ties } elo { rating rank } } }",
+    )
+    // The body of the command holds the query on one line, so JSON writes no escaped line break.
+    expect(curlExample(oneLine(topTenQuery))).not.toContain("\\n")
   })
 
   it("quotes a single quote in the query for the shell", () => {
