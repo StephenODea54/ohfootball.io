@@ -18,75 +18,71 @@ import { formatDayAndMonth } from "@/utils/format"
 /** Every game a school plays in a season, with the prediction made for it. */
 export function TeamScheduleTable({ team }: { team: Pick<Team, "name" | "schedule"> }) {
   return (
-    <>
-      <Card className="gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
-        <CardContent>
-          <Table aria-label={`${team.name} Schedule`} bleed>
-            <TableHeader className="bg-muted/70 text-xs/5 uppercase tracking-wide">
-              <TableColumn isRowHeader>Wk</TableColumn>
-              <TableColumn>Date</TableColumn>
-              <TableColumn>Opponent</TableColumn>
-              <TableColumn>Pred</TableColumn>
-              <TableColumn>Win Probability</TableColumn>
-              <TableColumn className="text-end">Result</TableColumn>
-            </TableHeader>
-            <TableBody items={team.schedule}>
-              {(game) => {
-                const probability = game.prediction
-                  ? Math.round(game.prediction.winProbability * 100)
-                  : null
-                return (
-                  <TableRow id={game.id}>
-                    <TableCell className="font-semibold text-muted-fg">{game.week}</TableCell>
-                    <TableCell className="text-muted-fg">{formatDayAndMonth(game.date)}</TableCell>
-                    <TableCell>
-                      {/* The cell lays its children out with flex, which drops a plain
+    <Card className="gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
+      <CardContent>
+        <Table aria-label={`${team.name} Schedule`} bleed>
+          <TableHeader className="bg-muted/70 text-xs/5 uppercase tracking-wide">
+            <TableColumn isRowHeader>Wk</TableColumn>
+            <TableColumn>Date</TableColumn>
+            <TableColumn>Opponent</TableColumn>
+            <TableColumn>Pred</TableColumn>
+            <TableColumn>Win Probability</TableColumn>
+            <TableColumn className="text-end">Result</TableColumn>
+          </TableHeader>
+          <TableBody items={team.schedule}>
+            {(game) => {
+              const probability = game.prediction
+                ? Math.round(game.prediction.winProbability * 100)
+                : null
+              return (
+                <TableRow id={game.id}>
+                  <TableCell className="font-semibold text-muted-fg">{game.week}</TableCell>
+                  <TableCell className="text-muted-fg">{formatDayAndMonth(game.date)}</TableCell>
+                  <TableCell>
+                    {/* The cell lays its children out with flex, which drops a plain
                           whitespace node, so the gap has to be a margin. */}
-                      <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
-                      <span className="font-medium text-fg">{game.opponentName}</span>
-                    </TableCell>
-                    <TableCell>
-                      {game.prediction ? (
-                        <Badge
-                          intent={game.prediction.predictedResult === "WIN" ? "success" : "danger"}
-                          isCircle={false}
-                          className="text-sm/5 font-semibold"
+                    <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
+                    <span className="font-medium text-fg">{game.opponentName}</span>
+                  </TableCell>
+                  <TableCell>
+                    {game.prediction ? (
+                      <Badge
+                        intent={game.prediction.predictedResult === "WIN" ? "success" : "danger"}
+                        isCircle={false}
+                        className="text-sm/5 font-semibold"
+                      >
+                        {game.prediction.predictedResult === "WIN" ? "W" : "L"}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-fg">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {probability !== null ? (
+                      <div className="flex items-center gap-3">
+                        <ProgressBar
+                          aria-label={`${probability}% win probability`}
+                          value={probability}
+                          className="w-auto"
                         >
-                          {game.prediction.predictedResult === "WIN" ? "W" : "L"}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-fg">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {probability !== null ? (
-                        <div className="flex items-center gap-3">
-                          <ProgressBar
-                            aria-label={`${probability}% win probability`}
-                            value={probability}
-                            className="w-auto"
-                          >
-                            <ProgressBarTrack className="min-w-24 max-w-24 [--progress-content-bg:var(--color-success)]" />
-                          </ProgressBar>
-                          <span className="font-medium text-sm/5 text-muted-fg">
-                            {probability}%
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-fg text-sm/5">Not Rated</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-end">
-                      <GameResult game={game} />
-                    </TableCell>
-                  </TableRow>
-                )
-              }}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </>
+                          <ProgressBarTrack className="min-w-24 max-w-24 [--progress-content-bg:var(--color-success)]" />
+                        </ProgressBar>
+                        <span className="font-medium text-sm/5 text-muted-fg">{probability}%</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-fg text-sm/5">Not Rated</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-end">
+                    <GameResult game={game} />
+                  </TableCell>
+                </TableRow>
+              )
+            }}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   )
 }
 
