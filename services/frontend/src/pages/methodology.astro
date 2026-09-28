@@ -1,11 +1,15 @@
 ---
 import SiteLayout from '@/layouts/site-layout.astro'
 import { MethodologyContent } from '@/features/methodology/components/methodology-content'
+import { ParametersTable } from '@/features/methodology/components/parameters-table'
 ---
 
 <SiteLayout
   title="Methodology | ohfootball.io"
   description="The rating model behind ohfootball.io: the update rule, the tuned parameters, and its known limits."
 >
-  <MethodologyContent />
+  <MethodologyContent>
+    <!-- The table runs in the browser, so its rows can be reached with the arrow keys. -->
+    <ParametersTable client:visible />
+  </MethodologyContent>
 </SiteLayout>

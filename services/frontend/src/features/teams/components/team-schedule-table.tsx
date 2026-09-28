@@ -9,7 +9,7 @@ import { formatDayAndMonth } from "@/utils/format"
 import type { Game, Team } from "@/types/api"
 
 /** Every game a school plays in a season, with the prediction made for it. */
-export function TeamScheduleTable({ team }: { team: Team }) {
+export function TeamScheduleTable({ team }: { team: Pick<Team, "name" | "schedule"> }) {
   return (
     <>
       <Card className="gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">

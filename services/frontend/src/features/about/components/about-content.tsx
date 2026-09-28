@@ -21,7 +21,8 @@ const questions = [
   },
   {
     question: 'When Do Ratings Change?',
-    answer: 'After a game is played and the score is posted, normally on a weekly basis.',
+    answer:
+      'Once a week, every Tuesday morning, Eastern time. A game counts once its score is posted.',
   },
   {
     question: 'Why Is My School Missing?',
@@ -37,28 +38,30 @@ const questions = [
 export function AboutContent() {
   return (
     <main>
-      <Container className="max-w-3xl py-12 sm:py-16 lg:py-20">
-        <Heading className="text-4xl/none sm:text-5xl/none">About</Heading>
-        <Text className="mt-4 text-base/7 sm:text-lg/8">
-          This site is an incredibly nerdy attempt at rating and making predictions
-          for Ohio high school football teams. The ratings and predictions are solely based on historical win and loss
-          results, and predictions are made using a statistical model. The current accuracy
-          of the predictions hover around 80%.
-        </Text>
+      <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
+        <div className="max-w-3xl">
+          <Heading className="text-4xl/none sm:text-5xl/none">About</Heading>
+          <Text className="mt-4 text-base/7 sm:text-lg/8">
+            ohfootball.io is an incredibly nerdy attempt at rating and making predictions
+            for Ohio high school football teams. The ratings and predictions are solely based on historical win and loss
+            results, and predictions are made using a statistical model. The current accuracy
+            of the predictions hover around 80%.
+          </Text>
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href={paths.home.getHref()}
-            className={buttonStyles({ intent: 'primary', size: 'lg' })}
-          >
-            Find Your School <ArrowRightIcon />
-          </Link>
-          <Link
-            href={paths.leaderboard.getHref()}
-            className={buttonStyles({ intent: 'outline', size: 'lg' })}
-          >
-            See The Rankings
-          </Link>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href={paths.home.getHref()}
+              className={buttonStyles({ intent: 'primary', size: 'lg' })}
+            >
+              Find Your School <ArrowRightIcon />
+            </Link>
+            <Link
+              href={paths.leaderboard.getHref()}
+              className={buttonStyles({ intent: 'outline', size: 'lg' })}
+            >
+              See The Rankings
+            </Link>
+          </div>
         </div>
 
         <section className="mt-14" aria-labelledby="questions-heading">
@@ -75,14 +78,38 @@ export function AboutContent() {
           </dl>
         </section>
 
-        <section className="mt-14" aria-labelledby="data-heading">
+        <section className="mt-14 max-w-3xl" aria-labelledby="sources-heading">
+          <Heading id="sources-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+            Where The Data Comes From
+          </Heading>
+          <Text className="mt-4 text-base/7">
+            The scores come from two places.{' '}
+            <TextLink href="https://joeeitel.com/hsfoot/">joeeitel.com</TextLink> has every season
+            from 2000, and <TextLink href="https://ohhsfbdb.net">ohhsfbdb.net</TextLink> has the
+            seasons from 1972 to 1999. Both are awesome, and you should absolutely check them
+            out.
+          </Text>
+          <Text className="mt-3 text-base/7">
+            That is also why only the season in progress is shown here. A page for every old
+            score would turn ohfootball.io into a place to look up past results, and that takes
+            away from those two. So you will find ratings and predictions for the current season
+            only. For earlier seasons, and for the predictions made for them, use the{' '}
+            <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
+          </Text>
+        </section>
+
+        <section className="mt-14 max-w-3xl" aria-labelledby="data-heading">
           <Heading id="data-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
             Data And Code
           </Heading>
           <Text className="mt-4 text-base/7">
-            The code of the site, the API, and the model is on{' '}
+            All of the code, including the API and the model, is on{' '}
             <TextLink href={links.repository}>GitHub</TextLink>. Every game and rating is also
             published each week as a <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
+          </Text>
+          <Text className="mt-3 text-base/7">
+            A public API is in progress. When it is ready, you will be able to sign in, make a key,
+            and read the ratings and predictions from your own code.
           </Text>
           <Text className="mt-3 text-base/7">
             Found a wrong score or a missing school? Please{' '}

@@ -29,9 +29,9 @@ const { teamId } = Astro.params
 const { season } = Astro.props
 const team = await getTeam(teamId, season)
 
-// The chart is the only part of the page that runs in the browser, so it is sent only the data
-// it draws.
+// The chart and the schedule run in the browser, so each is sent only the data it draws.
 const history = { season: team.season, rating: team.rating, ratingHistory: team.ratingHistory }
+const schedule = { name: team.name, schedule: team.schedule }
 ---
 
 <SiteLayout
@@ -60,7 +60,7 @@ const history = { season: team.season, rating: team.rating, ratingHistory: team.
         <Heading id="schedule-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
           Schedule
         </Heading>
-        <TeamScheduleTable team={team} />
+        <TeamScheduleTable client:visible team={schedule} />
       </section>
     </Container>
   </main>
