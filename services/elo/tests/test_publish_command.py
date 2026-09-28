@@ -61,9 +61,7 @@ class PublishCommandTests(unittest.TestCase):
             self.published.append((seasons.pop(), dates.pop(), len(rows)))
             return len(rows)
 
-        arguments = cli.build_parser().parse_args(
-            ["publish", "--as-of-date", as_of.isoformat()]
-        )
+        arguments = cli.build_parser().parse_args(["publish", "--as-of-date", as_of.isoformat()])
         with (
             patch.object(cli, "load_games", return_value=self.games),
             patch.object(cli, "load_team_seasons", fake_team_seasons),
@@ -109,9 +107,7 @@ class PublishCommandTests(unittest.TestCase):
             patch.object(cli, "publish_ratings", return_value=1),
             patch.object(cli, "publish_predictions", return_value=0),
         ):
-            arguments = cli.build_parser().parse_args(
-                ["publish", "--as-of-date", "2026-08-16"]
-            )
+            arguments = cli.build_parser().parse_args(["publish", "--as-of-date", "2026-08-16"])
             with redirect_stdout(io.StringIO()):
                 cli._publish(arguments)
 
@@ -126,14 +122,10 @@ class PublishCommandTests(unittest.TestCase):
     def test_stops_when_no_season_holds_a_team(self) -> None:
         with (
             patch.object(cli, "load_games", return_value=self.games),
-            patch.object(
-                cli, "load_team_seasons", lambda _url, *, season, marts_schema: ()
-            ),
+            patch.object(cli, "load_team_seasons", lambda _url, *, season, marts_schema: ()),
             patch.object(cli, "publish_predictions", return_value=0),
         ):
-            arguments = cli.build_parser().parse_args(
-                ["publish", "--as-of-date", "2026-08-16"]
-            )
+            arguments = cli.build_parser().parse_args(["publish", "--as-of-date", "2026-08-16"])
             with self.assertRaises(SystemExit):
                 cli._publish(arguments)
 

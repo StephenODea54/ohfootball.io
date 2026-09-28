@@ -129,9 +129,7 @@ def publish_ratings(
                 """
             ) as copy:
                 for row in rows:
-                    copy.write_row(
-                        (row.team_key, row.season, row.as_of_date, row.rating)
-                    )
+                    copy.write_row((row.team_key, row.season, row.as_of_date, row.rating))
 
             cursor.execute(
                 f"DELETE FROM {target} WHERE season = %s AND as_of_date = %s",
@@ -176,8 +174,7 @@ def publish_predictions(
     if len({row.game_key for row in rows}) != len(rows):
         raise ValueError("a publication cannot contain duplicate games")
     if any(
-        not math.isfinite(row.team_a_rating) or not math.isfinite(row.team_b_rating)
-        for row in rows
+        not math.isfinite(row.team_a_rating) or not math.isfinite(row.team_b_rating) for row in rows
     ):
         raise ValueError("ratings must be finite")
     if any(not 0.0 < row.team_a_win_probability < 1.0 for row in rows):

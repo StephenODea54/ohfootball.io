@@ -161,9 +161,7 @@ def _run(arguments: argparse.Namespace) -> None:
         raise SystemExit(f"no completed games exist before {arguments.as_of_date}")
 
     upcoming_games = tuple(
-        game
-        for game in games
-        if game.is_scheduled and game.game_date >= arguments.as_of_date
+        game for game in games if game.is_scheduled and game.game_date >= arguments.as_of_date
     )
     result = backtest(training_games, config)
     upcoming_predictions = predict(
@@ -207,9 +205,7 @@ def _sweep(arguments: argparse.Namespace) -> None:
     if tuning_end >= validation_start:
         raise SystemExit("tuning seasons must end before validation seasons begin")
 
-    experiment_games = tuple(
-        game for game in completed_games if game.season <= validation_end
-    )
+    experiment_games = tuple(game for game in completed_games if game.season <= validation_end)
     summaries = []
     for value in arguments.values:
         parameter_value: float | int = value
@@ -302,9 +298,7 @@ def _publish(arguments: argparse.Namespace) -> None:
                 team_key=team.team_key,
                 season=season,
                 as_of_date=(
-                    arguments.as_of_date
-                    if season >= current_season
-                    else date(season, 12, 31)
+                    arguments.as_of_date if season >= current_season else date(season, 12, 31)
                 ),
                 rating=result.ratings.get(
                     (season, team.team_key),
@@ -378,9 +372,7 @@ def _config(arguments: argparse.Namespace) -> EloConfig:
 
 
 def _completed_games(games: Iterable[Game], as_of_date: date) -> tuple[Game, ...]:
-    return tuple(
-        game for game in games if game.is_rateable and game.game_date < as_of_date
-    )
+    return tuple(game for game in games if game.is_rateable and game.game_date < as_of_date)
 
 
 def _prediction_window(
@@ -389,9 +381,7 @@ def _prediction_window(
     last_season: int,
 ) -> tuple[Prediction, ...]:
     return tuple(
-        prediction
-        for prediction in predictions
-        if first_season <= prediction.season <= last_season
+        prediction for prediction in predictions if first_season <= prediction.season <= last_season
     )
 
 

@@ -31,7 +31,7 @@ class FakeCopy:
     def __init__(self, blocks: list[bytes]) -> None:
         self.blocks = blocks
 
-    def __enter__(self) -> "FakeCopy":
+    def __enter__(self) -> FakeCopy:
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -48,7 +48,7 @@ class FakeCursor:
         self.counted: list[str] = []
         self._pending = 0
 
-    def __enter__(self) -> "FakeCursor":
+    def __enter__(self) -> FakeCursor:
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -60,7 +60,7 @@ class FakeCursor:
         header = ",".join(_mart(name).column_names).encode()
         return FakeCopy([header + b"\n", b"one,row\n"])
 
-    def execute(self, statement: str) -> "FakeCursor":
+    def execute(self, statement: str) -> FakeCursor:
         self.counted.append(statement)
         self._pending = self.rows[self._mart_of(statement)]
         return self
@@ -81,7 +81,7 @@ class FakeConnection:
     def __init__(self, cursor: FakeCursor) -> None:
         self._cursor = cursor
 
-    def __enter__(self) -> "FakeConnection":
+    def __enter__(self) -> FakeConnection:
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -248,7 +248,9 @@ class TheExport(unittest.TestCase):
                     marts=(_mart("dim_dates"),),
                 )
             self.assertEqual(counts, {"dim_dates": 7})
-            self.assertEqual(sorted(path.name for path in Path(directory).iterdir()), ["dim_dates.csv"])
+            self.assertEqual(
+                sorted(path.name for path in Path(directory).iterdir()), ["dim_dates.csv"]
+            )
 
     def test_refuses_a_directory_that_does_not_exist(self) -> None:
         with self.assertRaises(ValueError):

@@ -28,9 +28,7 @@ class Evaluation:
 
 def evaluate(predictions: Iterable[Prediction]) -> Evaluation:
     scored = tuple(
-        prediction
-        for prediction in predictions
-        if prediction.actual_team_a_score is not None
+        prediction for prediction in predictions if prediction.actual_team_a_score is not None
     )
     if not scored:
         raise ValueError("at least one completed prediction is required")

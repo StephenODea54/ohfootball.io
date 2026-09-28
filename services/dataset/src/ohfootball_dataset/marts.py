@@ -16,9 +16,10 @@ description.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 _IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
 

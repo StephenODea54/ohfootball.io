@@ -163,9 +163,7 @@ def backtest(games: Iterable[Game], config: EloConfig) -> BacktestResult:
             daily_game_counts[team_b] += 1
 
         for team, change in rating_changes.items():
-            starting_rating = (
-                ratings[team] if team in ratings else daily_start_ratings[team]
-            )
+            starting_rating = ratings[team] if team in ratings else daily_start_ratings[team]
             ratings[team] = starting_rating + change
             program_ratings[daily_programs[team]] = (team[0], ratings[team])
         for team, count in daily_game_counts.items():
@@ -245,11 +243,7 @@ def rating_update_multiplier(
         team_b_games_played,
         config,
     )
-    if (
-        config.margin_weight == 0
-        or game.team_a_score is None
-        or game.team_b_score is None
-    ):
+    if config.margin_weight == 0 or game.team_a_score is None or game.team_b_score is None:
         return multiplier
     margin = abs(game.team_a_score - game.team_b_score)
     margin_multiplier = min(
@@ -327,9 +321,7 @@ def initial_team_rating(
     same amount as a program that played last season.
     """
     division_adjustment = (
-        config.division_rating_step * (4 - division)
-        if division is not None
-        else 0.0
+        config.division_rating_step * (4 - division) if division is not None else 0.0
     )
     prior_rating = config.initial_rating + division_adjustment
     previous = program_ratings.get(program_id)

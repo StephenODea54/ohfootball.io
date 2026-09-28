@@ -77,6 +77,4 @@ def chronological(games: Iterable[Game]) -> tuple[Game, ...]:
     The season comes first in the sort key. A season must be complete before
     the next season starts, because a rating carries forward between seasons.
     """
-    return tuple(
-        sorted(games, key=lambda game: (game.season, game.game_date, game.game_key))
-    )
+    return tuple(sorted(games, key=lambda game: (game.season, game.game_date, game.game_key)))

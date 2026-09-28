@@ -22,16 +22,11 @@ NAME = re.compile(r"^(?P<number>\d{3})_[a-z0-9_]+\.(?P<kind>up|down|repeat)\.sql
 # even to a comment, stops the next deploy. Write a new migration instead. Add the digest of a new
 # migration here when it is committed.
 APPLIED = {
-    "001_raw_scrape.up.sql":
-        "72641268cfbc1bf2af3fc7db4701f20ecb85bb5e736c08a26c22306935f97ee7",
-    "002_team_elo_ratings.up.sql":
-        "90c189435595fdfa60e473db26d641dd25d1c01b007c20c48771f250bd34edce",
-    "003_game_predictions.up.sql":
-        "388ac82fcb1989e838a4df8ae1cb290f1ded0bad65c4ddd7f52770a3b233ba6e",
-    "004_ohhsfbdb_raw.up.sql":
-        "b170fc946ac766aae841bb7df350ae2d73b08492aab504c3230403819077b35f",
-    "005_ratings_cover_every_season.up.sql":
-        "8b72e04c70ea352f7d12a11a8ef45c25ff6cee9901efb45ce72a9fc0e22dfdd9",
+    "001_raw_scrape.up.sql": "72641268cfbc1bf2af3fc7db4701f20ecb85bb5e736c08a26c22306935f97ee7",
+    "002_team_elo_ratings.up.sql": "90c189435595fdfa60e473db26d641dd25d1c01b007c20c48771f250bd34edce",
+    "003_game_predictions.up.sql": "388ac82fcb1989e838a4df8ae1cb290f1ded0bad65c4ddd7f52770a3b233ba6e",
+    "004_ohhsfbdb_raw.up.sql": "b170fc946ac766aae841bb7df350ae2d73b08492aab504c3230403819077b35f",
+    "005_ratings_cover_every_season.up.sql": "8b72e04c70ea352f7d12a11a8ef45c25ff6cee9901efb45ce72a9fc0e22dfdd9",
 }
 
 

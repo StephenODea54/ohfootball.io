@@ -524,9 +524,7 @@ class TheReadBack(unittest.TestCase):
         files = {file["name"]: file for file in stored["data"]}  # type: ignore[union-attr]
         del files["dim_teams.csv"]["description"]
         files["dim_dates.csv"]["columns"] = [
-            column
-            for column in files["dim_dates.csv"]["columns"]
-            if column["name"] != "is_weekend"
+            column for column in files["dim_dates.csv"]["columns"] if column["name"] != "is_weekend"
         ]
         files["fct_games.csv"]["columns"][-1]["description"] = ""
         stored["data"] = [f for f in stored["data"] if f["name"] != "fct_game_predictions.csv"]

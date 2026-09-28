@@ -99,9 +99,7 @@ class ThePublishCommand(unittest.TestCase):
         with mock.patch.object(cli, "export_marts", fake_export):
             with mock.patch.object(cli, "write_metadata", fake_metadata):
                 with mock.patch.object(cli, "publish", fake_publish):
-                    body = _run(
-                        ["publish", "--dataset", DATASET, "--as-of-date", "2026-08-19"]
-                    )
+                    body = _run(["publish", "--dataset", DATASET, "--as-of-date", "2026-08-19"])
 
         self.assertEqual(body["action"], "versioned")
         self.assertEqual(body["metadata"], "updated")
@@ -126,10 +124,13 @@ class ThePublishCommand(unittest.TestCase):
                 with mock.patch.object(
                     cli,
                     "publish",
-                    lambda *_a, version_notes: notes.append(version_notes)
-                    or Publication("created", "not ready"),
+                    lambda *_a, version_notes: (
+                        notes.append(version_notes) or Publication("created", "not ready")
+                    ),
                 ):
-                    with mock.patch.object(cli, "_today_in_project_time_zone", lambda: date(2026, 9, 1)):
+                    with mock.patch.object(
+                        cli, "_today_in_project_time_zone", lambda: date(2026, 9, 1)
+                    ):
                         body = _run(["publish", "--dataset", DATASET])
         self.assertEqual(notes, ["marts as of 2026-09-01"])
         self.assertEqual(body["as_of_date"], "2026-09-01")

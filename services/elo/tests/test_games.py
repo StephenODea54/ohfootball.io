@@ -1,5 +1,5 @@
-from datetime import date
 import unittest
+from datetime import date
 
 from ohfootball_elo.games import Game, chronological
 

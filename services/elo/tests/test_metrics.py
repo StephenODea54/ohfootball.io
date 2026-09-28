@@ -1,5 +1,5 @@
-from datetime import date
 import unittest
+from datetime import date
 
 from ohfootball_elo.elo import Prediction
 from ohfootball_elo.metrics import evaluate

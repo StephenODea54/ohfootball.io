@@ -1,5 +1,5 @@
-from datetime import date
 import unittest
+from datetime import date
 
 from ohfootball_elo.elo import (
     EloConfig,
@@ -98,9 +98,7 @@ class BacktestTests(unittest.TestCase):
         rating_after_the_win = 1516.0
         self.assertLess(result.ratings[(2025, "a")], rating_after_the_win)
         self.assertGreater(result.ratings[(2025, "a")], 1500.0)
-        self.assertAlmostEqual(
-            result.ratings[(2025, "a")] + result.ratings[(2025, "b")], 3000.0
-        )
+        self.assertAlmostEqual(result.ratings[(2025, "a")] + result.ratings[(2025, "b")], 3000.0)
 
     def test_a_forfeit_does_not_change_a_rating(self) -> None:
         result = backtest(
@@ -248,9 +246,7 @@ class BacktestTests(unittest.TestCase):
 
         # The program played in division 1 in 2020 and returns in division 7.
         # It finished 2020 at 1546 and the division 7 prior is 1470.
-        rating = self._returning_program_rating(
-            2024, config, first_division=1, return_division=7
-        )
+        rating = self._returning_program_rating(2024, config, first_division=1, return_division=7)
 
         self.assertEqual(rating, 1508.0)
 
