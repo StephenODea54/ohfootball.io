@@ -17,5 +17,5 @@ The core local stack includes the API:
 docker compose up -d --build --wait
 ```
 
-Set `CORS_ORIGIN` before starting Compose if the frontend is not running at
-`http://localhost:3000`.
+`CORS_ORIGIN` names the one origin whose pages may read the API from a browser.
+The site does not need it, because only the build of the site reads the API.

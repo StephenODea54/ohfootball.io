@@ -9,8 +9,6 @@ coverage.out
 # megabytes, and each image is built with the repository root as its context, so a build would
 # send them to Docker for nothing.
 **/node_modules
-**/.output
-**/.nitro
 **/.vite
 **/.astro
 services/frontend/dist
