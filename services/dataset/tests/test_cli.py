@@ -10,6 +10,7 @@ from datetime import date
 from unittest import mock
 
 from ohfootball_dataset import cli
+from ohfootball_dataset.kaggle_dataset import Publication
 
 DATASET = "someone/ohfootball-high-school-football"
 ROWS = {"dim_teams": 3, "dim_dates": 4, "fct_games": 5}
@@ -88,10 +89,10 @@ class ThePublishCommand(unittest.TestCase):
             seen["metadata_dataset"] = dataset_id
             return f"{directory}/dataset-metadata.json"
 
-        def fake_publish(directory: str, dataset_id: str, *, version_notes: str) -> str:
+        def fake_publish(directory: str, dataset_id: str, *, version_notes: str) -> Publication:
             seen["publish_directory"] = directory
             seen["notes"] = version_notes
-            return "versioned"
+            return Publication("versioned", "updated", ("hsfb",))
 
         with mock.patch.object(cli, "export_marts", fake_export):
             with mock.patch.object(cli, "write_metadata", fake_metadata):
@@ -101,6 +102,8 @@ class ThePublishCommand(unittest.TestCase):
                     )
 
         self.assertEqual(body["action"], "versioned")
+        self.assertEqual(body["metadata"], "updated")
+        self.assertEqual(body["invalid_tags"], ["hsfb"])
         self.assertEqual(body["as_of_date"], "2026-08-19")
         self.assertEqual(body["dataset"], DATASET)
         self.assertEqual(body["rows"], ROWS)
@@ -118,7 +121,8 @@ class ThePublishCommand(unittest.TestCase):
                 with mock.patch.object(
                     cli,
                     "publish",
-                    lambda *_a, version_notes: notes.append(version_notes) or "created",
+                    lambda *_a, version_notes: notes.append(version_notes)
+                    or Publication("created", "not ready"),
                 ):
                     with mock.patch.object(cli, "_today_in_project_time_zone", lambda: date(2026, 9, 1)):
                         body = _run(["publish", "--dataset", DATASET])

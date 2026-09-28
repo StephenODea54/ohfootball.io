@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 import tempfile
 import types
@@ -12,6 +13,16 @@ from unittest import mock
 from ohfootball_dataset.marts import MARTS, Column, Mart, export_marts
 
 SCHEMA = "ohfootball_marts"
+
+# A word with an underscore in it is taken as the name of a column or of a file.
+_NAME = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+
+
+def unpublished_names(text: str) -> list[str]:
+    """The names of columns and files in a text that the dataset does not publish."""
+    published = {mart.name for mart in MARTS}
+    published.update(name for mart in MARTS for name in mart.column_names)
+    return [name for name in _NAME.findall(text) if name not in published]
 
 
 class FakeCopy:
@@ -113,6 +124,19 @@ class ThePublishedSet(unittest.TestCase):
         for mart in MARTS:
             for name in ("valid_from", "valid_to", "is_current", "calculated_at"):
                 self.assertNotIn(name, mart.column_names, mart.name)
+
+    def test_describes_every_file_and_every_column(self) -> None:
+        for mart in MARTS:
+            self.assertTrue(mart.description.strip(), mart.name)
+            for column in mart.columns:
+                self.assertTrue(column.description.strip(), f"{mart.name}.{column.name}")
+
+    def test_names_no_column_or_file_in_a_description_that_is_not_published(self) -> None:
+        for mart in MARTS:
+            texts = [mart.description, *(column.description for column in mart.columns)]
+            for text in texts:
+                for name in unpublished_names(text):
+                    self.fail(f"{mart.name} names {name!r}, which is not published")
 
     def test_writes_every_key_date_and_flag_as_text_a_reader_can_use(self) -> None:
         # A date key is a whole number of the form YYYYMMDD and is published as it stands. The

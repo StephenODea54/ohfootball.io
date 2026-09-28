@@ -26,6 +26,7 @@ class Column:
 
     name: str
     expression: str | None = None
+    description: str = ""
 
     def select(self) -> str:
         if not _IDENTIFIER.fullmatch(self.name):
@@ -41,6 +42,7 @@ class Mart:
     columns: tuple[Column, ...]
     order_by: tuple[str, ...]
     current_only: bool = False
+    description: str = ""
 
     @property
     def file_name(self) -> str:
@@ -92,85 +94,267 @@ class Mart:
 
 
 # The published set. A file is added here and nowhere else.
+#
+# The descriptions are the text that Kaggle shows for each file and each column. They are kept
+# next to the columns, so a column cannot be published without one.
 MARTS: tuple[Mart, ...] = (
     Mart(
         name="dim_teams",
+        description=(
+            "One row per team per season, with the name, place, division, region, and colors of "
+            "the team. A team from another state is here too, with its own state_code."
+        ),
         columns=(
-            Column("team_key", "team_key::text"),
-            Column("season"),
-            Column("source_id"),
-            Column("name"),
-            Column("mascot"),
-            Column("city"),
-            Column("state_code"),
-            Column("county"),
-            Column("division"),
-            Column("region"),
-            Column("primary_color_hex"),
-            Column("secondary_color_hex"),
+            Column(
+                "team_key",
+                "team_key::text",
+                "The key of the team in one season, as a UUID. A school has a different key in "
+                "each season. The other files refer to a team by this key.",
+            ),
+            Column("season", description="The year of the season, for example 2025."),
+            Column(
+                "source_id",
+                description=(
+                    "The identifier that joeeitel.com gives the school. It is the same in every "
+                    "season, so it links the seasons of one school. A school that closed before "
+                    "that site began has an identifier that starts with ohhsfbdb:."
+                ),
+            ),
+            Column("name", description="The name of the school."),
+            Column(
+                "mascot",
+                description="The nickname of the team. Empty when the source does not state it.",
+            ),
+            Column(
+                "city",
+                description="The city of the school. Empty when the source does not state it.",
+            ),
+            Column(
+                "state_code",
+                description=(
+                    "The two-letter postal code of the state or province of the school, OH for "
+                    "Ohio. Empty when the source does not state it."
+                ),
+            ),
+            Column(
+                "county",
+                description="The county of the school. Empty when the source does not state it.",
+            ),
+            Column(
+                "division",
+                description=(
+                    "The OHSAA division of the team in that season, as a whole number. Division 1 "
+                    "holds the largest schools. Empty when the source does not state it."
+                ),
+            ),
+            Column(
+                "region",
+                description=(
+                    "The OHSAA playoff region of the team in that season, as a whole number. "
+                    "Empty when the source does not state it."
+                ),
+            ),
+            Column(
+                "primary_color_hex",
+                description=(
+                    "The first color of the school, as a hexadecimal color code. Empty when the "
+                    "source does not state it."
+                ),
+            ),
+            Column(
+                "secondary_color_hex",
+                description=(
+                    "The second color of the school, as a hexadecimal color code. Empty when the "
+                    "source does not state it."
+                ),
+            ),
         ),
         order_by=("season", "team_key"),
         current_only=True,
     ),
     Mart(
         name="dim_dates",
+        description=(
+            "One row per day, from the date of the first game in the record to the date of the "
+            "last. fct_games refers to a day by date_key."
+        ),
         columns=(
-            Column("date_key"),
-            Column("date_day", "date_day::text"),
-            Column("iso_year"),
-            Column("iso_week"),
-            Column("calendar_year"),
-            Column("calendar_quarter"),
-            Column("month_number"),
-            Column("month_name"),
-            Column("day_of_month"),
-            Column("iso_day_of_week"),
-            Column("day_name"),
-            Column("is_weekend", "is_weekend::int"),
+            Column(
+                "date_key",
+                description="The date as a whole number, YYYYMMDD, for example 20250829.",
+            ),
+            Column("date_day", "date_day::text", "The date, as YYYY-MM-DD."),
+            Column(
+                "iso_year",
+                description=(
+                    "The ISO 8601 year of the date. In the first and last days of a year it can "
+                    "differ from calendar_year."
+                ),
+            ),
+            Column("iso_week", description="The ISO 8601 week of the year, from 1 to 53."),
+            Column("calendar_year", description="The calendar year of the date."),
+            Column("calendar_quarter", description="The quarter of the year, from 1 to 4."),
+            Column("month_number", description="The month of the year, from 1 to 12."),
+            Column("month_name", description="The English name of the month, for example August."),
+            Column("day_of_month", description="The day of the month, from 1 to 31."),
+            Column(
+                "iso_day_of_week",
+                description="The ISO 8601 day of the week, from 1 for Monday to 7 for Sunday.",
+            ),
+            Column("day_name", description="The English name of the day, for example Friday."),
+            Column(
+                "is_weekend",
+                "is_weekend::int",
+                "1 when the date is a Saturday or a Sunday, and 0 when it is not.",
+            ),
         ),
         order_by=("date_key",),
     ),
     Mart(
         name="fct_games",
+        description=(
+            "One row per game, with both scores, both results, and the home side. A game is here "
+            "one time, not one time for each team."
+        ),
         columns=(
-            Column("game_key", "game_key::text"),
-            Column("season"),
-            Column("game_date_key"),
-            Column("team_a_key", "team_a_key::text"),
-            Column("team_b_key", "team_b_key::text"),
-            Column("team_a_score"),
-            Column("team_b_score"),
-            Column("team_a_result"),
-            Column("team_b_result"),
-            Column("is_team_a_home", "is_team_a_home::int"),
-            Column("is_team_b_home", "is_team_b_home::int"),
-            Column("is_playoff_game", "is_playoff_game::int"),
-            Column("notes"),
+            Column(
+                "game_key",
+                "game_key::text",
+                "The key of the game, as a UUID. It is made from the season, the date, and the two "
+                "teams.",
+            ),
+            Column("season", description="The year of the season, for example 2025."),
+            Column(
+                "game_date_key",
+                description="The date of the game, as YYYYMMDD. It matches date_key in dim_dates.",
+            ),
+            Column(
+                "team_a_key",
+                "team_a_key::text",
+                "The team_key of team A. Team A is the team whose source_id sorts first. It is not "
+                "always the home team or the winner.",
+            ),
+            Column(
+                "team_b_key",
+                "team_b_key::text",
+                "The team_key of team B, the other team in the game.",
+            ),
+            Column(
+                "team_a_score",
+                description=(
+                    "The points of team A. Empty for a canceled game, a forfeit, or a game with "
+                    "no score in the source."
+                ),
+            ),
+            Column(
+                "team_b_score",
+                description=(
+                    "The points of team B. Empty for a canceled game, a forfeit, or a game with "
+                    "no score in the source."
+                ),
+            ),
+            Column(
+                "team_a_result",
+                description=(
+                    "The result for team A. W is a win, L is a loss, T is a tie, and C is a "
+                    "canceled game. unknown means the source does not state the result."
+                ),
+            ),
+            Column(
+                "team_b_result",
+                description=(
+                    "The result for team B, with the same codes as team_a_result. After a double "
+                    "forfeit both teams have L."
+                ),
+            ),
+            Column(
+                "is_team_a_home",
+                "is_team_a_home::int",
+                "1 when team A played at home, and 0 when it did not. A game on neither ground "
+                "has 0 for both teams.",
+            ),
+            Column(
+                "is_team_b_home",
+                "is_team_b_home::int",
+                "1 when team B played at home, and 0 when it did not. A game on neither ground "
+                "has 0 for both teams.",
+            ),
+            Column(
+                "is_playoff_game",
+                "is_playoff_game::int",
+                "1 for an OHSAA playoff game, and 0 for a regular season game.",
+            ),
+            Column(
+                "notes",
+                description=(
+                    "A note from the source in lower case, for example overtime, forfeit, double "
+                    "forfeit, or canceled. Empty for most games."
+                ),
+            ),
         ),
         order_by=("season", "game_date_key", "game_key"),
         current_only=True,
     ),
     Mart(
         name="fct_team_elo_ratings",
+        description=(
+            "The Elo rating of each Ohio team, taken on a date in each season. A rating counts "
+            "the games before that date and no game on it."
+        ),
         columns=(
-            Column("team_key", "team_key::text"),
-            Column("season"),
-            Column("as_of_date", "as_of_date::text"),
-            Column("elo_rating"),
+            Column(
+                "team_key",
+                "team_key::text",
+                "The team_key of the team. It matches team_key in dim_teams.",
+            ),
+            Column("season", description="The year of the season, for example 2025."),
+            Column(
+                "as_of_date",
+                "as_of_date::text",
+                "The date the rating was taken, as YYYY-MM-DD. The rating counts the games before "
+                "this date and no game on it.",
+            ),
+            Column(
+                "elo_rating",
+                description="The Elo rating of the team. A higher rating is a stronger team.",
+            ),
         ),
         order_by=("season", "as_of_date", "team_key"),
     ),
     Mart(
         name="fct_game_predictions",
+        description=(
+            "One prediction for each completed game between two Ohio teams. It holds the rating "
+            "each team carried into the game and the win probability read from those ratings."
+        ),
         columns=(
-            Column("game_key", "game_key::text"),
-            Column("season"),
-            Column("game_date", "game_date::text"),
-            Column("team_a_key", "team_a_key::text"),
-            Column("team_b_key", "team_b_key::text"),
-            Column("team_a_rating"),
-            Column("team_b_rating"),
-            Column("team_a_win_probability"),
+            Column(
+                "game_key",
+                "game_key::text",
+                "The game_key of the game. It matches game_key in fct_games.",
+            ),
+            Column("season", description="The year of the season, for example 2025."),
+            Column("game_date", "game_date::text", "The date of the game, as YYYY-MM-DD."),
+            Column(
+                "team_a_key",
+                "team_a_key::text",
+                "The team_key of team A. It is the same team A as in fct_games.",
+            ),
+            Column(
+                "team_b_key",
+                "team_b_key::text",
+                "The team_key of team B. It is the same team B as in fct_games.",
+            ),
+            Column("team_a_rating", description="The Elo rating team A carried into the game."),
+            Column("team_b_rating", description="The Elo rating team B carried into the game."),
+            Column(
+                "team_a_win_probability",
+                description=(
+                    "The probability that team A wins, from 0 to 1, calculated before the game. "
+                    "The rating model can add an advantage for the home team, so this can differ "
+                    "from a probability read from the two ratings alone."
+                ),
+            ),
         ),
         order_by=("season", "game_date", "game_key"),
     ),

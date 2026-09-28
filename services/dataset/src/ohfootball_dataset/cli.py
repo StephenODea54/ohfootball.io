@@ -81,7 +81,7 @@ def _publish(arguments: argparse.Namespace) -> None:
         if not any(counts.values()):
             raise SystemExit("the marts hold no rows, so nothing was published")
         write_metadata(directory, arguments.dataset)
-        action = publish(
+        publication = publish(
             directory,
             arguments.dataset,
             version_notes=f"marts as of {as_of_date.isoformat()}",
@@ -90,10 +90,12 @@ def _publish(arguments: argparse.Namespace) -> None:
     print(
         json.dumps(
             {
-                "action": action,
+                "action": publication.action,
                 "as_of_date": as_of_date.isoformat(),
                 "dataset": arguments.dataset,
                 "files": len(MARTS),
+                "invalid_tags": list(publication.invalid_tags),
+                "metadata": publication.metadata,
                 "rows": counts,
             },
             indent=2,

@@ -19,6 +19,10 @@ One CSV file per mart, current rows only, keys and dates as text and flags as 0 
 is read from that one file. The casts match the ones the API snapshot uses, so a reader of the
 dataset and a reader of the site see the same values.
 
+`marts.py` also holds the description of each file and of each column. Kaggle shows that text next
+to the data. A column cannot be added without a description, because the tests fail for a column
+that has none and for a description that names a column the dataset does not publish.
+
 Two of the marts keep a version of every observation. The dataset carries the current version only
 and drops `valid_from`, `valid_to`, and `is_current`, because a reader wants the record of a game
 rather than the record of the scrapes that found it.
@@ -40,6 +44,52 @@ the first run and the fiftieth run take the same command.
 Locally:
 
     make dataset-export
+
+## The metadata
+
+`publish` writes `dataset-metadata.json` next to the files. `kaggle_dataset.py` holds its values,
+and the descriptions come from `marts.py`:
+
+| Field                     | Value                                                         |
+| ------------------------- | ------------------------------------------------------------- |
+| `title`                   | 6 to 50 characters                                            |
+| `subtitle`                | 20 to 80 characters                                           |
+| `description`             | The dataset, a line for each file, and how the files join     |
+| `licenses`                | `CC0-1.0`                                                     |
+| `keywords`                | `american football`, `sports`, `united states`                |
+| `expectedUpdateFrequency` | `weekly`                                                      |
+| `userSpecifiedSources`    | joeeitel.com and ohhsfbdb.net, and what ohfootball.io adds    |
+| `resources`               | A description for each file and for each of its columns       |
+
+The command refuses a title, a subtitle, or a frequency that Kaggle would refuse, before it sends
+anything.
+
+Kaggle reads this file two times in a run. The upload reads the title, the subtitle, the
+description, the keywords, and the descriptions of the files and the columns. The upload does not
+read the update frequency or the sources. So when Kaggle reports the new version as ready, the
+command sends the same file again as an update of the metadata, and that update sets all of the
+fields. The command waits up to 10 minutes for the version. If the version is not ready in that
+time, the command does not fail. It prints `"metadata": "not ready"`, and the next run sends the
+metadata again.
+
+A keyword must be the name of a tag that Kaggle already has. Kaggle drops a name that it does not
+know, and the command prints the dropped names under `invalid_tags`. `football` is not used,
+because on Kaggle that tag is association football.
+
+The update replaces the metadata on Kaggle. A change made on the Kaggle site to the title, the
+subtitle, the description, the tags, the sources, the update frequency, or a description of a file
+or a column is therefore lost on the next run. Make those changes in the code. The update also
+sends no collaborators, so a collaborator added on the Kaggle site can be removed by it.
+
+### What to do by hand on Kaggle
+
+The command does not set these. Set them one time on the page of the dataset:
+
+1. A cover image of at least 560 by 280 pixels. The update sends no image, so it is not expected
+   to change an image set on the site. Look at the image after the next run to be sure.
+2. A public notebook that reads the dataset. Kaggle counts one toward the usability rating.
+
+Kaggle calculates the usability rating again some time after a change. It is not updated at once.
 
 ## What it reads
 
@@ -86,4 +136,5 @@ history and nowhere else.
 
 The step retries twice. A retry re-exports and re-uploads from the start. If a first attempt
 reached Kaggle and died afterwards, the retry adds a second version of the same data rather than
-replacing the first.
+replacing the first. A refusal of the metadata update is such a case, because it comes after the
+upload.

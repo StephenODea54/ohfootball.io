@@ -8,8 +8,10 @@ version = "0.1.0"
 description = "Publishes the ohfootball.io marts to Kaggle as one versioned dataset"
 readme = "README.md"
 requires-python = ">=3.12"
+# The metadata update of Kaggle client 2.2.4 sends the update frequency, the sources, and the
+# descriptions of the files and the columns. Version 1.7.4.5 sends none of them.
 dependencies = [
-    "kaggle==1.7.4.5",
+    "kaggle==2.2.4",
     "psycopg[binary]>=3.2,<4",
 ]
 
