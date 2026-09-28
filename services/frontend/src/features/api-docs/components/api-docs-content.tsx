@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
@@ -13,7 +14,9 @@ import {
   limits,
   playgroundHeadersExample,
   playgroundUrl,
+  queryLimits,
   ruleErrors,
+  schemaFields,
 } from "@/features/api-docs/api"
 import { CodeBlock } from "@/features/api-docs/components/code-block"
 
@@ -78,6 +81,17 @@ export function ApiDocsContent() {
               your own. The contact lets us reach you if your requests cause a problem.
             </Text>
             <Text className="mt-3 text-base/7">
+              A query that reads only the schema needs no contact. Its top-level fields must all be{" "}
+              {schemaFields.map((field, index) => (
+                <Fragment key={field}>
+                  {index > 0 && (index === schemaFields.length - 1 ? ", or " : ", ")}
+                  <Code>{field}</Code>
+                </Fragment>
+              ))}
+              . So a tool that reads the schema, such as a code generator, works without a contact.
+              These queries count toward the rate limits.
+            </Text>
+            <Text className="mt-3 text-base/7">
               A page on another site cannot call the API from a browser, because the API sends no
               CORS headers. Call it from a server or a script, or use the playground.
             </Text>
@@ -98,6 +112,13 @@ export function ApiDocsContent() {
             <Text className="mt-4 text-base/7">
               An IPv6 network of size /64 counts as one address. Send your requests one after the
               other, and keep the answers that you need again.
+            </Text>
+            <Text className="mt-3 text-base/7">
+              One query may select at most {queryLimits.fields} fields. Each alias and each field of
+              a fragment counts, each time the query uses it. A query may have at most{" "}
+              {queryLimits.tokens} tokens, and a request body may have at most{" "}
+              {queryLimits.bodyMiB} MiB. These limits hold for queries that read only the schema
+              too.
             </Text>
           </Section>
 
@@ -135,19 +156,16 @@ export function ApiDocsContent() {
 
           <Section id="playground" title="The Playground">
             <Text className="mt-3 text-base/7">
-              The <TextLink href={playgroundUrl}>playground</TextLink> runs queries in your browser
-              and shows the schema. When it opens, it shows the error that asks for a contact,
-              because its Headers pane holds no contact yet. Replace the text in the <Code>From</Code> header with your
-              contact:
+              The <TextLink href={playgroundUrl}>playground</TextLink> runs queries in your browser.
+              The schema, the documentation, and the completion load when the page opens. Before
+              you run a query, replace the text in the <Code>From</Code> header of the Headers pane
+              with your contact:
             </Text>
             <CodeBlock label="The Headers pane of the playground" className="mt-4">
               {playgroundHeadersExample()}
             </CodeBlock>
             <Text className="mt-4 text-base/7">
-              Your queries then work. To load the schema for the documentation and the completion,
-              select <Strong>Re-fetch GraphQL schema</Strong> (the button with two arrows in the
-              bar on the left), or press <Code>Shift+Ctrl+R</Code>. Do not reload the page, because
-              a reload puts the text back in the <Code>From</Code> header.
+              Your browser keeps the Headers pane, so the contact is still there after a reload.
             </Text>
           </Section>
 

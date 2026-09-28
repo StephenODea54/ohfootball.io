@@ -6,7 +6,9 @@ import {
   errorExample,
   playgroundHeadersExample,
   playgroundUrl,
+  queryLimits,
   ruleErrors,
+  schemaFields,
 } from "@/features/api-docs/api"
 
 describe("the API page", () => {
@@ -40,15 +42,26 @@ describe("the API page", () => {
     expect(JSON.parse(playgroundHeadersExample())).toEqual({ From: "me@example.com" })
   })
 
+  it("names the fields that read only the schema, as the API does", () => {
+    expect(schemaFields).toEqual(["__schema", "__type", "__typename"])
+  })
+
   it("keeps the burst of one address inside the total burst, as the API does", () => {
     expect(limits).toEqual({ addressPerMinute: 60, addressBurst: 20, totalPerSecond: 20, totalBurst: 40 })
     expect(limits.addressBurst).toBeLessThanOrEqual(limits.totalBurst)
+  })
+
+  it("names the limits on the size of a query, as the API does", () => {
+    expect(queryLimits).toEqual({ fields: 300, tokens: 10000, bodyMiB: 1 })
   })
 
   it("lists the errors of the rules with their codes", () => {
     expect(ruleErrors.map(({ status, code }) => [status, code])).toEqual([
       [400, "CONTACT_REQUIRED"],
       [429, "RATE_LIMITED"],
+      [422, "FIELD_LIMIT_EXCEEDED"],
+      [422, "TOKEN_LIMIT_EXCEEDED"],
+      [413, "BODY_TOO_LARGE"],
     ])
   })
 })

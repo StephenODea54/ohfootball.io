@@ -14,12 +14,25 @@ export const exampleUserAgent = "my-football-app/1.0 (me@example.com)"
 export const exampleContact = "me@example.com"
 export const exampleQuery = "{ currentSeason }"
 
+/**
+ * The top-level fields that read only the schema. A query that selects only these fields needs no
+ * contact. They must agree with schemaFields in services/api.
+ */
+export const schemaFields = ["__schema", "__type", "__typename"] as const
+
 /** The default limits of the API. They must agree with DefaultLimits in services/api. */
 export const limits = {
   addressPerMinute: 60,
   addressBurst: 20,
   totalPerSecond: 20,
   totalBurst: 40,
+} as const
+
+/** The limits on the size of one query. They must agree with services/api. */
+export const queryLimits = {
+  fields: 300,
+  tokens: 10000,
+  bodyMiB: 1,
 } as const
 
 /** The errors that the rules of the API send, in the order the page lists them. */
@@ -36,6 +49,24 @@ export const ruleErrors = [
     code: "RATE_LIMITED",
     meaning:
       "The request is over a limit. The Retry-After header gives the number of seconds to wait. Wait that long, then send the request again.",
+  },
+  {
+    id: "fields",
+    status: 422,
+    code: "FIELD_LIMIT_EXCEEDED",
+    meaning: `The query selects more than ${queryLimits.fields} fields. Select fewer fields, or send more than one query.`,
+  },
+  {
+    id: "tokens",
+    status: 422,
+    code: "TOKEN_LIMIT_EXCEEDED",
+    meaning: `The query has more than ${queryLimits.tokens} tokens. Send a shorter query.`,
+  },
+  {
+    id: "body",
+    status: 413,
+    code: "BODY_TOO_LARGE",
+    meaning: `The request body is larger than ${queryLimits.bodyMiB} MiB. Send a shorter query.`,
   },
 ] as const
 

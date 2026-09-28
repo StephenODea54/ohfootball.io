@@ -243,7 +243,9 @@ or the `From` header holds an email address or an http(s) URL. A request without
 the code `CONTACT_REQUIRED`. One address may send 60 requests a minute, up to 20 of them at once,
 and all callers together may send 20 a second, up to 40 at once. A request over a limit gets 429 with the
 code `RATE_LIMITED` and a `Retry-After` header. The playground at `/` needs no contact, but it
-counts toward the limits. The health endpoints and the build of the site skip both rules.
+counts toward the limits. A query that reads only the schema needs no contact either, but it
+counts toward the limits too. Each query may have at most 10000 tokens and select at most 300
+fields, and a request body may have at most 1 MiB. The health endpoints and the build of the site skip both rules.
 `services/api/README.md` has the details, and `/api` on the site tells callers the rules.
 
 ## Things that hold this together
@@ -325,6 +327,7 @@ Dokploy shows for the database as `DATABASE_URL`.
 | `ELO_HOME_ADVANTAGE` | optional, default `30` |
 | `ELO_RATING_SCALE` | optional, default `400` |
 | `GRAPHQL_COMPLEXITY_LIMIT` | optional, default `1000` |
+| `GRAPHQL_FIELD_LIMIT` | optional, default `300`, the most fields that one query may select. It must be at least 1. |
 
 ### `site` workflow
 
