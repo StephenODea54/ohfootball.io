@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//Users/stephenmarissa/.claude/**)",
-      "Read(//Users/stephenmarissa/.claude/skills/**)"
-    ]
-  }
-}

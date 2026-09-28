@@ -12,3 +12,8 @@ coverage.out
 **/.vite
 **/.astro
 services/frontend/dist
+
+# Files of editors and coding assistants. No image needs them.
+.claude
+.agents
+.vscode

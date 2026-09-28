@@ -56,3 +56,10 @@ services/frontend/.astro/
 
 # Wrangler writes its local state here while it serves the site
 services/frontend/.wrangler/
+
+# Files of coding assistants. They stay on the machine and out of the repository.
+.claude/
+.agents/
+.mcp.json
+CLAUDE.md
+skills-lock.json
