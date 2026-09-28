@@ -10,9 +10,12 @@ import {
   NavbarSpacer,
   NavbarStart,
 } from "@/components/ui/navbar"
+import { Bars2Icon } from "@heroicons/react/20/solid"
 import { ThemeProvider } from "@/components/theme/theme-provider"
 import { ThemeSwitcher } from "@/components/theme/theme-switcher"
+import { buttonStyles } from "@/components/ui/button"
 import { Link } from "@/components/ui/link"
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu"
 import { paths } from "@/config/paths"
 
 const navItems = [
@@ -21,6 +24,39 @@ const navItems = [
   { label: "Leaderboard", ...paths.leaderboard },
   { label: "Methodology", ...paths.methodology },
 ]
+
+/** A team page belongs to Home, because a school is found from the home page. */
+function isCurrentPage(itemPath: string, pathname: string) {
+  return itemPath === "/" ? pathname === "/" || pathname.startsWith("/teams/") : pathname === itemPath
+}
+
+/**
+ * The page links on a narrow screen. The four links and the theme switch do not fit in one row
+ * there, and the row made the whole page scroll to the side. A menu holds the links instead.
+ */
+function PageMenu({ pathname }: { pathname: string }) {
+  return (
+    <Menu>
+      <MenuTrigger
+        aria-label="Pages"
+        className={buttonStyles({ intent: "plain", size: "sq-sm" })}
+      >
+        <Bars2Icon />
+      </MenuTrigger>
+      <MenuContent aria-label="Pages" placement="bottom end" items={navItems}>
+        {(item) => (
+          <MenuItem
+            id={item.path}
+            href={item.getHref()}
+            className={isCurrentPage(item.path, pathname) ? "font-semibold" : undefined}
+          >
+            {item.label}
+          </MenuItem>
+        )}
+      </MenuContent>
+    </Menu>
+  )
+}
 
 /**
  * The wordmark, which links to the home page. The suffix is tinted so the brand reads as one word
@@ -43,9 +79,7 @@ export function AppNavbar({ pathname }: { pathname: string }) {
     <NavbarSection className="flex flex-row items-center gap-1 sm:gap-2.5">
       {navItems.map((item) => (
         <NavbarItem
-          isCurrent={
-            item.path === "/" ? pathname === "/" || pathname.startsWith("/teams/") : pathname === item.path
-          }
+          isCurrent={isCurrentPage(item.path, pathname)}
           key={item.path}
           href={item.getHref()}
         >
@@ -80,7 +114,8 @@ export function AppNavbar({ pathname }: { pathname: string }) {
         <NavbarMobile>
           <Wordmark className="font-semibold text-fg text-sm" />
           <NavbarSpacer />
-          {controls}
+          <ThemeSwitcher />
+          <PageMenu pathname={pathname} />
         </NavbarMobile>
       </NavbarProvider>
     </ThemeProvider>
