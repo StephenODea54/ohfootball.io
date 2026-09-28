@@ -1,4 +1,5 @@
 import react from "@astrojs/react"
+import sitemap from "@astrojs/sitemap"
 import babel from "@rolldown/plugin-babel"
 import tailwindcss from "@tailwindcss/vite"
 import { reactCompilerPreset } from "@vitejs/plugin-react"
@@ -22,7 +23,14 @@ export default defineConfig({
   },
   server: { port: 3000 },
   devToolbar: { enabled: false },
-  integrations: [react()],
+  integrations: [
+    react(),
+    // Writes sitemap-index.xml and sitemap-0.xml from the pages the build wrote. Each address has
+    // the form that Pages serves, with no .html and no slash at the end. The sitemap leaves out
+    // 404. It gives no lastmod, because one date for every page would be wrong for pages such as
+    // /about. make pages checks the sitemap before the site is published.
+    sitemap(),
+  ],
   vite: {
     plugins: [tailwindcss(), babel({ presets: [reactCompilerPreset()] })],
   },

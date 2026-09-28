@@ -1,0 +1,7 @@
+# Every page may be read and indexed. The addresses that Pages gives the project, such as
+# ohfootball.pages.dev, are kept out of search engines by X-Robots-Tag in _headers, not here.
+# Cloudflare adds its content signal comments in front of this file when it serves it.
+User-agent: *
+Allow: /
+
+Sitemap: https://ohfootball.io/sitemap-index.xml

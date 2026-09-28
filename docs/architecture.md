@@ -96,7 +96,8 @@ It also starts from the Actions tab of the repository, or with
 
 The workflow type checks the site, builds it against `https://api.ohfootball.io/graphql`, and runs
 `make pages` in `services/frontend`. That target checks that the build wrote each page as a file,
-that it wrote a real not-found page in `404.html`, that no file names the API except the API page,
+that it wrote a real not-found page in `404.html`, that `robots.txt` names the sitemap, that the
+sitemap lists only the addresses that Pages serves, that no file names the API except the API page,
 and that no file holds its key.
 It then writes the 404 page for missing assets. Wrangler then sends `services/frontend/dist` to the
 Pages project `ohfootball` as a production deployment. A step that fails stops the run before the
@@ -259,7 +260,8 @@ read the API fails, and Pages keeps the site it served before.
 never calls the API. The API sends no CORS headers, so no page on another origin can read it. No
 script holds the address of the API, no page except the API page `/api` names it, and no file holds
 its key. `make pages` stops the upload when a file does. The addresses that Pages gives the project, such as `ohfootball.pages.dev`, show the same
-pages as `ohfootball.io`.
+pages as `ohfootball.io`. So does `www.ohfootball.io`. Each page has a canonical link to its address on
+`ohfootball.io`, so search engines index that copy only.
 
 **The build key is set on both sides.** The build makes about 700 requests in less than a minute,
 which is more than the rate limits allow. It sends the GitHub secret `GRAPHQL_API_KEY` as a bearer

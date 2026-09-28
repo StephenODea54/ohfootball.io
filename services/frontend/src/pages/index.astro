@@ -8,13 +8,18 @@ import { getTeams } from "@/features/teams/api/get-teams"
 import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
 import { TeamFinder } from "@/features/teams/components/team-finder"
 import { lastUpdated } from "@/features/teams/utils/format"
+import { siteUrl, webSiteJsonLd } from "@/utils/seo"
 
 const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
+
+const description =
+  "Look up any Ohio high school football team and see their statistical ratings and game predictions"
 ---
 
 <SiteLayout
   title="ohfootball.io | Ohio High School Football Ratings"
-  description="Look up any Ohio high school football team and see their statistical ratings and game predictions"
+  description={description}
+  jsonLd={webSiteJsonLd(siteUrl(Astro.site), "ohfootball.io", description)}
 >
   <main>
     <Container className="max-w-6xl py-16 sm:py-20 lg:py-24">

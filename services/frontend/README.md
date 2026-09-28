@@ -88,6 +88,9 @@ each address, such as `leaderboard.html` for `/leaderboard`.
 `make pages` makes `dist` ready for Cloudflare Pages. It stops when the build wrote no pages, no
 assets, no `_headers`, or no `404.html`, or when `404.html` is a copy of the home page. It stops
 when a page is a directory, because Pages would send each such address through a redirect. It stops
+when `robots.txt` or the sitemap is missing, when `robots.txt` does not name `sitemap-index.xml`,
+and when the sitemap lists an address that Pages does not serve as written. Such an address ends
+in `.html` or in a slash, is `404`, or has no page. It stops
 when a file names the API, which means that it holds `api.ohfootball.io` or `graphql` in any case.
 Only the API page, `api.html`, may name it. So no script or stylesheet under `assets/` and no other
 page may. Set `API_DOCS_PAGE` to check another file name. When `GRAPHQL_API_KEY` is set, it stops when the key is shorter than 16
@@ -97,6 +100,20 @@ characters, and when a file holds the key. The API page may not hold the key eit
 Pages answers an address that has no page with the nearest `404.html` and the status 404. At the
 root, that is the not-found page that `src/pages/404.astro` draws. Under `assets/`, it is the line
 of plain text. `public/_headers` sets how long a browser keeps each file.
+
+### Search engines
+
+`public/robots.txt` lets every crawler read every page and names the sitemap. The sitemap
+integration in `astro.config.ts` writes `sitemap-index.xml` and `sitemap-0.xml` from the pages that
+the build wrote. It leaves out `404`. Each page has a canonical link and an `og:url` on
+`https://ohfootball.io`, so the copies on `www.ohfootball.io` and on `ohfootball.pages.dev` point
+to it. The not-found page has neither, because it tells search engines to leave it out. The home
+page also has a JSON-LD `WebSite` record. The link previews have no image, because the site has no
+image yet.
+
+`www.ohfootball.io` serves the same files as `ohfootball.io` and does not redirect. A redirect is
+a rule in the Cloudflare dashboard and not part of this directory. Until one exists, the canonical
+link keeps the copy on `www.ohfootball.io` out of search results.
 
 To see how Pages answers, serve the directory with Wrangler:
 
