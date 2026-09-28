@@ -1,6 +1,6 @@
 .PHONY: build test vet fmt hooks db-up db-down db-logs db-migrate db-baseline \
 	tools lint-tools lint lint-go lint-python lint-sql fmt-go fmt-python fmt-sql \
-	site-lint site-fmt \
+	site-lint site-fmt doctor \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
 	dataset-build dataset-test dataset-export \
@@ -100,6 +100,25 @@ site-fmt:
 
 hooks:
 	git config core.hooksPath .githooks
+
+# Reports which of the tools that the repository needs are missing, and whether python3 is the
+# version that .python-version names. It stops with an error when a tool is missing.
+doctor:
+	@missing=0; \
+	for tool in go python3 uv ruff sqlfluff node pnpm docker; do \
+		if command -v $$tool >/dev/null 2>&1; then \
+			printf 'found    %s\n' "$$tool"; \
+		else \
+			printf 'missing  %s\n' "$$tool" >&2; missing=1; \
+		fi; \
+	done; \
+	want=$$(cat .python-version); \
+	have=$$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null); \
+	if [ "$$have" != "$$want" ]; then \
+		printf 'python3 is %s and not %s. Run: uv venv && . .venv/bin/activate\n' \
+			"$${have:-missing}" "$$want" >&2; \
+	fi; \
+	exit $$missing
 
 db-up:
 	docker compose up -d --wait
