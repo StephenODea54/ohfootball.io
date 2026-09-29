@@ -17,6 +17,13 @@ The core local stack includes the API:
 docker compose up -d --build --wait
 ```
 
+## Rank movement
+
+Each rating carries `rank` and `previousRank`. `previousRank` is the rank of the team in the
+snapshot before that one in the same season. It is null when the season has no earlier snapshot,
+or when the team is not in that snapshot. A client finds the movement of a team as
+`previousRank - rank`, so a positive number means the team moved up.
+
 ## Rules for callers
 
 The API needs no sign-in. Each caller follows two rules.

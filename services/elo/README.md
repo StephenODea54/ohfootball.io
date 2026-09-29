@@ -83,6 +83,13 @@ The production command writes one rating per current Ohio team to
 `ohfootball_marts.fct_team_elo_ratings`. Ratings are the values available at
 the start of `--as-of-date`; games on that date are not incorporated yet.
 
+Each run replaces the snapshot of the season in progress at its own
+`--as-of-date`, and the 31 December snapshot of each past season. The weekly
+snapshots of earlier dates stay. The API compares the two newest snapshots of a season to
+give the previous rank of each team. A second run on a later day of the same
+week therefore compares ranks one day apart. To replace a snapshot instead,
+run again with the `--as-of-date` of that snapshot.
+
 MLflow is available at <http://localhost:5000>. Each run records the Elo
 parameters, data fingerprint, cutoff date, overall and per-season metrics, and
 these CSV artifacts:

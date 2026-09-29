@@ -223,7 +223,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	var mascot, city, primaryColor, secondaryColor pgtype.Text
 	var division, region pgtype.Int2
 	var rating pgtype.Float8
-	var ratingRank pgtype.Int8
+	var ratingRank, previousRank pgtype.Int8
 	var asOf pgtype.Date
 	var wins, losses, ties int64
 	if err := row.Scan(
@@ -242,6 +242,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 		&rating,
 		&ratingRank,
 		&asOf,
+		&previousRank,
 	); err != nil {
 		return nil, err
 	}
@@ -256,10 +257,11 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	team.Schedule = []*model.Game{}
 	if rating.Valid && ratingRank.Valid && asOf.Valid {
 		team.Elo = &model.EloRating{
-			Season: team.Season,
-			Rating: rating.Float64,
-			Rank:   int(ratingRank.Int64),
-			AsOf:   asOf.Time.Format(time.DateOnly),
+			Season:       team.Season,
+			Rating:       rating.Float64,
+			Rank:         int(ratingRank.Int64),
+			PreviousRank: optional(previousRank.Valid, int(previousRank.Int64)),
+			AsOf:         asOf.Time.Format(time.DateOnly),
 		}
 	}
 	return &team, nil
@@ -274,17 +276,27 @@ func (store *Postgres) ratingHistory(ctx context.Context, sourceID string) ([]*m
 
 	history := make([]*model.EloRating, 0)
 	for rows.Next() {
-		var rating model.EloRating
-		var asOf time.Time
-		var rank int64
-		if err := rows.Scan(&rating.Season, &rating.Rating, &rank, &asOf); err != nil {
+		rating, err := scanRating(rows)
+		if err != nil {
 			return nil, fmt.Errorf("scan rating history: %w", err)
 		}
-		rating.Rank = int(rank)
-		rating.AsOf = asOf.Format(time.DateOnly)
-		history = append(history, &rating)
+		history = append(history, rating)
 	}
 	return history, rows.Err()
+}
+
+func scanRating(row rowScanner) (*model.EloRating, error) {
+	var rating model.EloRating
+	var asOf time.Time
+	var rank int64
+	var previousRank pgtype.Int8
+	if err := row.Scan(&rating.Season, &rating.Rating, &rank, &previousRank, &asOf); err != nil {
+		return nil, err
+	}
+	rating.Rank = int(rank)
+	rating.PreviousRank = optional(previousRank.Valid, int(previousRank.Int64))
+	rating.AsOf = asOf.Format(time.DateOnly)
+	return &rating, nil
 }
 
 func (store *Postgres) schedule(ctx context.Context, teamID string, season int) ([]*model.Game, error) {
@@ -433,6 +445,21 @@ const teamFacts = `
 		FROM ohfootball_marts.fct_team_elo_ratings AS rating
 		INNER JOIN latest_snapshot USING (as_of_date)
 		WHERE rating.season = $1
+	),
+	previous_snapshot AS (
+		SELECT MAX(rating.as_of_date) AS as_of_date
+		FROM ohfootball_marts.fct_team_elo_ratings AS rating
+		CROSS JOIN latest_snapshot
+		WHERE rating.season = $1
+		  AND rating.as_of_date < latest_snapshot.as_of_date
+	),
+	previous_ratings AS (
+		SELECT
+			rating.team_key,
+			RANK() OVER (ORDER BY rating.elo_rating DESC) AS rating_rank
+		FROM ohfootball_marts.fct_team_elo_ratings AS rating
+		INNER JOIN previous_snapshot USING (as_of_date)
+		WHERE rating.season = $1
 	)
 `
 
@@ -451,7 +478,8 @@ const teamColumns = `
 	COALESCE(records.ties, 0),
 	ratings.elo_rating,
 	ratings.rating_rank,
-	ratings.as_of_date
+	ratings.as_of_date,
+	previous_ratings.rating_rank
 `
 
 var listTeamsSQL = teamFacts + `
@@ -459,6 +487,7 @@ var listTeamsSQL = teamFacts + `
 	FROM ohfootball_marts.dim_teams AS team
 	LEFT JOIN records USING (team_key)
 	LEFT JOIN ratings USING (team_key)
+	LEFT JOIN previous_ratings USING (team_key)
 	WHERE team.is_current
 	  AND team.state_code = 'OH'
 	  AND team.season = $1
@@ -482,13 +511,16 @@ var teamSQL = teamFacts + `
 	FROM ohfootball_marts.dim_teams AS team
 	LEFT JOIN records USING (team_key)
 	LEFT JOIN ratings USING (team_key)
+	LEFT JOIN previous_ratings USING (team_key)
 	WHERE team.is_current
 	  AND team.season = $1
 	  AND team.source_id = $2
 `
 
-// Ratings are published as one snapshot per season, so a single season holds a single point. The
-// history therefore follows the program across every season it has played.
+// The weekly run publishes a snapshot for each week of the season in progress. A past season keeps
+// the weekly snapshots it had and ends with one on 31 December. The history therefore follows the
+// program through every snapshot of every season it has played. The previous rank of a point is
+// the rank of the same team at its snapshot before that one in the same season.
 const ratingHistorySQL = `
 	WITH program_seasons AS (
 		SELECT team_key
@@ -507,7 +539,15 @@ const ratingHistorySQL = `
 			) AS rating_rank
 		FROM ohfootball_marts.fct_team_elo_ratings AS rating
 	)
-	SELECT ranked.season, ranked.elo_rating, ranked.rating_rank, ranked.as_of_date
+	SELECT
+		ranked.season,
+		ranked.elo_rating,
+		ranked.rating_rank,
+		LAG(ranked.rating_rank) OVER (
+			PARTITION BY ranked.team_key, ranked.season
+			ORDER BY ranked.as_of_date
+		) AS previous_rank,
+		ranked.as_of_date
 	FROM ranked
 	INNER JOIN program_seasons USING (team_key)
 	ORDER BY ranked.season, ranked.as_of_date

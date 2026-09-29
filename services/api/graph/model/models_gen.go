@@ -12,7 +12,10 @@ type EloRating struct {
 	Season int     `json:"season"`
 	Rating float64 `json:"rating"`
 	Rank   int     `json:"rank"`
-	AsOf   string  `json:"asOf"`
+	// The rank of the team in the snapshot before this one in the same season. It is null when the
+	// season has no earlier snapshot, or when the team is not in that snapshot.
+	PreviousRank *int   `json:"previousRank,omitempty"`
+	AsOf         string `json:"asOf"`
 }
 
 type Game struct {

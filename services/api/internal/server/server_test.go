@@ -22,6 +22,7 @@ const siteBuildKey = "probe-build-key-123456"
 type fakeStore struct {
 	season  int
 	pingErr error
+	teams   []*model.Team
 	// calls counts the calls of CurrentSeason, so a test can tell that no resolver ran.
 	calls int
 }
@@ -38,7 +39,10 @@ func (fake *fakeStore) Seasons(context.Context) ([]int, error) { return nil, nil
 func (fake *fakeStore) ListTeams(
 	context.Context, *int, *string, *int, *int, *model.TeamSort, *int,
 ) ([]*model.Team, error) {
-	return []*model.Team{}, nil
+	if fake.teams == nil {
+		return []*model.Team{}, nil
+	}
+	return fake.teams, nil
 }
 
 func (fake *fakeStore) Team(context.Context, string, *int) (*model.Team, error) { return nil, nil }
@@ -111,6 +115,38 @@ func TestQuery(t *testing.T) {
 	data, _ := response["data"].(map[string]any)
 	if season, _ := data["currentSeason"].(float64); season != 2025 {
 		t.Fatalf("currentSeason = %v, want 2025", data["currentSeason"])
+	}
+}
+
+func TestQueryReturnsThePreviousRank(t *testing.T) {
+	previousRank := 15
+	rated := func(id string, previous *int) *model.Team {
+		return &model.Team{
+			ID:     id,
+			Record: &model.Record{},
+			Elo:    &model.EloRating{Season: 2026, Rating: 1600, Rank: 12, PreviousRank: previous},
+		}
+	}
+	store := &fakeStore{teams: []*model.Team{rated("moved", &previousRank), rated("new", nil)}}
+	handler := newHandler(t, store, Options{})
+
+	recorder := post(t, handler, "{ teams { id elo { rank previousRank } } }")
+	response := decode(t, recorder)
+	if _, found := response["errors"]; found {
+		t.Fatalf("response carried errors: %v", response["errors"])
+	}
+	data, _ := response["data"].(map[string]any)
+	teams, _ := data["teams"].([]any)
+	if len(teams) != 2 {
+		t.Fatalf("teams = %v, want 2 teams", data["teams"])
+	}
+	want := []any{float64(15), nil}
+	for index, entry := range teams {
+		elo, _ := entry.(map[string]any)["elo"].(map[string]any)
+		previous, found := elo["previousRank"]
+		if !found || previous != want[index] {
+			t.Fatalf("team %d previousRank = %v (present %t), want %v", index, previous, found, want[index])
+		}
 	}
 }
 

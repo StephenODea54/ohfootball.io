@@ -47,10 +47,11 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	EloRating struct {
-		AsOf   func(childComplexity int) int
-		Rank   func(childComplexity int) int
-		Rating func(childComplexity int) int
-		Season func(childComplexity int) int
+		AsOf         func(childComplexity int) int
+		PreviousRank func(childComplexity int) int
+		Rank         func(childComplexity int) int
+		Rating       func(childComplexity int) int
+		Season       func(childComplexity int) int
 	}
 
 	Game struct {
@@ -138,6 +139,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.EloRating.AsOf(childComplexity), true
+
+	case "EloRating.previousRank":
+		if e.complexity.EloRating.PreviousRank == nil {
+			break
+		}
+
+		return e.complexity.EloRating.PreviousRank(childComplexity), true
 
 	case "EloRating.rank":
 		if e.complexity.EloRating.Rank == nil {
@@ -999,6 +1007,47 @@ func (ec *executionContext) _EloRating_rank(ctx context.Context, field graphql.C
 }
 
 func (ec *executionContext) fieldContext_EloRating_rank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EloRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EloRating_previousRank(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EloRating_previousRank(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreviousRank, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EloRating_previousRank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "EloRating",
 		Field:      field,
@@ -2789,6 +2838,8 @@ func (ec *executionContext) fieldContext_Team_elo(_ context.Context, field graph
 				return ec.fieldContext_EloRating_rating(ctx, field)
 			case "rank":
 				return ec.fieldContext_EloRating_rank(ctx, field)
+			case "previousRank":
+				return ec.fieldContext_EloRating_previousRank(ctx, field)
 			case "asOf":
 				return ec.fieldContext_EloRating_asOf(ctx, field)
 			}
@@ -2843,6 +2894,8 @@ func (ec *executionContext) fieldContext_Team_eloHistory(_ context.Context, fiel
 				return ec.fieldContext_EloRating_rating(ctx, field)
 			case "rank":
 				return ec.fieldContext_EloRating_rank(ctx, field)
+			case "previousRank":
+				return ec.fieldContext_EloRating_previousRank(ctx, field)
 			case "asOf":
 				return ec.fieldContext_EloRating_asOf(ctx, field)
 			}
@@ -4907,6 +4960,8 @@ func (ec *executionContext) _EloRating(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "previousRank":
+			out.Values[i] = ec._EloRating_previousRank(ctx, field, obj)
 		case "asOf":
 			out.Values[i] = ec._EloRating_asOf(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

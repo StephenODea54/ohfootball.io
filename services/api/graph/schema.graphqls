@@ -27,6 +27,11 @@ type EloRating {
   season: Int!
   rating: Float!
   rank: Int!
+  """
+  The rank of the team in the snapshot before this one in the same season. It is null when the
+  season has no earlier snapshot, or when the team is not in that snapshot.
+  """
+  previousRank: Int
   asOf: String!
 }
 
