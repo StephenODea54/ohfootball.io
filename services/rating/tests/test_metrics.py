@@ -1,8 +1,8 @@
 import unittest
 from datetime import date
 
-from ohfootball_elo.elo import Prediction
-from ohfootball_elo.metrics import evaluate
+from ohfootball_rating.elo import Prediction
+from ohfootball_rating.metrics import evaluate
 
 
 def prediction(probability: float, actual: float) -> Prediction:

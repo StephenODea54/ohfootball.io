@@ -10,5 +10,5 @@ vet:
 # package gets no new dependency. The functions that need a database or a tracking server
 # have no tests yet. The target reports the result and does not fail.
 coverage:
-	PYTHONPATH=src uvx --python 3.12 --from coverage coverage run --branch --source=src/ohfootball_elo -m unittest discover -s tests
+	PYTHONPATH=src uvx --python 3.12 --from coverage coverage run --branch --source=src/ohfootball_rating -m unittest discover -s tests
 	uvx --python 3.12 --from coverage coverage report -m

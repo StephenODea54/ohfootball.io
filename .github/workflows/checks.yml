@@ -44,8 +44,8 @@ jobs:
       - run: make tools TOOL_INSTALL="pip install"
       - run: make lint-python
       - run: make lint-sql
-      - run: make -C services/elo vet
-      - run: make -C services/elo test
+      - run: make -C services/rating vet
+      - run: make -C services/rating test
       - run: make -C services/dataset vet
       - run: make -C services/dataset test
       # Checks the target that asks GitHub to build the site. A stand-in for GitHub answers over

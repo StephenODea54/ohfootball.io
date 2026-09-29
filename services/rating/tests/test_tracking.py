@@ -3,8 +3,8 @@ import unittest
 from datetime import date
 from unittest import mock
 
-from ohfootball_elo.elo import EloConfig
-from ohfootball_elo.tracking import track_run
+from ohfootball_rating.elo import EloConfig
+from ohfootball_rating.tracking import track_run
 
 
 class TheTrackingServer(unittest.TestCase):

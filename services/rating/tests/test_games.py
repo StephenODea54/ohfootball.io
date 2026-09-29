@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from ohfootball_elo.games import Game, chronological
+from ohfootball_rating.games import Game, chronological
 
 
 def game(

@@ -17,7 +17,7 @@ updates:
   - package-ecosystem: pip
     directories:
       - /services/dataset
-      - /services/elo
+      - /services/rating
     schedule:
       interval: weekly
     groups:
@@ -51,7 +51,7 @@ updates:
       - /services/analytics
       - /services/api
       - /services/dataset
-      - /services/elo
+      - /services/rating
       - /services/scraper
     schedule:
       interval: weekly

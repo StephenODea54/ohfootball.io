@@ -163,7 +163,7 @@ flowchart TD
     cron(["Dokploy schedule<br/>Tuesday 13:00 UTC"]) --> scrape
 
     scrape["scrape<br/>joe-eitel"] --> transform["transform<br/>dbt build"]
-    transform --> rate["rate<br/>ohfootball-elo publish"]
+    transform --> rate["rate<br/>ohfootball-rating publish"]
     rate --> site["publish-site<br/>start the site workflow"]
     site --> download["publish-download<br/>ohfootball-dataset publish-download"]
     download --> dataset["publish-dataset<br/>ohfootball-dataset publish"]

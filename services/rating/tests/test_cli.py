@@ -1,7 +1,7 @@
 import argparse
 import unittest
 
-from ohfootball_elo.cli import _float_values, _season_range, build_parser
+from ohfootball_rating.cli import _float_values, _season_range, build_parser
 
 
 class CommandLineTests(unittest.TestCase):

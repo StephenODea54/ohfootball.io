@@ -40,7 +40,7 @@ SWEEP_PARAMETERS = (
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="ohfootball-elo",
+        prog="ohfootball-rating",
         description="Backtest Elo and predict upcoming games.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)

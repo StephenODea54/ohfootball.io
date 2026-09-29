@@ -40,7 +40,7 @@ transform:
 # them, and it rewrites the rating of every season on each run, so a change to the rating settings
 # reaches the whole record.
 rate:
-	ohfootball-elo publish
+	ohfootball-rating publish
 
 # Asks GitHub to build the site again and publish it.
 #

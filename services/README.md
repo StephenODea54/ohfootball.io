@@ -5,7 +5,7 @@
 - `api`: The Go GraphQL API. The build of the site reads it, and so can any other program.
 - `dataset`: The publication of the marts to Kaggle as a public dataset, and as a zip on
   `data.ohfootball.io`.
-- `elo`: The Elo model. It is tuned and evaluated here, and it publishes the ratings and the
+- `rating`: The Elo model. It is tuned and evaluated here, and it publishes the ratings and the
   predictions to the marts.
 - `frontend`: The site. Astro draws every page at build time from the API, and Cloudflare Pages
   serves the files.

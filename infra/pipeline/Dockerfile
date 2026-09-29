@@ -48,9 +48,9 @@ RUN pip install --no-cache-dir \
     "dbt-core==${DBT_CORE_VERSION}" \
     "dbt-postgres==${DBT_POSTGRES_VERSION}"
 
-COPY services/elo/pyproject.toml services/elo/README.md /tmp/elo/
-COPY services/elo/src /tmp/elo/src
-RUN pip install --no-cache-dir /tmp/elo && rm -rf /tmp/elo
+COPY services/rating/pyproject.toml services/rating/README.md /tmp/rating/
+COPY services/rating/src /tmp/rating/src
+RUN pip install --no-cache-dir /tmp/rating && rm -rf /tmp/rating
 
 COPY services/dataset/pyproject.toml services/dataset/README.md /tmp/dataset/
 COPY services/dataset/src /tmp/dataset/src

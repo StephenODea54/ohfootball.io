@@ -100,7 +100,7 @@ services:
   mlflow:
     build:
       context: .
-      dockerfile: services/elo/Dockerfile
+      dockerfile: services/rating/Dockerfile
     entrypoint: ["mlflow"]
     command:
       - server
@@ -154,10 +154,10 @@ services:
     profiles:
       - tools
 
-  elo:
+  rating:
     build:
       context: .
-      dockerfile: services/elo/Dockerfile
+      dockerfile: services/rating/Dockerfile
     environment:
       DATABASE_URL: postgresql://im_batman:shhhhhhhhh@postgres:5432/ohfootball
       MLFLOW_TRACKING_URI: http://mlflow:5000

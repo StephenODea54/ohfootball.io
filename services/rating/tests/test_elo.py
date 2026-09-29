@@ -2,7 +2,7 @@ import unittest
 from dataclasses import replace
 from datetime import date
 
-from ohfootball_elo.elo import (
+from ohfootball_rating.elo import (
     EloConfig,
     Game,
     backtest,

@@ -70,13 +70,13 @@ Build the dbt marts, start MLflow, and run the model:
 ```bash
 make dbt-build
 make mlflow-up
-make elo-run
+make rating-run
 ```
 
 Publish the production rating snapshot after the marts are refreshed:
 
 ```bash
-ohfootball-elo publish --season 2026
+ohfootball-rating publish --season 2026
 ```
 
 The production command writes one rating per current Ohio team to
@@ -101,18 +101,18 @@ these CSV artifacts:
   cutoff date.
 - `run_summary.json`: compact configuration and evaluation summary.
 
-Run `make coverage` in `services/elo` to see the line and branch coverage of the unit tests.
+Run `make coverage` in `services/rating` to see the line and branch coverage of the unit tests.
 
 Use `ARGS` to change the cutoff or deliberately run a parameter experiment:
 
 ```bash
-make elo-run ARGS="--as-of-date 2026-08-20 --k-factor 24 --run-name k-24"
+make rating-run ARGS="--as-of-date 2026-08-20 --k-factor 24 --run-name k-24"
 ```
 
 Run a chronological parameter sweep with comma-separated candidate values:
 
 ```bash
-make elo-sweep ARGS="--parameter k_factor --values 96,128,160,192,224 --run-prefix k"
+make rating-sweep ARGS="--parameter k_factor --values 96,128,160,192,224 --run-prefix k"
 ```
 
 By default, sweeps tune on 2000–2021 and validate on 2022–2023. Games after
@@ -159,7 +159,7 @@ after the choices were fixed.
 Recommended candidate:
 
 ```bash
-make elo-run ARGS="--k-factor 148 --home-advantage 30 --season-carryover 0.85 --division-rating-step 140 --provisional-games 3 --provisional-k-multiplier 1.6 --run-name champion-v3-provisional"
+make rating-run ARGS="--k-factor 148 --home-advantage 30 --season-carryover 0.85 --division-rating-step 140 --provisional-games 3 --provisional-k-multiplier 1.6 --run-name champion-v3-provisional"
 ```
 
 | 2024–2025 holdout | Plain baseline | Candidate |

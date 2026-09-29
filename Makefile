@@ -2,7 +2,7 @@
 	tools lint-tools lint lint-go lint-python lint-sql fmt-go fmt-python fmt-sql \
 	site-lint site-fmt doctor \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
-	elo-build elo-test mlflow-up mlflow-down elo-run elo-sweep \
+	rating-build rating-test mlflow-up mlflow-down rating-run rating-sweep \
 	dataset-build dataset-test dataset-export \
 	pipeline pipeline-build pipeline-test postgres-test site-test site-check
 
@@ -24,7 +24,7 @@ build:
 test:
 	$(MAKE) -C services/scraper test
 	$(MAKE) -C services/api test
-	$(MAKE) -C services/elo test
+	$(MAKE) -C services/rating test
 	$(MAKE) -C services/dataset test
 	$(MAKE) pipeline-test
 	$(MAKE) site-test
@@ -34,7 +34,7 @@ test:
 vet:
 	$(MAKE) -C services/scraper vet
 	$(MAKE) -C services/api vet
-	$(MAKE) -C services/elo vet
+	$(MAKE) -C services/rating vet
 	$(MAKE) -C services/dataset vet
 	python3 -m compileall -q infra/pipeline/tests infra/postgres services/frontend/tests
 
@@ -185,11 +185,11 @@ dbt-docs-generate:
 dbt-docs-serve:
 	docker compose run --rm --service-ports dbt docs serve --host 0.0.0.0 --port 8081
 
-elo-build:
-	docker compose build elo
+rating-build:
+	docker compose build rating
 
-elo-test:
-	$(MAKE) -C services/elo test
+rating-test:
+	$(MAKE) -C services/rating test
 
 mlflow-up:
 	docker compose --profile tools up -d --wait mlflow
@@ -197,11 +197,11 @@ mlflow-up:
 mlflow-down:
 	docker compose --profile tools stop mlflow
 
-elo-run:
-	docker compose run --rm elo run $(ARGS)
+rating-run:
+	docker compose run --rm rating run $(ARGS)
 
-elo-sweep:
-	docker compose run --rm elo sweep $(ARGS)
+rating-sweep:
+	docker compose run --rm rating sweep $(ARGS)
 
 dataset-build:
 	docker compose build dataset
