@@ -1,0 +1,13 @@
+---
+import SiteLayout from "@/layouts/site-layout.astro"
+import { DataContent } from "@/features/data/components/data-content"
+---
+
+<SiteLayout
+  title="Data | ohfootball.io"
+  description="Download every game, team, rating, and prediction as CSV files in one zip. A new copy each week, free to use under CC0."
+>
+  <!-- The content of the page runs no script. Only the navigation bar runs in the browser, as on
+  every page. The page names the download and never the API. -->
+  <DataContent />
+</SiteLayout>

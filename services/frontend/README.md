@@ -11,11 +11,17 @@ page, the leaderboard table, and the rating chart of a team.
 The site shows only the current season. Each team of that season has its own page.
 
 The page `/api` tells people how to call the public API: the endpoint, the contact that each
-request names, the rate limits, the errors, a curl example, the playground, and the Kaggle dataset
-for bulk data. It is drawn when the site is built, and its content runs no script. Only the
+request names, the rate limits, the errors, a curl example, the playground, and the Data page and
+the Kaggle dataset for bulk data. It is drawn when the site is built, and its content runs no script. Only the
 navigation bar runs in the browser, as on every page. It is the only page that names the API. `src/features/api-docs/api.ts` holds the address of the API, and only that page
 imports it. Do not put the address in `src/config/paths.ts`, because the navigation bar runs in the
 browser and imports that file.
+
+The page `/data` tells people how to download the weekly zip of the data from
+`data.ohfootball.io`: the five files, a Python example, and the dated copies. The columns of each
+file are described in the `README.md` of the zip, so the page does not list them. The page holds no
+date and no row count, because the site is built before the weekly run uploads the zip. Its content
+runs no script. `src/features/data/data.ts` holds the addresses, and only that page imports it.
 
 ## Settings
 

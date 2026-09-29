@@ -1,6 +1,7 @@
 "use client"
 
 import { Bars2Icon } from "@heroicons/react/20/solid"
+import { isCurrentPage, navItems } from "@/components/layouts/nav-items"
 import { ThemeProvider } from "@/components/theme/theme-provider"
 import { ThemeSwitcher } from "@/components/theme/theme-switcher"
 import { buttonStyles } from "@/components/ui/button"
@@ -17,21 +18,6 @@ import {
   NavbarStart,
 } from "@/components/ui/navbar"
 import { paths } from "@/config/paths"
-
-const navItems = [
-  { label: "Home", ...paths.home },
-  { label: "About", ...paths.about },
-  { label: "Leaderboard", ...paths.leaderboard },
-  { label: "Methodology", ...paths.methodology },
-  { label: "API", ...paths.api },
-]
-
-/** A team page belongs to Home, because a school is found from the home page. */
-function isCurrentPage(itemPath: string, pathname: string) {
-  return itemPath === "/"
-    ? pathname === "/" || pathname.startsWith("/teams/")
-    : pathname === itemPath
-}
 
 /**
  * The page links on a narrow screen. The links and the theme switch do not fit in one row

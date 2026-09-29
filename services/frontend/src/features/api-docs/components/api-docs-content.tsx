@@ -1,10 +1,11 @@
 import { Fragment } from "react"
+import { CodeBlock } from "@/components/code-block"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Code, Strong, Text, TextLink } from "@/components/ui/text"
-import { links } from "@/config/paths"
+import { links, paths } from "@/config/paths"
 import {
   apiEndpoint,
   curlExample,
@@ -20,7 +21,6 @@ import {
   schemaFields,
   topTenQuery,
 } from "@/features/api-docs/api"
-import { CodeBlock } from "@/features/api-docs/components/code-block"
 
 function Section({
   id,
@@ -196,9 +196,10 @@ export function ApiDocsContent() {
 
           <Section id="bulk" title="Bulk Data">
             <Text className="mt-3 text-base/7">
-              Do not use the API to download every game or every season. The{" "}
-              <TextLink href={links.dataset}>Kaggle dataset</TextLink> holds every game and rating,
-              and it is published each week.
+              Do not use the API to download every game or every season. Download the zip from the{" "}
+              <TextLink href={paths.data.getHref()}>Data page</TextLink>, or use the{" "}
+              <TextLink href={links.dataset}>Kaggle dataset</TextLink>. Both hold every game and
+              rating, and both are published each week.
             </Text>
           </Section>
         </div>

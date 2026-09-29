@@ -19,6 +19,11 @@ export const paths = {
     path: "/methodology",
     getHref: () => "/methodology",
   },
+  // The page that tells people how to download the data. Its addresses are in features/data.
+  data: {
+    path: "/data",
+    getHref: () => "/data",
+  },
   // The page that tells people how to call the API. Its address is in features/api-docs, because
   // the navigation bar sends this file to the browser.
   api: {

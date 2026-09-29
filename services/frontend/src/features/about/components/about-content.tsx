@@ -105,7 +105,9 @@ export function AboutContent() {
           <Text className="mt-4 text-base/7">
             All of the code, including the API and the model, is on{" "}
             <TextLink href={links.repository}>GitHub</TextLink>. Every game and rating is also
-            published each week as a <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
+            published each week as a <TextLink href={links.dataset}>Kaggle dataset</TextLink>, and
+            as one zip that you can download from the{" "}
+            <TextLink href={paths.data.getHref()}>Data page</TextLink>.
           </Text>
           <Text className="mt-3 text-base/7">
             To read the ratings and predictions from your own code, see the{" "}

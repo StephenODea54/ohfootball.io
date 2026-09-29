@@ -11,7 +11,7 @@ interface CodeBlockProps extends React.ComponentPropsWithoutRef<"pre"> {
  * screen, and a keyboard can reach it so that the scroll works without a mouse.
  *
  * The Snippet component of Intent UI is not used, because it is a client component with tabs and
- * a copy button that work only after hydration, and the content of the API page runs no script.
+ * a copy button that work only after hydration, and the pages that use this block run no script.
  */
 export function CodeBlock({ label, children, className, ...props }: CodeBlockProps) {
   return (

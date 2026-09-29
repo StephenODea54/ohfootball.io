@@ -53,6 +53,8 @@ Locally:
 
 ## The download
 
+The page `/data` on the site tells people how to download the zip.
+
 `publish-download` sends these objects to the R2 bucket, in this order:
 
 | Object                       | Holds                                     |
