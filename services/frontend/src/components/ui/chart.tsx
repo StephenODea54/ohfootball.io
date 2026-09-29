@@ -310,8 +310,9 @@ interface XAxisProps extends Omit<XAxisPropsPrimitive, 'ref'> {
   intervalType?: IntervalType
 }
 
+// Only move the labels down. A horizontal move puts each label away from the point it names.
 const tickHorizontal = {
-  transform: 'translate(32, 6)',
+  transform: 'translate(0, 6)',
 } as const
 
 const XAxis = ({
