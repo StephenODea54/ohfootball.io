@@ -10,18 +10,21 @@
 # Run one of these on a workstation with:
 #   make pipeline ARGS=rate
 
-.PHONY: pipeline scrape transform rate publish-site publish-dataset backfill
+.PHONY: pipeline scrape transform rate publish-site publish-download publish-dataset backfill
 
 # The order matters. The transform reads what the scrape collected, the rating reads the marts the
 # transform built, and the site is drawn from the API after the ratings land.
 #
-# The dataset is published last. Nothing else in the run reads it, so a refusal by Kaggle costs
-# the publication of the dataset and not the publication of the site.
+# The download and the dataset are published last. Nothing else in the run reads them, so a
+# refusal by R2 or by Kaggle costs that publication and not the publication of the site. The
+# download goes first, because its upload is short and nothing is sent after it that can be
+# refused. The Kaggle publication can wait for 10 minutes and can fail after its upload.
 pipeline:
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) scrape
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) transform
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) rate
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-site
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-download
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-dataset
 
 # Collects the games the season has added. The season is named by SCRAPER_SEASON, which has to be
@@ -79,6 +82,11 @@ publish-site:
 	422) echo "GitHub answered 422. The workflow has no workflow_dispatch trigger, or the branch $(SITE_BRANCH) does not exist." >&2; exit 1 ;; \
 	*) echo "GitHub refused the request to build the site and answered $$status" >&2; exit 1 ;; \
 	esac
+
+# Writes the marts as files, zips them, and sends the zip to the R2 bucket that data.ohfootball.io
+# serves. The zip goes under the date of the run and under latest/. See services/dataset/README.md.
+publish-download:
+	ohfootball-dataset publish-download
 
 # Writes the marts as files and sends them to Kaggle as one new version.
 publish-dataset:

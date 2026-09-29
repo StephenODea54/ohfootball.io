@@ -10,6 +10,8 @@ The site is on Cloudflare Pages. GitHub Actions builds it against the public API
 files to Pages. Cloudflare holds the DNS of `ohfootball.io`, the name of the site, and its
 certificate.
 
+The download of the data is in a Cloudflare R2 bucket, which serves it on `data.ohfootball.io`.
+
 There are two pipelines. One publishes code and runs when a change lands on main. The other
 rebuilds data and runs once a week. Neither does the work of the other.
 
@@ -26,13 +28,14 @@ flowchart TB
 
     subgraph data["Data pipeline: Dokploy schedule, weekly"]
         direction LR
-        run["Scrape, transform, rate"] --> site["Ask for a site build"] --> kaggle["Publish to Kaggle"]
+        run["Scrape, transform, rate"] --> site["Ask for a site build"] --> download["Publish the download"] --> kaggle["Publish to Kaggle"]
     end
 
     subgraph serve["What a visitor reaches"]
         direction LR
         pages["Cloudflare Pages<br/>ohfootball.io<br/>prerendered pages"]
         proxy["Traefik<br/>api.ohfootball.io"] --> api["api<br/>Go, GraphQL"]
+        r2[("Cloudflare R2<br/>data.ohfootball.io<br/>zip of the marts")]
     end
 
     warehouse[("PostgreSQL<br/>managed by Dokploy")]
@@ -44,6 +47,7 @@ flowchart TB
     run -.reads and writes.-> warehouse
     api -.reads.-> warehouse
     site -.workflow_dispatch.-> sitewf
+    download -.uploads.-> r2
 ```
 
 The warehouse has no public port. Only the applications on the host reach it.
@@ -161,10 +165,12 @@ flowchart TD
     scrape["scrape<br/>joe-eitel"] --> transform["transform<br/>dbt build"]
     transform --> rate["rate<br/>ohfootball-elo publish"]
     rate --> site["publish-site<br/>start the site workflow"]
-    site --> dataset["publish-dataset<br/>ohfootball-dataset publish"]
+    site --> download["publish-download<br/>ohfootball-dataset publish-download"]
+    download --> dataset["publish-dataset<br/>ohfootball-dataset publish"]
 
     warehouse[("PostgreSQL")]
     build["GitHub Actions builds the site<br/>and uploads it to Pages"]
+    r2[("R2 bucket<br/>data.ohfootball.io")]
     kaggle[("Kaggle")]
 
     scrape -. writes .-> warehouse
@@ -172,6 +178,7 @@ flowchart TD
     rate -. reads and writes .-> warehouse
     site -. asks for .-> build
     build -. draws every page from .-> api["api"]
+    download -. reads the marts, zips them, then sends .-> r2
     dataset -. reads the marts, then sends .-> kaggle
 ```
 
@@ -181,6 +188,7 @@ flowchart TD
 | `transform` | dbt | rebuilds staging, intermediate, and the marts |
 | `rate` | Python | rates every team in every season and stores a pregame prediction for every game played |
 | `publish-site` | curl | starts the site workflow through the REST API of GitHub |
+| `publish-download` | Python | zips the marts and sends the zip to R2, under the date and under `latest/` |
 | `publish-dataset` | Python | sends the marts to Kaggle as one new version |
 | `backfill` | Go | reads the seasons before the ones the weekly scrape reads; run by hand |
 
@@ -202,8 +210,15 @@ It does not wait for the build. So
 `publish-site` reports that the build was asked for, and the run of `site` in the Actions tab holds
 the result. By default, GitHub sends an email to the owner of the token when that run fails.
 
-The dataset is published last. Nothing else reads it, so a refusal by Kaggle costs the dataset and
-not the site.
+The download and the dataset are published last. Nothing else reads them, so a refusal by R2 or
+by Kaggle costs that publication and not the site. The download goes first, because its upload is
+short and nothing is sent after it that can be refused. The Kaggle publication can wait for 10
+minutes and can fail after its upload.
+
+The zip is sent under the date of the run before it is sent under `latest/`, so `latest/` never
+names a date that the bucket does not hold. Each object has `Cache-Control` set to five minutes.
+Cloudflare caches a zip for two hours when an object has none. It does not cache JSON, so the
+manifests and `snapshots.json` come from the bucket each time. No Cache Rule is needed on the zone.
 
 ## What a visitor reaches
 
@@ -211,6 +226,7 @@ not the site.
 flowchart LR
     visitor(["Visitor"]) --> pages["Cloudflare Pages<br/>ohfootball.io"] --> files[["prerendered HTML"]]
     caller(["API user"]) --> proxy["Traefik<br/>api.ohfootball.io"] --> api["api"] --> warehouse[("PostgreSQL")]
+    reader(["Data user"]) --> r2[("Cloudflare R2<br/>data.ohfootball.io")]
 ```
 
 Every page of the current season is a file that the build wrote ahead of time. Each page is a file
@@ -301,6 +317,10 @@ before.
 `SCRAPER_ALL_SEASONS` is set, because it always reads a fixed range. The `pipeline` application
 sets `SCRAPER_SEASON`, so clear it for that one command: `SCRAPER_SEASON= make backfill`.
 
+**The bucket lists nothing in public.** A public R2 bucket does not answer a request for the list
+of its objects. `snapshots.json` at the top of the bucket lists the dates, and each run writes it
+again from the list that the token can read.
+
 **The schedule runs in UTC.** Set the time zone of the schedule to `UTC`. 13:00 UTC is 09:00 in
 New York in summer and 08:00 in winter.
 
@@ -359,6 +379,7 @@ workflow reads them only in its run on main.
 | `SITE_WORKFLOW_TOKEN` | a fine-grained personal access token for `StephenODea54/ohfootball.io` with the repository permission Actions, read and write |
 | `SITE_REPOSITORY`, `SITE_WORKFLOW`, `SITE_BRANCH` | optional, default `StephenODea54/ohfootball.io`, `site.yml`, and `main`, the workflow that `publish-site` starts |
 | `KAGGLE_USERNAME`, `KAGGLE_KEY`, `KAGGLE_DATASET` | the Kaggle account, its legacy API key from `kaggle.json`, and the dataset as `owner/slug`; `KAGGLE_API_TOKEN` can take the place of the key |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | the ID of the Cloudflare account, the two parts of an R2 API token with the permission Object Read & Write on the one bucket, and the name of the bucket, `ohfootball-data` |
 
 ## The first deploy
 
@@ -406,11 +427,19 @@ project of their own. Do these steps in this order.
    uses them. Then, in the Pages project, open Custom domains, select Set up a domain, and enter
    `ohfootball.io`. Cloudflare adds the DNS record and the certificate. To serve `www` as well,
    add `www.ohfootball.io` as a second custom domain.
-10. Run `cd /app && make publish-dataset` when the Kaggle settings are in place.
-11. Add a schedule to the `pipeline` application. Set its time zone to `UTC`. It runs
-    `cd /app && make pipeline` with the cron expression `0 13 * * 2`. Until the Kaggle settings
-    are in place, run `cd /app && make scrape transform rate publish-site` instead, because
-    `make pipeline` ends with the publication of the dataset and fails without them.
+10. In R2 of the Cloudflare account, create the bucket `ohfootball-data`. In the settings of the
+    bucket, under Custom Domains, add `data.ohfootball.io`. Cloudflare adds the DNS record and the
+    certificate. Leave the `r2.dev` address off. Then, under Manage API tokens, create a token with
+    the permission Object Read & Write and select only this bucket. Copy the Access Key ID, the
+    Secret Access Key, and the account ID into the settings of `pipeline`, set `R2_BUCKET`, and
+    deploy it. Run `cd /app && make publish-download`.
+    `https://data.ohfootball.io/latest/manifest.json` answers when it worked. No CORS rule is
+    needed, because no page on another origin reads the bucket.
+11. Run `cd /app && make publish-dataset` when the Kaggle settings are in place.
+12. Add a schedule to the `pipeline` application. Set its time zone to `UTC`. It runs
+    `cd /app && make pipeline` with the cron expression `0 13 * * 2`. Until the R2 and the Kaggle
+    settings are in place, run `cd /app && make scrape transform rate publish-site` instead,
+    because `make pipeline` ends with the two publications and fails without them.
 
 After the first deploy, a push to main deploys each application on the host and publishes the site
 when the site changed, and the schedule rebuilds the data and the site each week.
