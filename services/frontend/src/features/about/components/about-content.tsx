@@ -1,10 +1,13 @@
 import { ArrowRightIcon } from "@heroicons/react/20/solid"
+import { Badge } from "@/components/ui/badge"
 import { buttonStyles } from "@/components/ui/button"
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Link } from "@/components/ui/link"
 import { Text, TextLink } from "@/components/ui/text"
 import { links, paths } from "@/config/paths"
+import { awesomeSites } from "@/features/about/awesome-sites"
 
 const questions = [
   {
@@ -84,18 +87,48 @@ export function AboutContent() {
             Where The Data Comes From
           </Heading>
           <Text className="mt-4 text-base/7">
-            The scores come from two places.{" "}
-            <TextLink href="https://joeeitel.com/hsfoot/">joeeitel.com</TextLink> has every season
-            from 2000, and <TextLink href="https://ohhsfbdb.net">ohhsfbdb.net</TextLink> has the
-            seasons from 1972 to 1999. Both are awesome, and you should absolutely check them out.
+            The scores come from two places. <TextLink href={links.joeEitel}>joeeitel.com</TextLink>{" "}
+            has every season from 2000, and <TextLink href={links.ohhsfbdb}>ohhsfbdb.net</TextLink>{" "}
+            has the seasons from 1972 to 1999. You can find both under{" "}
+            <TextLink href="#awesome-sites-heading">Awesome Sites</TextLink>.
           </Text>
           <Text className="mt-3 text-base/7">
             That is also why only the season in progress is shown here. A page for every old score
             would turn ohfootball.io into a place to look up past results, and that takes away from
             those two. So you will find ratings and predictions for the current season only. For
-            earlier seasons, and for the predictions made for them, use the{" "}
-            <TextLink href={links.dataset}>Kaggle dataset</TextLink>.
+            earlier seasons, and for the predictions made for them, check out the{" "}
+            <TextLink href={paths.data.getHref()}>Data tab</TextLink>.
           </Text>
+        </section>
+
+        <section className="mt-14" aria-labelledby="awesome-sites-heading">
+          <Heading
+            id="awesome-sites-heading"
+            level={2}
+            className="scroll-mt-20 text-2xl/8 sm:text-3xl/9"
+          >
+            Awesome Sites
+          </Heading>
+          <Text className="mt-4 max-w-3xl text-base/7">
+            The sites that ohfootball.io is built on, and others that are worth your time.
+          </Text>
+          <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {awesomeSites.map(({ description, href, isScoreSource, name }) => (
+              <li key={href}>
+                <Card className="h-full rounded-xl shadow-none [--gutter:--spacing(5)]">
+                  <CardHeader>
+                    <CardTitle className="flex flex-wrap items-center gap-2">
+                      <Link href={href} className="font-semibold text-fg hover:underline">
+                        {name}
+                      </Link>
+                      {isScoreSource && <Badge intent="secondary">Score source</Badge>}
+                    </CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                  </CardHeader>
+                </Card>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="mt-14 max-w-3xl" aria-labelledby="data-heading">
@@ -125,7 +158,10 @@ export function AboutContent() {
             Fine Print
           </Heading>
           <ul className="mt-4 space-y-3 text-muted-fg text-sm/6">
-            <li>Not affiliated with the OHSAA, any school, Joe Eitel, or any other entity.</li>
+            <li>
+              Not affiliated with the OHSAA, any school, Joe Eitel, Drew Pasteur, or any other
+              entity.
+            </li>
             <li>A prediction is a guess, not a promise.</li>
             <li>
               Scores come from public results. Predictions are a reflection of that, whether right

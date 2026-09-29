@@ -94,6 +94,8 @@ these CSV artifacts:
   cutoff date.
 - `run_summary.json`: compact configuration and evaluation summary.
 
+Run `make coverage` in `services/elo` to see the line and branch coverage of the unit tests.
+
 Use `ARGS` to change the cutoff or deliberately run a parameter experiment:
 
 ```bash

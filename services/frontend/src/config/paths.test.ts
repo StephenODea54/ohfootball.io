@@ -11,11 +11,14 @@ it("builds every address without a season", () => {
   expect(paths.team.getHref("abc")).toBe("/teams/abc")
 })
 
-it("links to the project outside the site", () => {
+it("links to the project and the score sources outside the site", () => {
   expect(Object.values(links)).toEqual([
     "https://github.com/StephenODea54/ohfootball.io",
     "https://github.com/StephenODea54/ohfootball.io/issues",
     "https://www.kaggle.com/datasets/stephenodea54/ohfootball",
     "mailto:hey@ohfootball.io",
+    "https://joeeitel.com/hsfoot/",
+    "https://ohhsfbdb.net/",
+    "https://www.fantastic50.net/",
   ])
 })

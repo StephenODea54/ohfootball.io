@@ -12,6 +12,7 @@ import {
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Text, TextLink } from "@/components/ui/text"
+import { links } from "@/config/paths"
 
 const limits = [
   {
@@ -258,8 +259,8 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
               The data is sourced from a combination of{" "}
-              <TextLink href="https://joeeitel.com/hsfoot">Joe Eitel</TextLink> and the{" "}
-              <TextLink href="https://ohhsfbdb.net/">Ohio Highschool Football Database</TextLink>.
+              <TextLink href={links.joeEitel}>Joe Eitel</TextLink> and the{" "}
+              <TextLink href={links.ohhsfbdb}>Ohio Highschool Football Database</TextLink>.
             </Text>
           </section>
 

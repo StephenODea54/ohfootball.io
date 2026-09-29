@@ -36,10 +36,14 @@ export const paths = {
   },
 } as const
 
-/** The places outside the site that the footer and the About page link to. */
+/** The places outside the site that the footer and the About and Methodology pages link to. */
 export const links = {
   repository: "https://github.com/StephenODea54/ohfootball.io",
   issues: "https://github.com/StephenODea54/ohfootball.io/issues",
   dataset: "https://www.kaggle.com/datasets/stephenodea54/ohfootball",
   contact: "mailto:hey@ohfootball.io",
+  // The sites that the About page lists under Awesome Sites.
+  joeEitel: "https://joeeitel.com/hsfoot/",
+  ohhsfbdb: "https://ohhsfbdb.net/",
+  fantastic50: "https://www.fantastic50.net/",
 } as const
