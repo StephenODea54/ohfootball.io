@@ -152,8 +152,9 @@ db-migrate:
 # A volume created before sustained applied the migrations already holds their tables, because
 # the database image ran the files when it created the volume. sustained has no record of them
 # and tries to make the tables again, so make db-up fails. Run this target one time on such a
-# volume and then run make db-up. It records every migration up to and including BASELINE. If
-# the volume does not hold the last migration, name the last one that it holds, for example:
+# volume and then run make db-up. It records every migration up to and including BASELINE. The
+# default is the last migration made before sustained. If the volume does not hold it, name the
+# last one that it holds, for example:
 # make db-baseline BASELINE=004_ohhsfbdb_raw
 BASELINE ?= 005_ratings_cover_every_season
 db-baseline:

@@ -27,6 +27,7 @@ APPLIED = {
     "003_game_predictions.up.sql": "388ac82fcb1989e838a4df8ae1cb290f1ded0bad65c4ddd7f52770a3b233ba6e",
     "004_ohhsfbdb_raw.up.sql": "b170fc946ac766aae841bb7df350ae2d73b08492aab504c3230403819077b35f",
     "005_ratings_cover_every_season.up.sql": "8b72e04c70ea352f7d12a11a8ef45c25ff6cee9901efb45ce72a9fc0e22dfdd9",
+    "006_margin_ratings.up.sql": "49dbd3a6ec3841af78b8a0358299939af4b0c65e4c2f1a2719df84d19a8e843a",
 }
 
 
