@@ -65,15 +65,14 @@ represented by Elo's complementary, zero-sum result update.
 
 ## Running it
 
-Build the dbt marts, start MLflow, and run the model:
+Build the dbt marts, then publish the production rating snapshot:
 
 ```bash
 make dbt-build
-make mlflow-up
-make rating-run
+make pipeline ARGS=rate
 ```
 
-Publish the production rating snapshot after the marts are refreshed:
+Inside an image that holds the package, the same step is:
 
 ```bash
 ohfootball-rating publish --season 2026
@@ -90,45 +89,7 @@ give the previous rank of each team. A second run on a later day of the same
 week therefore compares ranks one day apart. To replace a snapshot instead,
 run again with the `--as-of-date` of that snapshot.
 
-MLflow is available at <http://localhost:5000>. Each run records the Elo
-parameters, data fingerprint, cutoff date, overall and per-season metrics, and
-these CSV artifacts:
-
-- `historical_predictions.csv`: each probability captured before its result
-  updates the ratings.
-- `current_ratings.csv`: final rating for every team-season in the run.
-- `upcoming_predictions.csv`: probabilities for unknown games on or after the
-  cutoff date.
-- `run_summary.json`: compact configuration and evaluation summary.
-
 Run `make coverage` in `services/rating` to see the line and branch coverage of the unit tests.
-
-Use `ARGS` to change the cutoff or deliberately run a parameter experiment:
-
-```bash
-make rating-run ARGS="--as-of-date 2026-08-20 --k-factor 24 --run-name k-24"
-```
-
-Run a chronological parameter sweep with comma-separated candidate values:
-
-```bash
-make rating-sweep ARGS="--parameter k_factor --values 96,128,160,192,224 --run-prefix k"
-```
-
-By default, sweeps tune on 2000–2021 and validate on 2022–2023. Games after
-2023 are not processed by a sweep, which protects the 2024–2025 final holdout.
-Override the windows with `--tuning-seasons 2000:2020` and
-`--validation-seasons 2021:2023`. Sweep runs log parameters and window metrics
-to MLflow without duplicating large CSV artifacts; a final `run` logs the full
-artifacts and per-season metrics.
-
-MLflow is only an experiment tracker here. This project does not use its model
-registry or deployment features, and Elo does not need a serialized estimator.
-
-MLflow is an extra of this package and is not installed by default. `run` and
-`sweep` need it, so install the package with `pip install '.[tracking]'` to use
-them. `publish` writes ratings and predictions to the warehouse and logs
-nothing, so it runs without the extra. The weekly run calls `publish` only.
 
 ## Metrics worth caring about
 
@@ -156,11 +117,8 @@ Brier score as confirmation and favorite accuracy as a guardrail. Parameters
 were tuned on 2000–2021. The untouched 2024–2025 seasons were evaluated only
 after the choices were fixed.
 
-Recommended candidate:
-
-```bash
-make rating-run ARGS="--k-factor 148 --home-advantage 30 --season-carryover 0.85 --division-rating-step 140 --provisional-games 3 --provisional-k-multiplier 1.6 --run-name champion-v3-provisional"
-```
+Recommended candidate: K=148, 30 points of home advantage, 85% season carryover, a 140-point
+division step, and a 1.6x K boost over each team's first three games.
 
 | 2024–2025 holdout | Plain baseline | Candidate |
 | --- | ---: | ---: |

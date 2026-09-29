@@ -2,7 +2,7 @@
 	tools lint-tools lint lint-go lint-python lint-sql fmt-go fmt-python fmt-sql \
 	site-lint site-fmt doctor \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
-	rating-build rating-test mlflow-up mlflow-down rating-run rating-sweep \
+	rating-build rating-test \
 	dataset-build dataset-test dataset-export \
 	pipeline pipeline-build pipeline-test postgres-test site-test site-check
 
@@ -190,18 +190,6 @@ rating-build:
 
 rating-test:
 	$(MAKE) -C services/rating test
-
-mlflow-up:
-	docker compose --profile tools up -d --wait mlflow
-
-mlflow-down:
-	docker compose --profile tools stop mlflow
-
-rating-run:
-	docker compose run --rm rating run $(ARGS)
-
-rating-sweep:
-	docker compose run --rm rating sweep $(ARGS)
 
 dataset-build:
 	docker compose build dataset

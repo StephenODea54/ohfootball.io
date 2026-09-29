@@ -1,4 +1,4 @@
-"""Command-line entry points for Elo predictions and parameter sweeps."""
+"""Command-line entry point that publishes the ratings and the predictions."""
 
 from __future__ import annotations
 
@@ -6,13 +6,11 @@ import argparse
 import json
 import os
 from collections.abc import Iterable
-from dataclasses import asdict, replace
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .elo import EloConfig, Prediction, backtest, initial_team_rating, predict
+from .elo import EloConfig, backtest, initial_team_rating
 from .games import Game
-from .metrics import evaluate
 from .publisher import (
     GamePredictionRow,
     RatingSnapshot,
@@ -21,34 +19,17 @@ from .publisher import (
     publish_ratings,
 )
 from .repository import load_games
-from .tracking import track_run
 
 DEFAULT_DATABASE_URL = "postgresql://im_batman:shhhhhhhhh@localhost:5432/ohfootball"
 DEFAULT_TIME_ZONE = "America/New_York"
-SWEEP_PARAMETERS = (
-    "k_factor",
-    "rating_scale",
-    "margin_multiplier_cap",
-    "home_advantage",
-    "season_carryover",
-    "division_rating_step",
-    "margin_weight",
-    "provisional_games",
-    "provisional_k_multiplier",
-)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ohfootball-rating",
-        description="Backtest Elo and predict upcoming games.",
+        description="Publish the Elo ratings and the game predictions.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
-
-    run = subparsers.add_parser("run", help="run Elo and record it in MLflow")
-    _add_common_arguments(run)
-    _add_config_arguments(run)
-    run.add_argument("--run-name")
 
     publish = subparsers.add_parser(
         "publish",
@@ -66,17 +47,6 @@ def build_parser() -> argparse.ArgumentParser:
         provisional_k_multiplier=1.6,
     )
 
-    sweep = subparsers.add_parser(
-        "sweep",
-        help="compare values for one Elo parameter without logging large artifacts",
-    )
-    _add_common_arguments(sweep)
-    _add_config_arguments(sweep)
-    sweep.add_argument("--parameter", choices=SWEEP_PARAMETERS, required=True)
-    sweep.add_argument("--values", type=_float_values, required=True)
-    sweep.add_argument("--tuning-seasons", type=_season_range, default=(2000, 2021))
-    sweep.add_argument("--validation-seasons", type=_season_range, default=(2022, 2023))
-    sweep.add_argument("--run-prefix")
     return parser
 
 
@@ -88,14 +58,6 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--marts-schema",
         default=os.getenv("OHFOOTBALL_MARTS_SCHEMA", "ohfootball_marts"),
-    )
-    parser.add_argument(
-        "--tracking-uri",
-        default=os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"),
-    )
-    parser.add_argument(
-        "--experiment-name",
-        default=os.getenv("MLFLOW_EXPERIMENT_NAME", "ohfootball-elo"),
     )
     parser.add_argument(
         "--as-of-date",
@@ -125,148 +87,10 @@ def _today_in_project_time_zone() -> date:
         raise ValueError(f"invalid OHFOOTBALL_TIME_ZONE: {time_zone!r}") from error
 
 
-def _float_values(raw_values: str) -> tuple[float, ...]:
-    try:
-        values = tuple(float(value.strip()) for value in raw_values.split(","))
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("values must be comma-separated numbers") from error
-    return values
-
-
-def _season_range(raw_range: str) -> tuple[int, int]:
-    try:
-        start, end = (int(value) for value in raw_range.split(":", maxsplit=1))
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("season range must look like 2000:2021") from error
-    if start > end:
-        raise argparse.ArgumentTypeError("season range start cannot exceed its end")
-    return start, end
-
-
 def main() -> None:
     arguments = build_parser().parse_args()
-    if arguments.command == "run":
-        _run(arguments)
-    elif arguments.command == "sweep":
-        _sweep(arguments)
-    elif arguments.command == "publish":
+    if arguments.command == "publish":
         _publish(arguments)
-
-
-def _run(arguments: argparse.Namespace) -> None:
-    config = _config(arguments)
-    games = load_games(arguments.database_url, marts_schema=arguments.marts_schema)
-    training_games = _completed_games(games, arguments.as_of_date)
-    if not training_games:
-        raise SystemExit(f"no completed games exist before {arguments.as_of_date}")
-
-    upcoming_games = tuple(
-        game for game in games if game.is_scheduled and game.game_date >= arguments.as_of_date
-    )
-    result = backtest(training_games, config)
-    upcoming_predictions = predict(
-        upcoming_games,
-        result.ratings,
-        config,
-        result.program_ratings,
-        result.games_played,
-    )
-    run_id, evaluation = track_run(
-        tracking_uri=arguments.tracking_uri,
-        experiment_name=arguments.experiment_name,
-        run_name=arguments.run_name,
-        as_of_date=arguments.as_of_date,
-        config=config,
-        training_games=training_games,
-        historical_predictions=result.predictions,
-        upcoming_predictions=upcoming_predictions,
-        ratings=result.ratings,
-    )
-    print(
-        json.dumps(
-            {
-                "mlflow_run_id": run_id,
-                "training_games": len(training_games),
-                "upcoming_games": len(upcoming_predictions),
-                "evaluation": asdict(evaluation),
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
-
-
-def _sweep(arguments: argparse.Namespace) -> None:
-    base_config = _config(arguments)
-    all_games = load_games(arguments.database_url, marts_schema=arguments.marts_schema)
-    completed_games = _completed_games(all_games, arguments.as_of_date)
-    tuning_start, tuning_end = arguments.tuning_seasons
-    validation_start, validation_end = arguments.validation_seasons
-    if tuning_end >= validation_start:
-        raise SystemExit("tuning seasons must end before validation seasons begin")
-
-    experiment_games = tuple(game for game in completed_games if game.season <= validation_end)
-    summaries = []
-    for value in arguments.values:
-        parameter_value: float | int = value
-        if arguments.parameter == "provisional_games":
-            if not value.is_integer():
-                raise SystemExit("provisional_games sweep values must be integers")
-            parameter_value = int(value)
-        config = replace(base_config, **{arguments.parameter: parameter_value})
-        result = backtest(experiment_games, config)
-        tuning_predictions = _prediction_window(
-            result.predictions,
-            tuning_start,
-            tuning_end,
-        )
-        validation_predictions = _prediction_window(
-            result.predictions,
-            validation_start,
-            validation_end,
-        )
-        tuning = evaluate(tuning_predictions)
-        validation = evaluate(validation_predictions)
-        value_label = f"{value:g}"
-        prefix = arguments.run_prefix or arguments.parameter
-        run_id, _ = track_run(
-            tracking_uri=arguments.tracking_uri,
-            experiment_name=arguments.experiment_name,
-            run_name=f"{prefix}-{value_label}",
-            as_of_date=arguments.as_of_date,
-            config=config,
-            training_games=experiment_games,
-            historical_predictions=result.predictions,
-            upcoming_predictions=(),
-            ratings=result.ratings,
-            evaluation_windows={
-                "tuning": tuning_predictions,
-                "validation": validation_predictions,
-            },
-            extra_tags={
-                "run_purpose": "parameter-sweep",
-                "sweep_parameter": arguments.parameter,
-            },
-            log_artifacts=False,
-            log_per_season=False,
-        )
-        summaries.append(
-            {
-                "value": value,
-                "mlflow_run_id": run_id,
-                "config": asdict(config),
-                "tuning": asdict(tuning),
-                "validation": asdict(validation),
-            }
-        )
-
-    summaries.sort(
-        key=lambda summary: (
-            summary["validation"]["log_loss"],
-            summary["validation"]["brier_score"],
-        )
-    )
-    print(json.dumps(summaries, indent=2, sort_keys=True))
 
 
 def _publish(arguments: argparse.Namespace) -> None:
@@ -373,16 +197,6 @@ def _config(arguments: argparse.Namespace) -> EloConfig:
 
 def _completed_games(games: Iterable[Game], as_of_date: date) -> tuple[Game, ...]:
     return tuple(game for game in games if game.is_rateable and game.game_date < as_of_date)
-
-
-def _prediction_window(
-    predictions: tuple[Prediction, ...],
-    first_season: int,
-    last_season: int,
-) -> tuple[Prediction, ...]:
-    return tuple(
-        prediction for prediction in predictions if first_season <= prediction.season <= last_season
-    )
 
 
 if __name__ == "__main__":

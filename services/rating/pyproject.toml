@@ -12,12 +12,6 @@ dependencies = [
     "psycopg[binary]>=3.2,<4",
 ]
 
-# The tracking server is needed by `run` and `sweep`, which tune the rating on a workstation. It
-# is not needed by `publish`, which is what the weekly run calls. Keeping it out of the required
-# set halves the number of packages an image needs to install to publish a rating.
-[project.optional-dependencies]
-tracking = ["mlflow==3.14.0"]
-
 [project.scripts]
 ohfootball-rating = "ohfootball_rating.cli:main"
 

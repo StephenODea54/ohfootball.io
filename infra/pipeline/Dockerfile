@@ -8,9 +8,6 @@
 # container and not a container it starts. Five idle containers would cost five times as much to
 # hold up for the same work.
 #
-# The tracking server is not installed. The weekly run publishes ratings and logs nothing, and
-# leaving the tracking server out halves the number of packages installed here.
-#
 # Build from the repository root:
 #   docker build -f infra/pipeline/Dockerfile -t ohfootball/pipeline .
 
