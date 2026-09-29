@@ -31,8 +31,8 @@ from typing import Any
 from .marts import MARTS, Mart
 
 METADATA_FILE = "dataset-metadata.json"
-TITLE = "Ohio High School Football: Games and Elo Ratings"
-SUBTITLE = "Ohio high school football games, teams, and Elo ratings, updated weekly"
+TITLE = "Ohio High School Football: Games and Ratings"
+SUBTITLE = "Ohio high school football games, teams, and point ratings, updated weekly"
 LICENSE = "CC0-1.0"
 
 # Each keyword must be the name of a tag that Kaggle already has. Kaggle refuses the whole metadata
@@ -47,7 +47,7 @@ SOURCES = (
     "([joeeitel.com/hsfoot](https://joeeitel.com/hsfoot)). The seasons before those pages begin "
     "come from the Ohio Highschool Football Database ([ohhsfbdb.net](https://ohhsfbdb.net/)). "
     "[ohfootball.io](https://ohfootball.io) cleans the records, joins the two views of each game "
-    "into one row, and calculates the Elo ratings. The code is on "
+    "into one row, and calculates the ratings. The code is on "
     "[GitHub](https://github.com/StephenODea54/ohfootball.io)."
 )
 
@@ -55,7 +55,7 @@ WEBSITE = "https://ohfootball.io"
 REPOSITORY = "https://github.com/StephenODea54/ohfootball.io"
 
 _INTRODUCTION = """
-The game record of Ohio high school football, the teams that played it, and an Elo rating for
+The game record of Ohio high school football, the teams that played it, and a rating in points for
 every team in every season. Rebuilt and published once a week from the ohfootball.io warehouse.
 """.strip()
 
@@ -76,6 +76,10 @@ empty field is a null.
 The record covers games played by Ohio teams. An opponent from another state appears in
 `dim_teams` with its own `state_code`, and the games against it are in `fct_games`, so a count of
 games by state is not a count of Ohio teams.
+
+The ratings are margin ratings in points in `fct_team_ratings`, and the ratings in
+`fct_game_predictions` use the same scale. The versions of the dataset published before this
+rating held Elo ratings in a file of their own, and they keep those files.
 """.strip()
 
 # The limits that Kaggle puts on the metadata. The checks here stop a value outside them before a

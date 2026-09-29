@@ -13,8 +13,8 @@ One CSV file per mart, current rows only, keys and dates as text and flags as 0 
 | `dim_teams.csv`             | One row per team per season, with place, division, and colors  |
 | `dim_dates.csv`             | The calendar the games are dated against                       |
 | `fct_games.csv`             | One row per game, both scores, both results, and the home side |
-| `fct_team_elo_ratings.csv`  | The rating each team held at the end of each season            |
-| `fct_game_predictions.csv`  | The ratings carried into a game and the win probability        |
+| `fct_team_ratings.csv`      | The rating of each team, weekly this season and at each season end |
+| `fct_game_predictions.csv`  | The ratings carried into a game, the margin and the probability |
 
 `marts.py` names every column. Nothing is taken with a star, so the shape of the published dataset
 is read from that one file. The casts match the ones the API snapshot uses, so a reader of the

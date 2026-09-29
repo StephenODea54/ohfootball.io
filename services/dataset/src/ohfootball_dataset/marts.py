@@ -365,10 +365,11 @@ MARTS: tuple[Mart, ...] = (
         current_only=True,
     ),
     Mart(
-        name="fct_team_elo_ratings",
+        name="fct_team_ratings",
         description=(
-            "The Elo rating of each Ohio team, taken on a date in each season. A rating counts "
-            "the games before that date and no game on it."
+            "The rating of each Ohio team, taken on a date in each season. A rating is a number "
+            "of points, and the gap between two ratings is the margin that the model expects on "
+            "a neutral field. A rating counts the games before that date and no game on it."
         ),
         columns=(
             Column(
@@ -390,8 +391,20 @@ MARTS: tuple[Mart, ...] = (
                 kaggle_type="string",
             ),
             Column(
-                "elo_rating",
-                description="The Elo rating of the team. A higher rating is a stronger team.",
+                "rating",
+                description=(
+                    "The rating of the team, in points. A higher rating is a stronger team. The "
+                    "value 0 has no meaning of its own, so compare two ratings of one date."
+                ),
+                kaggle_type="numeric",
+            ),
+            Column(
+                "relative_rating",
+                description=(
+                    "The rating minus the median rating of the Ohio teams on the same date, so "
+                    "that 0 is the median team. A positive value is the number of points by which "
+                    "the team would be expected to beat the median team on a neutral field."
+                ),
                 kaggle_type="numeric",
             ),
         ),
@@ -400,8 +413,10 @@ MARTS: tuple[Mart, ...] = (
     Mart(
         name="fct_game_predictions",
         description=(
-            "One prediction for each completed game between two Ohio teams. It holds the rating "
-            "each team carried into the game and the win probability read from those ratings."
+            "One prediction for each game between two Ohio teams: each game played before the "
+            "date of the data, and each game of the season in progress not yet played. It holds "
+            "the rating each team carried into the game, the margin that the model expected and "
+            "the win probability read from that margin."
         ),
         columns=(
             Column(
@@ -435,22 +450,38 @@ MARTS: tuple[Mart, ...] = (
             ),
             Column(
                 "team_a_rating",
-                description="The Elo rating team A carried into the game.",
+                description="The rating team A carried into the game, in points.",
                 kaggle_type="numeric",
             ),
             Column(
                 "team_b_rating",
-                description="The Elo rating team B carried into the game.",
+                description="The rating team B carried into the game, in points.",
                 kaggle_type="numeric",
             ),
             Column(
                 "team_a_win_probability",
                 description=(
-                    "The probability that team A wins, from 0 to 1, calculated before the game. "
-                    "The rating model can add an advantage for the home team, so this can differ "
-                    "from a probability read from the two ratings alone."
+                    "The probability that team A wins, from 0 to 1, calculated before the game "
+                    "from the expected margin."
                 ),
                 kaggle_type="numeric",
+            ),
+            Column(
+                "predicted_margin",
+                description=(
+                    "The margin that the model expected, team A points minus team B points. It "
+                    "includes the edge of the home team, so it can differ from the gap between "
+                    "the two ratings."
+                ),
+                kaggle_type="numeric",
+            ),
+            Column(
+                "as_of_date",
+                "as_of_date::text",
+                "The date of the prediction, as YYYY-MM-DD. It is the date of the game for a game "
+                "played before the date of the data, and the date of the data for a game not yet "
+                "played.",
+                kaggle_type="string",
             ),
         ),
         order_by=("season", "game_date", "game_key"),

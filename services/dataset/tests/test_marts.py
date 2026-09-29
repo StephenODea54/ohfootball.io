@@ -111,7 +111,7 @@ class ThePublishedSet(unittest.TestCase):
                 "dim_teams",
                 "dim_dates",
                 "fct_games",
-                "fct_team_elo_ratings",
+                "fct_team_ratings",
                 "fct_game_predictions",
             },
         )
@@ -173,11 +173,12 @@ class ThePublishedSet(unittest.TestCase):
 
 class TheStatements(unittest.TestCase):
     def test_select_the_named_columns_in_order(self) -> None:
-        query = _mart("fct_team_elo_ratings").query(SCHEMA)
+        query = _mart("fct_team_ratings").query(SCHEMA)
         self.assertIn("team_key::text AS team_key", query)
         self.assertIn("as_of_date::text AS as_of_date", query)
-        self.assertIn("elo_rating AS elo_rating", query)
-        self.assertIn(f"FROM {SCHEMA}.fct_team_elo_ratings", query)
+        self.assertIn("rating AS rating", query)
+        self.assertIn("relative_rating AS relative_rating", query)
+        self.assertIn(f"FROM {SCHEMA}.fct_team_ratings", query)
         self.assertIn("ORDER BY season, as_of_date, team_key", query)
 
     def test_filter_only_the_marts_that_hold_versions(self) -> None:

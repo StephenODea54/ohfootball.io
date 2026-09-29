@@ -73,10 +73,10 @@ class Archive:
 def data_dictionary(as_of_date: date, marts: Iterable[Mart] = MARTS) -> str:
     """The README in the zip, with a table of the columns of each file."""
     sections = [
-        "# Ohio High School Football: Games and Elo Ratings",
+        "# Ohio High School Football: Games and Ratings",
         (
-            "The game record of Ohio high school football, the teams that played it, and an Elo "
-            f"rating for every team in every season. This copy holds the marts as of "
+            "The game record of Ohio high school football, the teams that played it, and a "
+            f"rating in points for every team in every season. This copy holds the marts as of "
             f"{as_of_date.isoformat()}."
         ),
         "## License",

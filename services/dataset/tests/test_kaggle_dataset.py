@@ -565,7 +565,7 @@ class TheReadBack(unittest.TestCase):
         files[1].description = ""
         files[2].columns[0].description = ""  # type: ignore[index]
         files[3].columns = None
-        self.assertEqual(files[3].name, "fct_team_elo_ratings.csv")
+        self.assertEqual(files[3].name, "fct_team_ratings.csv")
         api = FakeApi(read_back={}, listing=FakeListing(files))
         publication = _publish(api)
         self.assertEqual(publication.descriptions, "missing")
@@ -574,7 +574,7 @@ class TheReadBack(unittest.TestCase):
             (
                 "dim_dates.csv",
                 "fct_games.csv:game_key",
-                *(f"fct_team_elo_ratings.csv:{name}" for name in MARTS[3].column_names),
+                *(f"fct_team_ratings.csv:{name}" for name in MARTS[3].column_names),
             ),
         )
 
