@@ -37,6 +37,9 @@ class Game:
     team_a_score: int | None = None
     team_b_score: int | None = None
     notes: str | None = None
+    # The Elo rating does not use this flag. Other models and reports use it to keep playoff
+    # games separate from regular season games.
+    is_playoff_game: bool = False
 
     @property
     def is_forfeit(self) -> bool:

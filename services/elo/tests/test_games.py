@@ -60,6 +60,9 @@ class RateableScoreTests(unittest.TestCase):
         self.assertTrue(game("unknown").is_scheduled)
         self.assertFalse(game("unknown").is_canceled)
 
+    def test_a_game_is_not_a_playoff_game_unless_marked(self) -> None:
+        self.assertFalse(game("W").is_playoff_game)
+
 
 class ChronologicalTests(unittest.TestCase):
     def test_the_season_is_sorted_before_the_date(self) -> None:

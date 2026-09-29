@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 from datetime import date
 
 from ohfootball_elo.elo import (
@@ -423,6 +424,22 @@ class BacktestTests(unittest.TestCase):
             result.ratings[(2025, "a")] + result.ratings[(2025, "b")],
             config.initial_rating * 2,
         )
+
+    def test_the_playoff_flag_changes_no_prediction_or_rating(self) -> None:
+        config = EloConfig(k_factor=148, home_advantage=30, season_carryover=0.85)
+        games = [
+            game("one", date(2024, 8, 1), "a", "b", "W", season=2024, is_team_a_home=True),
+            game("two", date(2024, 11, 1), "a", "c", "L", season=2024),
+            game("three", date(2025, 8, 1), "b", "c", "W", season=2025, team_b_program_id="c"),
+        ]
+        playoffs = [replace(item, is_playoff_game=item.game_key != "one") for item in games]
+
+        plain = backtest(games, config)
+        flagged = backtest(playoffs, config)
+
+        self.assertEqual(plain.predictions, flagged.predictions)
+        self.assertEqual(plain.ratings, flagged.ratings)
+        self.assertEqual(plain.program_ratings, flagged.program_ratings)
 
     def test_provisional_k_boost_decays_with_games_played(self) -> None:
         config = EloConfig(provisional_games=4, provisional_k_multiplier=2.0)

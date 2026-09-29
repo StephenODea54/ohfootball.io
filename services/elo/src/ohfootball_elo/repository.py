@@ -42,6 +42,7 @@ def load_games(database_url: str, *, marts_schema: str = "ohfootball_marts") -> 
             team_a_score=row["team_a_score"],
             team_b_score=row["team_b_score"],
             notes=row["notes"],
+            is_playoff_game=row["is_playoff_game"],
         )
         for row in rows
     )
@@ -69,7 +70,8 @@ def _build_query(marts_schema: str) -> str:
             game.is_team_b_home,
             game.team_a_score,
             game.team_b_score,
-            game.notes
+            game.notes,
+            game.is_playoff_game
         FROM {marts_schema}.fct_games AS game
         INNER JOIN {marts_schema}.dim_dates AS dates
             ON dates.date_key = game.game_date_key

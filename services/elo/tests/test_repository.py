@@ -17,6 +17,9 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("double forfeit", query)
         self.assertIn("game.notes", query)
 
+    def test_loads_the_playoff_flag(self) -> None:
+        self.assertIn("game.is_playoff_game", _build_query("ohfootball_marts"))
+
     def test_rejects_an_invalid_schema_before_connecting(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid marts schema"):
             _build_query("ohfootball_marts; DROP SCHEMA")
