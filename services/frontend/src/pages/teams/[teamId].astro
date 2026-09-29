@@ -1,5 +1,5 @@
 ---
-import type { GetStaticPaths } from "astro"
+import type { GetStaticPaths, InferGetStaticPropsType } from "astro"
 import { PRERENDER_TEAM_LIMIT } from "astro:env/server"
 import SiteLayout from "@/layouts/site-layout.astro"
 import { Container } from "@/components/ui/container"
@@ -12,6 +12,7 @@ import { getTeams } from "@/features/teams/api/get-teams"
 import { RatingHistoryChart } from "@/features/teams/components/rating-history-chart"
 import { TeamHeader } from "@/features/teams/components/team-header"
 import { TeamScheduleTable } from "@/features/teams/components/team-schedule-table"
+import { linkOpponents } from "@/features/teams/utils/opponent-links"
 
 /**
  * One page for every team of the current season. A team address holds no season, so a team that
@@ -22,16 +23,17 @@ export const getStaticPaths = (async () => {
 
   const ids = [...new Set(teams.map((team) => team.id))]
   const drawn = PRERENDER_TEAM_LIMIT ? ids.slice(0, PRERENDER_TEAM_LIMIT) : ids
-  return drawn.map((teamId) => ({ params: { teamId }, props: { season } }))
+  // Each page is sent the ids of all pages, so its schedule links only to opponents with a page.
+  return drawn.map((teamId) => ({ params: { teamId }, props: { season, pageTeamIds: drawn } }))
 }) satisfies GetStaticPaths
 
 const { teamId } = Astro.params
-const { season } = Astro.props
+const { season, pageTeamIds } = Astro.props as InferGetStaticPropsType<typeof getStaticPaths>
 const team = await getTeam(teamId, season)
 
 // The chart and the schedule run in the browser, so each is sent only the data it draws.
 const history = { season: team.season, rating: team.rating, ratingHistory: team.ratingHistory }
-const schedule = { name: team.name, schedule: team.schedule }
+const schedule = { name: team.name, schedule: linkOpponents(team.schedule, new Set(pageTeamIds)) }
 ---
 
 <SiteLayout

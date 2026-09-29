@@ -3,6 +3,7 @@
 import { twJoin } from "tailwind-merge"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Link } from "@/components/ui/link"
 import { ProgressBar, ProgressBarTrack } from "@/components/ui/progress-bar"
 import {
   Table,
@@ -12,11 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { Game, Team } from "@/types/api"
+import type { ScheduleGame } from "@/features/teams/utils/opponent-links"
+import type { Game } from "@/types/api"
 import { formatDayAndMonth } from "@/utils/format"
 
-/** Every game a school plays in a season, with the prediction made for it. */
-export function TeamScheduleTable({ team }: { team: Pick<Team, "name" | "schedule"> }) {
+/**
+ * Every game a school plays in a season, with the prediction made for it. The name of an opponent
+ * that has a page links to that page.
+ */
+export function TeamScheduleTable({ team }: { team: { name: string; schedule: ScheduleGame[] } }) {
   return (
     <Card className="gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
       <CardContent>
@@ -42,7 +47,16 @@ export function TeamScheduleTable({ team }: { team: Pick<Team, "name" | "schedul
                     {/* The cell lays its children out with flex, which drops a plain
                           whitespace node, so the gap has to be a margin. */}
                     <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
-                    <span className="font-medium text-fg">{game.opponentName}</span>
+                    {game.opponentHref ? (
+                      <Link
+                        href={game.opponentHref}
+                        className="font-medium text-fg hover:text-primary-subtle-fg"
+                      >
+                        {game.opponentName}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-fg">{game.opponentName}</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {game.prediction ? (
