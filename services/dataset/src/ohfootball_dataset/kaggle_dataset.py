@@ -67,7 +67,7 @@ Links:
 - A wrong score or a missing school: [open an issue]({REPOSITORY}/issues)
 """.strip()
 
-_NOTES = """
+NOTES = """
 Join `fct_games` to `dim_teams` on `team_key`, and to `dim_dates` on `game_date_key` = `date_key`.
 
 A flag is written as 0 or 1. A key is a UUID written as text. A date is written as YYYY-MM-DD. An
@@ -141,7 +141,7 @@ def validate_dataset_id(dataset_id: str) -> str:
 def dataset_description(marts: Iterable[Mart] = MARTS) -> str:
     """The description of the dataset, with one line for each published file."""
     files = "\n".join(f"- `{mart.file_name}`: {mart.description}" for mart in marts)
-    return f"{_INTRODUCTION}\n\n{_LINKS}\n\nFiles:\n\n{files}\n\n{_NOTES}"
+    return f"{_INTRODUCTION}\n\n{_LINKS}\n\nFiles:\n\n{files}\n\n{NOTES}"
 
 
 def resources(marts: Iterable[Mart] = MARTS) -> list[dict[str, Any]]:

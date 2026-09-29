@@ -7,13 +7,25 @@ import json
 import unittest
 from contextlib import redirect_stdout
 from datetime import date
+from pathlib import Path
 from unittest import mock
 
 from ohfootball_dataset import cli
+from ohfootball_dataset.archive import Archive
 from ohfootball_dataset.kaggle_dataset import Publication
+from ohfootball_dataset.r2_bucket import Bucket, Upload
 
 DATASET = "someone/ohfootball-high-school-football"
 ROWS = {"dim_teams": 3, "dim_dates": 4, "fct_games": 5}
+SECRET = "r2-secret-0000000000000000000000000000"
+BUCKET = Bucket("0123456789abcdef", "access-key", SECRET, "ohfootball-data")
+ARCHIVE = Archive(Path("/tmp/x/ohfootball.zip"), date(2026, 9, 29), 42, "ab" * 32, "cd" * 16, ())
+UPLOAD = Upload(
+    "2026-09-29/ohfootball.zip",
+    "latest/ohfootball.zip",
+    (("2026-09-29/ohfootball.zip", "uploaded"), ("latest/ohfootball.zip", "unchanged")),
+    ("2026-09-22", "2026-09-29"),
+)
 
 
 def _run(argv: list[str]) -> dict[str, object]:
@@ -74,6 +86,26 @@ class TheExportCommand(unittest.TestCase):
     def test_needs_a_directory(self) -> None:
         with self.assertRaises(SystemExit):
             cli.build_parser().parse_args(["export"])
+
+    def test_writes_no_zip_unless_asked(self) -> None:
+        with mock.patch.object(cli, "export_marts", return_value=ROWS):
+            with mock.patch.object(cli, "build_archive") as build:
+                body = _run(["export", "--directory", "/tmp/export"])
+        build.assert_not_called()
+        self.assertNotIn("archive", body)
+
+    def test_writes_the_zip_when_asked(self) -> None:
+        with mock.patch.object(cli, "export_marts", return_value=ROWS):
+            with mock.patch.object(cli, "build_archive", return_value=ARCHIVE) as build:
+                with mock.patch.object(
+                    cli, "_today_in_project_time_zone", lambda: date(2026, 9, 29)
+                ):
+                    body = _run(["export", "--directory", "/tmp/export", "--archive"])
+        build.assert_called_once_with("/tmp/export", date(2026, 9, 29), counts=ROWS)
+        self.assertEqual(
+            body["archive"],
+            {"bytes": 42, "path": "/tmp/x/ohfootball.zip", "sha256": "ab" * 32},
+        )
 
 
 class ThePublishCommand(unittest.TestCase):
@@ -149,6 +181,102 @@ class ThePublishCommand(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     _run(["publish", "--dataset", DATASET])
         publication.assert_not_called()
+
+
+class ThePublishDownloadCommand(unittest.TestCase):
+    def test_exports_zips_and_uploads_from_one_directory(self) -> None:
+        seen: dict[str, object] = {}
+
+        def fake_export(database_url: str, directory: str, **options: object) -> dict[str, int]:
+            seen["export_directory"] = directory
+            seen["schema"] = options["marts_schema"]
+            return ROWS
+
+        def fake_build(directory: str, as_of_date: date, *, counts: dict[str, int]) -> Archive:
+            seen["archive_directory"] = directory
+            seen["as_of_date"] = as_of_date
+            seen["counts"] = counts
+            return ARCHIVE
+
+        def fake_upload(client: object, bucket_name: str, archive: Archive) -> Upload:
+            seen["client"] = client
+            seen["bucket_name"] = bucket_name
+            seen["archive"] = archive
+            return UPLOAD
+
+        with mock.patch.dict("os.environ", {}, clear=True):
+            with mock.patch.object(cli, "bucket_from_environment", return_value=BUCKET) as read:
+                with mock.patch.object(cli, "export_marts", fake_export):
+                    with mock.patch.object(cli, "build_archive", fake_build):
+                        with mock.patch.object(cli, "r2_client", return_value="client") as build:
+                            with mock.patch.object(cli, "upload_snapshot", fake_upload):
+                                with mock.patch.object(
+                                    cli, "_today_in_project_time_zone", lambda: date(2026, 9, 29)
+                                ):
+                                    captured = io.StringIO()
+                                    with mock.patch(
+                                        "sys.argv",
+                                        ["ohfootball-dataset", "publish-download", "--bucket", "b"],
+                                    ):
+                                        with redirect_stdout(captured):
+                                            cli.main()
+
+        read.assert_called_once_with(name="b")
+        build.assert_called_once_with(BUCKET)
+        self.assertEqual(seen["export_directory"], seen["archive_directory"])
+        self.assertEqual(seen["as_of_date"], date(2026, 9, 29))
+        self.assertEqual(seen["counts"], ROWS)
+        self.assertEqual(seen["client"], "client")
+        self.assertEqual(seen["bucket_name"], "ohfootball-data")
+        self.assertIs(seen["archive"], ARCHIVE)
+        self.assertEqual(seen["schema"], "ohfootball_marts")
+        text = captured.getvalue()
+        self.assertNotIn(SECRET, text)
+        self.assertNotIn("access-key", text)
+        self.assertEqual(
+            json.loads(text),
+            {
+                "as_of_date": "2026-09-29",
+                "bucket": "ohfootball-data",
+                "bytes": 42,
+                "files": len(cli.MARTS),
+                "objects": {
+                    "2026-09-29/ohfootball.zip": "uploaded",
+                    "latest/ohfootball.zip": "unchanged",
+                },
+                "rows": ROWS,
+                "sha256": "ab" * 32,
+                "snapshot_url": "https://data.ohfootball.io/2026-09-29/ohfootball.zip",
+                "snapshots": 2,
+                "url": "https://data.ohfootball.io/latest/ohfootball.zip",
+            },
+        )
+
+    def test_reads_the_bucket_from_the_environment(self) -> None:
+        with mock.patch.dict("os.environ", {"R2_BUCKET": "ohfootball-data"}, clear=True):
+            arguments = cli.build_parser().parse_args(["publish-download"])
+        self.assertEqual(arguments.bucket, "ohfootball-data")
+
+    def test_refuses_to_run_without_the_settings(self) -> None:
+        with mock.patch.dict("os.environ", {"R2_SECRET_ACCESS_KEY": SECRET}, clear=True):
+            with mock.patch.object(cli, "export_marts") as export:
+                with self.assertRaises(SystemExit) as caught:
+                    _run(["publish-download"])
+        export.assert_not_called()
+        self.assertIn("R2_ACCOUNT_ID", str(caught.exception.code))
+        self.assertNotIn(SECRET, str(caught.exception.code))
+
+    def test_uploads_nothing_when_a_mart_is_empty(self) -> None:
+        rows = {**ROWS, "fct_games": 0}
+        with mock.patch.object(cli, "bucket_from_environment", return_value=BUCKET):
+            with mock.patch.object(cli, "export_marts", return_value=rows):
+                with mock.patch.object(cli, "build_archive") as build:
+                    with mock.patch.object(cli, "upload_snapshot") as upload:
+                        with self.assertRaises(SystemExit) as caught:
+                            _run(["publish-download"])
+        build.assert_not_called()
+        upload.assert_not_called()
+        self.assertIn("fct_games", str(caught.exception.code))
 
 
 class TheDayOfTheRun(unittest.TestCase):

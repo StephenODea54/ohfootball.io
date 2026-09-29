@@ -1,8 +1,9 @@
 """Command-line entry points for the public dataset.
 
-`export` writes the files and stops, which is what a check on a laptop needs. `publish` writes them
-to a directory that lasts as long as the upload and sends them to Kaggle, which is what the weekly
-run does.
+`export` writes the files and stops, which is what a check on a laptop needs. With `--archive` it
+also writes the zip that people download. `publish` writes the files to a directory that lasts as
+long as the upload and sends them to Kaggle. `publish-download` writes them the same way, zips them,
+and sends the zip to the R2 bucket. The weekly run does both.
 """
 
 from __future__ import annotations
@@ -14,8 +15,10 @@ import tempfile
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .archive import DOWNLOAD_URL, build_archive
 from .kaggle_dataset import publish, write_metadata
 from .marts import MARTS, export_marts
+from .r2_bucket import BUCKET_VARIABLE, bucket_from_environment, r2_client, upload_snapshot
 
 DEFAULT_DATABASE_URL = "postgresql://im_batman:shhhhhhhhh@localhost:5432/ohfootball"
 DEFAULT_TIME_ZONE = "America/New_York"
@@ -24,18 +27,25 @@ DEFAULT_TIME_ZONE = "America/New_York"
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ohfootball-dataset",
-        description="Export the marts and publish them to Kaggle.",
+        description="Export the marts, publish them to Kaggle, and publish them as a download.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     export = subparsers.add_parser("export", help="write the files and send nothing")
     _add_common_arguments(export)
     export.add_argument("--directory", required=True)
+    export.add_argument("--archive", action="store_true", help="also write the zip")
 
     publication = subparsers.add_parser("publish", help="write the files and publish them")
     _add_common_arguments(publication)
     publication.add_argument("--dataset", default=os.getenv("KAGGLE_DATASET"))
     publication.add_argument("--as-of-date", type=date.fromisoformat, default=None)
+
+    download = subparsers.add_parser(
+        "publish-download", help="write the files, zip them, and upload the zip to R2"
+    )
+    _add_common_arguments(download)
+    download.add_argument("--bucket", default=os.getenv(BUCKET_VARIABLE))
     return parser
 
 
@@ -56,6 +66,8 @@ def main() -> None:
         _export(arguments)
     elif arguments.command == "publish":
         _publish(arguments)
+    elif arguments.command == "publish-download":
+        _publish_download(arguments)
 
 
 def _export(arguments: argparse.Namespace) -> None:
@@ -64,7 +76,15 @@ def _export(arguments: argparse.Namespace) -> None:
         arguments.directory,
         marts_schema=arguments.marts_schema,
     )
-    print(json.dumps({"directory": arguments.directory, "rows": counts}, indent=2, sort_keys=True))
+    body: dict[str, object] = {"directory": arguments.directory, "rows": counts}
+    if arguments.archive:
+        archive = build_archive(arguments.directory, _today_in_project_time_zone(), counts=counts)
+        body["archive"] = {
+            "bytes": archive.bytes,
+            "path": str(archive.path),
+            "sha256": archive.sha256,
+        }
+    print(json.dumps(body, indent=2, sort_keys=True))
 
 
 def _publish(arguments: argparse.Namespace) -> None:
@@ -100,6 +120,48 @@ def _publish(arguments: argparse.Namespace) -> None:
                 "missing_descriptions": list(publication.missing_descriptions),
                 "read_error": publication.read_error,
                 "rows": counts,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+def _publish_download(arguments: argparse.Namespace) -> None:
+    # The settings are read before the export, so a run that lacks one stops at once.
+    try:
+        bucket = bucket_from_environment(name=arguments.bucket)
+    except ValueError as error:
+        raise SystemExit(str(error)) from None
+    as_of_date = _today_in_project_time_zone()
+
+    with tempfile.TemporaryDirectory(prefix="ohfootball-download-") as directory:
+        counts = export_marts(
+            arguments.database_url,
+            directory,
+            marts_schema=arguments.marts_schema,
+        )
+        # Stricter than the check before a Kaggle version. A version adds to what Kaggle holds,
+        # but latest/ replaces the zip of the week before.
+        empty = [name for name, rows in counts.items() if not rows]
+        if empty:
+            raise SystemExit(f"{', '.join(empty)} holds no rows, so nothing was uploaded")
+        archive = build_archive(directory, as_of_date, counts=counts)
+        upload = upload_snapshot(r2_client(bucket), bucket.name, archive)
+
+    print(
+        json.dumps(
+            {
+                "as_of_date": as_of_date.isoformat(),
+                "bucket": bucket.name,
+                "bytes": archive.bytes,
+                "files": len(MARTS),
+                "objects": dict(upload.objects),
+                "rows": counts,
+                "sha256": archive.sha256,
+                "snapshot_url": f"{DOWNLOAD_URL}/{upload.snapshot_key}",
+                "snapshots": len(upload.snapshots),
+                "url": f"{DOWNLOAD_URL}/{upload.latest_key}",
             },
             indent=2,
             sort_keys=True,
