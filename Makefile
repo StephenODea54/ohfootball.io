@@ -2,7 +2,7 @@
 	tools lint-tools lint lint-go lint-python lint-sql fmt-go fmt-python fmt-sql \
 	site-lint site-fmt doctor \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
-	rating-build rating-test \
+	rating-build rating-test rating-evaluate \
 	dataset-build dataset-test dataset-export \
 	pipeline pipeline-build pipeline-test postgres-test site-test site-check
 
@@ -190,6 +190,10 @@ rating-build:
 
 rating-test:
 	$(MAKE) -C services/rating test
+
+# Scores the margin rating on past seasons of the local warehouse and prints the result.
+rating-evaluate:
+	docker compose run --rm rating evaluate $(ARGS)
 
 dataset-build:
 	docker compose build dataset

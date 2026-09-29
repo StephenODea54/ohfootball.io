@@ -1,16 +1,21 @@
-"""Command-line entry point that publishes the ratings and the predictions."""
+"""Command-line entry points that publish the ratings and score the margin rating."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from dataclasses import asdict
 from datetime import date, datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .elo import EloConfig, backtest, initial_team_rating
 from .games import Game
+from .margin import MarginConfig, MarginPrediction
+from .margin import backtest as margin_backtest
+from .metrics import evaluate
 from .publisher import (
     GamePredictionRow,
     RatingSnapshot,
@@ -18,7 +23,7 @@ from .publisher import (
     publish_predictions,
     publish_ratings,
 )
-from .repository import load_games
+from .repository import load_games, load_games_from_export
 
 DEFAULT_DATABASE_URL = "postgresql://im_batman:shhhhhhhhh@localhost:5432/ohfootball"
 DEFAULT_TIME_ZONE = "America/New_York"
@@ -47,6 +52,34 @@ def build_parser() -> argparse.ArgumentParser:
         provisional_k_multiplier=1.6,
     )
 
+    scoring = subparsers.add_parser(
+        "evaluate",
+        help="score the margin rating on past seasons and print the result",
+    )
+    _add_common_arguments(scoring)
+    scoring.add_argument(
+        "--export-dir",
+        type=Path,
+        help="read dim_teams.csv and fct_games.csv of a dataset export instead of the warehouse",
+    )
+    scoring.add_argument(
+        "--windows",
+        type=_season_range,
+        default=(2000, 2023),
+        help="the seasons to score in windows, as FIRST:LAST (default 2000:2023)",
+    )
+    scoring.add_argument(
+        "--window-size",
+        type=int,
+        default=2,
+        help="the number of seasons in each window (default 2)",
+    )
+    scoring.add_argument(
+        "--holdout",
+        type=_season_range,
+        default=(2024, 2025),
+        help="the seasons to score apart from the windows, as FIRST:LAST (default 2024:2025)",
+    )
     return parser
 
 
@@ -87,10 +120,20 @@ def _today_in_project_time_zone() -> date:
         raise ValueError(f"invalid OHFOOTBALL_TIME_ZONE: {time_zone!r}") from error
 
 
+def _season_range(raw_range: str) -> tuple[int, int]:
+    try:
+        start, end = (int(value) for value in raw_range.split(":", maxsplit=1))
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("a season range must look like 2000:2023") from error
+    if start > end:
+        raise argparse.ArgumentTypeError("the first season of a range cannot follow the last")
+    return start, end
+
+
 def main() -> None:
     arguments = build_parser().parse_args()
-    if arguments.command == "publish":
-        _publish(arguments)
+    commands = {"publish": _publish, "evaluate": _evaluate}
+    commands[arguments.command](arguments)
 
 
 def _publish(arguments: argparse.Namespace) -> None:
@@ -178,6 +221,51 @@ def _publish(arguments: argparse.Namespace) -> None:
             sort_keys=True,
         )
     )
+
+
+def _evaluate(arguments: argparse.Namespace) -> None:
+    first, last = arguments.windows
+    holdout_first, holdout_last = arguments.holdout
+    if arguments.window_size < 1 or (last - first + 1) % arguments.window_size:
+        raise SystemExit("the window size must divide the range of the windows")
+    if holdout_first <= last:
+        raise SystemExit("the holdout must start after the last window")
+    if arguments.export_dir is not None:
+        games = load_games_from_export(arguments.export_dir)
+    else:
+        games = load_games(arguments.database_url, marts_schema=arguments.marts_schema)
+    completed = _completed_games(games, arguments.as_of_date)
+    if not completed:
+        raise SystemExit(f"no completed games exist before {arguments.as_of_date}")
+
+    config = MarginConfig()
+    result = margin_backtest(completed, config)
+    windows = [
+        (start, start + arguments.window_size - 1)
+        for start in range(first, last + 1, arguments.window_size)
+    ]
+    report: dict[str, object] = {
+        "as_of_date": arguments.as_of_date.isoformat(),
+        "config": asdict(config),
+        "games": len(result.predictions),
+        "windows": [
+            {"seasons": [start, end], **scored}
+            for start, end in windows
+            if (scored := _score(result.predictions, start, end)) is not None
+        ],
+        "pooled": _score(result.predictions, first, last),
+        "holdout": _score(result.predictions, holdout_first, holdout_last),
+    }
+    latest = max(result.slopes)
+    report["slopes"] = {"season": latest, "by_group": result.slopes[latest]}
+    print(json.dumps(report, indent=2, sort_keys=True))
+
+
+def _score(
+    predictions: Sequence[MarginPrediction], first: int, last: int
+) -> dict[str, object] | None:
+    chosen = [item for item in predictions if first <= item.season <= last]
+    return asdict(evaluate(chosen)) if chosen else None
 
 
 def _config(arguments: argparse.Namespace) -> EloConfig:

@@ -1,8 +1,11 @@
-"""Postgres input adapter for the dbt game mart."""
+"""Input adapters for the game mart: the warehouse and the public dataset export."""
 
 from __future__ import annotations
 
+import csv
 import re
+from datetime import date
+from pathlib import Path
 
 from .games import Game
 
@@ -86,3 +89,55 @@ def _build_query(marts_schema: str) -> str:
           AND team_b.state_code = 'OH'
         ORDER BY game.season, dates.date_day, game.game_key
     """
+
+
+def load_games_from_export(directory: Path | str) -> tuple[Game, ...]:
+    """Load games from the files that the dataset export writes.
+
+    The export holds dim_teams.csv and fct_games.csv with the current rows only. Keys and dates
+    are text, flags are 0 or 1 and an empty cell is a missing value. The same rule as the
+    warehouse query applies: both teams must be Ohio teams, and a game whose team is not in
+    dim_teams.csv is left out.
+    """
+    folder = Path(directory)
+    teams: dict[str, dict[str, str]] = {}
+    with (folder / "dim_teams.csv").open(encoding="utf-8", newline="") as source:
+        for row in csv.DictReader(source):
+            teams[row["team_key"]] = row
+    games: list[Game] = []
+    with (folder / "fct_games.csv").open(encoding="utf-8", newline="") as source:
+        for row in csv.DictReader(source):
+            team_a = teams.get(row["team_a_key"])
+            team_b = teams.get(row["team_b_key"])
+            if team_a is None or team_b is None:
+                continue
+            if team_a["state_code"] != "OH" or team_b["state_code"] != "OH":
+                continue
+            day = row["game_date_key"]
+            games.append(
+                Game(
+                    game_key=row["game_key"],
+                    season=int(row["season"]),
+                    game_date=date(int(day[:4]), int(day[4:6]), int(day[6:])),
+                    team_a_key=row["team_a_key"],
+                    team_a_program_id=team_a["source_id"] or None,
+                    team_a_name=team_a["name"],
+                    team_a_division=_whole_number(team_a["division"]),
+                    team_b_key=row["team_b_key"],
+                    team_b_program_id=team_b["source_id"] or None,
+                    team_b_name=team_b["name"],
+                    team_b_division=_whole_number(team_b["division"]),
+                    team_a_result=row["team_a_result"],
+                    is_team_a_home=row["is_team_a_home"] == "1",
+                    is_team_b_home=row["is_team_b_home"] == "1",
+                    team_a_score=_whole_number(row["team_a_score"]),
+                    team_b_score=_whole_number(row["team_b_score"]),
+                    notes=row["notes"] or None,
+                    is_playoff_game=row["is_playoff_game"] == "1",
+                )
+            )
+    return tuple(sorted(games, key=lambda game: (game.season, game.game_date, game.game_key)))
+
+
+def _whole_number(value: str) -> int | None:
+    return int(value) if value else None

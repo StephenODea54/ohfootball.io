@@ -1,24 +1,17 @@
 import unittest
-from datetime import date
+from dataclasses import dataclass
 
-from ohfootball_rating.elo import Prediction
 from ohfootball_rating.metrics import evaluate
 
 
-def prediction(probability: float, actual: float) -> Prediction:
-    return Prediction(
-        game_key=str(probability),
-        season=2025,
-        game_date=date(2025, 8, 1),
-        team_a_key="a",
-        team_a_name="A",
-        team_b_key="b",
-        team_b_name="B",
-        team_a_rating=1500,
-        team_b_rating=1500,
-        team_a_win_probability=probability,
-        actual_team_a_score=actual,
-    )
+@dataclass(frozen=True)
+class Forecast:
+    team_a_win_probability: float
+    actual_team_a_score: float | None
+
+
+def prediction(probability: float, actual: float) -> Forecast:
+    return Forecast(team_a_win_probability=probability, actual_team_a_score=actual)
 
 
 class EvaluationTests(unittest.TestCase):

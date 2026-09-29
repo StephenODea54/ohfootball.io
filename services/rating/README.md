@@ -89,6 +89,23 @@ give the previous rank of each team. A second run on a later day of the same
 week therefore compares ranks one day apart. To replace a snapshot instead,
 run again with the `--as-of-date` of that snapshot.
 
+### Evaluate the margin rating
+
+The `evaluate` command replays the record with the margin rating and prints its scores as JSON.
+It scores each two-season window from 2000 through 2023, the pooled windows, and the 2024 and
+2025 holdout. It also prints the slopes of the latest season. It reads the local warehouse, or
+the files of a dataset export:
+
+```bash
+make rating-evaluate
+make dataset-export
+PYTHONPATH=services/rating/src python3 -m ohfootball_rating.cli evaluate --export-dir services/dataset/export
+```
+
+The dataset export writes `dim_teams.csv` and `fct_games.csv`, and the public dataset holds the
+same files. Use `--windows`, `--window-size` and `--holdout` to score other seasons, and
+`--as-of-date` to leave out games on or after a date.
+
 Run `make coverage` in `services/rating` to see the line and branch coverage of the unit tests.
 
 ## Metrics worth caring about

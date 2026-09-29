@@ -1,12 +1,21 @@
-"""Dependency-free metrics for Elo probability forecasts."""
+"""Dependency-free metrics for probability forecasts."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
 from math import log
+from typing import Protocol
 
-from .elo import Prediction
+
+class Forecast(Protocol):
+    """Name the two fields that the metrics read from a forecast."""
+
+    @property
+    def team_a_win_probability(self) -> float: ...
+
+    @property
+    def actual_team_a_score(self) -> float | None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +35,7 @@ class Evaluation:
     log_loss: float
 
 
-def evaluate(predictions: Iterable[Prediction]) -> Evaluation:
+def evaluate(predictions: Iterable[Forecast]) -> Evaluation:
     scored = tuple(
         prediction for prediction in predictions if prediction.actual_team_a_score is not None
     )
