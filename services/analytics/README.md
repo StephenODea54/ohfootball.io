@@ -28,7 +28,7 @@ date between the first and the last game.
 `generate_schema_name` gives each layer the schema named in `dbt_project.yml`, with no prefix.
 Staging has no schema of its own, so it uses the schema of the profile.
 
-The rating writes `fct_team_elo_ratings` and `fct_game_predictions` to `ohfootball_marts`. dbt
+The rating writes `fct_team_ratings` and `fct_game_predictions` to `ohfootball_marts`. dbt
 does not build those two tables. The migrations in `infra/postgres/migrations` make them.
 
 ## Sources

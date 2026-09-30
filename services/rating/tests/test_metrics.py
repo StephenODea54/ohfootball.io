@@ -56,6 +56,10 @@ class EvaluationTests(unittest.TestCase):
         self.assertGreater(confident.log_loss, even.log_loss)
         self.assertEqual(even.brier_score, 0.0)
 
+    def test_refuses_a_set_without_a_completed_game(self) -> None:
+        with self.assertRaisesRegex(ValueError, "at least one"):
+            evaluate([Forecast(team_a_win_probability=0.5, actual_team_a_score=None)])
+
 
 if __name__ == "__main__":
     unittest.main()

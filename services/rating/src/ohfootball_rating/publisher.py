@@ -1,4 +1,4 @@
-"""Production persistence for Elo rating snapshots and pregame predictions."""
+"""Production persistence for rating snapshots and game predictions."""
 
 from __future__ import annotations
 
@@ -25,6 +25,8 @@ class RatingSnapshot:
     season: int
     as_of_date: date
     rating: float
+    # The rating minus the median rating of the snapshot, so that 0 is the median team.
+    relative_rating: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +39,11 @@ class GamePredictionRow:
     team_a_rating: float
     team_b_rating: float
     team_a_win_probability: float
+    # Team A points minus team B points that the model expects, with the home edge included.
+    predicted_margin: float
+    # The game date for a game that the backtest predicted. The day of the run for a game that
+    # was not played before that day.
+    as_of_date: date
 
 
 def load_team_seasons(
@@ -98,38 +105,42 @@ def publish_ratings(
         raise ValueError("a publication must contain one season and as-of date")
     if len(team_keys) != len(rows):
         raise ValueError("a publication cannot contain duplicate teams")
-    if any(not math.isfinite(row.rating) or row.rating <= 0 for row in rows):
-        raise ValueError("ratings must be finite and greater than zero")
+    if any(not math.isfinite(row.rating) or not math.isfinite(row.relative_rating) for row in rows):
+        raise ValueError("ratings must be finite")
 
     import psycopg
 
     season = next(iter(seasons))
     as_of_date = next(iter(as_of_dates))
-    target = f"{marts_schema}.fct_team_elo_ratings"
+    target = f"{marts_schema}.fct_team_ratings"
     with psycopg.connect(database_url) as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                CREATE TEMP TABLE pending_team_elo_ratings (
+                CREATE TEMP TABLE pending_team_ratings (
                     team_key UUID NOT NULL,
                     season SMALLINT NOT NULL,
                     as_of_date DATE NOT NULL,
-                    elo_rating DOUBLE PRECISION NOT NULL
+                    rating DOUBLE PRECISION NOT NULL,
+                    relative_rating DOUBLE PRECISION NOT NULL
                 ) ON COMMIT DROP
                 """
             )
             with cursor.copy(
                 """
-                COPY pending_team_elo_ratings (
+                COPY pending_team_ratings (
                     team_key,
                     season,
                     as_of_date,
-                    elo_rating
+                    rating,
+                    relative_rating
                 ) FROM STDIN
                 """
             ) as copy:
                 for row in rows:
-                    copy.write_row((row.team_key, row.season, row.as_of_date, row.rating))
+                    copy.write_row(
+                        (row.team_key, row.season, row.as_of_date, row.rating, row.relative_rating)
+                    )
 
             cursor.execute(
                 f"DELETE FROM {target} WHERE season = %s AND as_of_date = %s",
@@ -141,14 +152,16 @@ def publish_ratings(
                     team_key,
                     season,
                     as_of_date,
-                    elo_rating
+                    rating,
+                    relative_rating
                 )
                 SELECT
                     team_key,
                     season,
                     as_of_date,
-                    elo_rating
-                FROM pending_team_elo_ratings
+                    rating,
+                    relative_rating
+                FROM pending_team_ratings
                 """
             )
     return len(rows)
@@ -160,10 +173,12 @@ def publish_predictions(
     *,
     marts_schema: str = "ohfootball_marts",
 ) -> int:
-    """Replace every stored pregame prediction and return the row count.
+    """Replace every stored prediction and return the row count.
 
     A backtest replays the whole history at once, so the full set is rewritten rather than one
-    season at a time. This keeps every stored prediction consistent with one configuration.
+    season at a time. This keeps every stored prediction consistent with one configuration. The
+    set holds a prediction for each game played before the day of the run and for each game not
+    yet played.
     """
     if not _IDENTIFIER.fullmatch(marts_schema):
         raise ValueError(f"invalid marts schema: {marts_schema!r}")
@@ -174,9 +189,11 @@ def publish_predictions(
     if len({row.game_key for row in rows}) != len(rows):
         raise ValueError("a publication cannot contain duplicate games")
     if any(
-        not math.isfinite(row.team_a_rating) or not math.isfinite(row.team_b_rating) for row in rows
+        not math.isfinite(value)
+        for row in rows
+        for value in (row.team_a_rating, row.team_b_rating, row.predicted_margin)
     ):
-        raise ValueError("ratings must be finite")
+        raise ValueError("ratings and margins must be finite")
     if any(not 0.0 < row.team_a_win_probability < 1.0 for row in rows):
         raise ValueError("win probabilities must fall between zero and one")
 
@@ -195,7 +212,9 @@ def publish_predictions(
                     team_b_key UUID NOT NULL,
                     team_a_rating DOUBLE PRECISION NOT NULL,
                     team_b_rating DOUBLE PRECISION NOT NULL,
-                    team_a_win_probability DOUBLE PRECISION NOT NULL
+                    team_a_win_probability DOUBLE PRECISION NOT NULL,
+                    predicted_margin DOUBLE PRECISION NOT NULL,
+                    as_of_date DATE NOT NULL
                 ) ON COMMIT DROP
                 """
             )
@@ -209,7 +228,9 @@ def publish_predictions(
                     team_b_key,
                     team_a_rating,
                     team_b_rating,
-                    team_a_win_probability
+                    team_a_win_probability,
+                    predicted_margin,
+                    as_of_date
                 ) FROM STDIN
                 """
             ) as copy:
@@ -224,6 +245,8 @@ def publish_predictions(
                             row.team_a_rating,
                             row.team_b_rating,
                             row.team_a_win_probability,
+                            row.predicted_margin,
+                            row.as_of_date,
                         )
                     )
 
@@ -238,7 +261,9 @@ def publish_predictions(
                     team_b_key,
                     team_a_rating,
                     team_b_rating,
-                    team_a_win_probability
+                    team_a_win_probability,
+                    predicted_margin,
+                    as_of_date
                 )
                 SELECT
                     game_key,
@@ -248,7 +273,9 @@ def publish_predictions(
                     team_b_key,
                     team_a_rating,
                     team_b_rating,
-                    team_a_win_probability
+                    team_a_win_probability,
+                    predicted_margin,
+                    as_of_date
                 FROM pending_game_predictions
                 """
             )

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ohfootball-rating"
 version = "0.1.0"
-description = "Elo ratings and game predictions for ohfootball.io"
+description = "Margin ratings and game predictions for ohfootball.io"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
