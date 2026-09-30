@@ -77,7 +77,7 @@ func (row fakeRow) Scan(dest ...any) error {
 
 func teamRow(rating, relativeRating, rank, asOf, previousRank any) fakeRow {
 	return fakeRow{
-		"team-key", 2026, "1624", "Massillon", "Tigers", "Massillon", int64(2), int64(7),
+		"team-key", 2026, "1624", "Massillon", "Tigers", "Massillon", "Stark", int64(2), int64(7),
 		"#ff6600", "#000000", int64(5), int64(1), int64(0), int64(2),
 		rating, relativeRating, rank, asOf, previousRank,
 	}
@@ -136,6 +136,26 @@ func TestScanTeamReadsTheOutOfStateGamesPlayed(t *testing.T) {
 	}
 	if team.OutOfStateGamesPlayed != 2 {
 		t.Fatalf("out-of-state games played = %d, want 2", team.OutOfStateGamesPlayed)
+	}
+}
+
+func TestScanTeamReadsTheCounty(t *testing.T) {
+	team, err := scanTeam(teamRow(nil, nil, nil, nil, nil))
+	if err != nil {
+		t.Fatalf("scanTeam: %v", err)
+	}
+	if team.County == nil || *team.County != "Stark" {
+		t.Fatalf("county = %v, want Stark", team.County)
+	}
+
+	row := teamRow(nil, nil, nil, nil, nil)
+	row[6] = nil
+	team, err = scanTeam(row)
+	if err != nil {
+		t.Fatalf("scanTeam: %v", err)
+	}
+	if team.County != nil {
+		t.Fatalf("county = %q, want nil", *team.County)
 	}
 }
 

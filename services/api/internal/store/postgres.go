@@ -210,7 +210,7 @@ func listTeamsArguments(search *string, sort *model.TeamSort, limit *int) (strin
 
 func scanTeam(row rowScanner) (*model.Team, error) {
 	var team model.Team
-	var mascot, city, primaryColor, secondaryColor pgtype.Text
+	var mascot, city, county, primaryColor, secondaryColor pgtype.Text
 	var division, region pgtype.Int2
 	var rating, relativeRating pgtype.Float8
 	var ratingRank, previousRank pgtype.Int8
@@ -223,6 +223,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 		&team.Name,
 		&mascot,
 		&city,
+		&county,
 		&division,
 		&region,
 		&primaryColor,
@@ -241,6 +242,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	}
 	team.Mascot = optional(mascot.Valid, mascot.String)
 	team.City = optional(city.Valid, city.String)
+	team.County = optional(county.Valid, county.String)
 	team.Division = optional(division.Valid, int(division.Int16))
 	team.Region = optional(region.Valid, int(region.Int16))
 	team.PrimaryColor = optional(primaryColor.Valid, primaryColor.String)
@@ -505,6 +507,7 @@ const teamColumns = `
 	team.name,
 	team.mascot,
 	team.city,
+	team.county,
 	team.division,
 	team.region,
 	team.primary_color_hex,

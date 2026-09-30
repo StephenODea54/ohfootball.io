@@ -85,6 +85,7 @@ type ComplexityRoot struct {
 
 	Team struct {
 		City                  func(childComplexity int) int
+		County                func(childComplexity int) int
 		Division              func(childComplexity int) int
 		ID                    func(childComplexity int) int
 		Mascot                func(childComplexity int) int
@@ -328,6 +329,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Team.City(childComplexity), true
+
+	case "Team.county":
+		if e.complexity.Team.County == nil {
+			break
+		}
+
+		return e.complexity.Team.County(childComplexity), true
 
 	case "Team.division":
 		if e.complexity.Team.Division == nil {
@@ -1852,6 +1860,8 @@ func (ec *executionContext) fieldContext_Query_teams(ctx context.Context, field 
 				return ec.fieldContext_Team_mascot(ctx, field)
 			case "city":
 				return ec.fieldContext_Team_city(ctx, field)
+			case "county":
+				return ec.fieldContext_Team_county(ctx, field)
 			case "division":
 				return ec.fieldContext_Team_division(ctx, field)
 			case "region":
@@ -1936,6 +1946,8 @@ func (ec *executionContext) fieldContext_Query_team(ctx context.Context, field g
 				return ec.fieldContext_Team_mascot(ctx, field)
 			case "city":
 				return ec.fieldContext_Team_city(ctx, field)
+			case "county":
+				return ec.fieldContext_Team_county(ctx, field)
 			case "division":
 				return ec.fieldContext_Team_division(ctx, field)
 			case "region":
@@ -2481,6 +2493,47 @@ func (ec *executionContext) _Team_city(ctx context.Context, field graphql.Collec
 }
 
 func (ec *executionContext) fieldContext_Team_city(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Team_county(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Team_county(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.County, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Team_county(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Team",
 		Field:      field,
@@ -5521,6 +5574,8 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Team_mascot(ctx, field, obj)
 		case "city":
 			out.Values[i] = ec._Team_city(ctx, field, obj)
+		case "county":
+			out.Values[i] = ec._Team_county(ctx, field, obj)
 		case "division":
 			out.Values[i] = ec._Team_division(ctx, field, obj)
 		case "region":

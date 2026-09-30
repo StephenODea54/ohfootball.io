@@ -97,6 +97,11 @@ type Team {
   name: String!
   mascot: String
   city: String
+  """
+  The Ohio county of the school, as joeeitel.com gives it, such as Stark. It has no word "County".
+  It is null when the source does not state it.
+  """
+  county: String
   division: Int
   region: Int
   primaryColor: String

@@ -51,10 +51,13 @@ type Team struct {
 	Season int    `json:"season"`
 	// The identifier of the team in its source. For a team from joeeitel.com, it is the number that
 	// joeeitel.com gives to the team. It stays the same from one season to the next.
-	SourceID       string  `json:"sourceId"`
-	Name           string  `json:"name"`
-	Mascot         *string `json:"mascot,omitempty"`
-	City           *string `json:"city,omitempty"`
+	SourceID string  `json:"sourceId"`
+	Name     string  `json:"name"`
+	Mascot   *string `json:"mascot,omitempty"`
+	City     *string `json:"city,omitempty"`
+	// The Ohio county of the school, as joeeitel.com gives it, such as Stark. It has no word "County".
+	// It is null when the source does not state it.
+	County         *string `json:"county,omitempty"`
 	Division       *int    `json:"division,omitempty"`
 	Region         *int    `json:"region,omitempty"`
 	PrimaryColor   *string `json:"primaryColor,omitempty"`
