@@ -51,6 +51,35 @@ The API limits each address to 60 requests a minute, with up to 20 at once, and 
 walk through the pages can go over it. To skip the limits, start the compose stack with `SITE_BUILD_KEY` set in the shell,
 and set the same value as `GRAPHQL_API_KEY` in `.env`. Use at least 16 characters.
 
+## Make the team logos
+
+The site serves a logo for each team from `public/logos`. The name of each file is the
+joeeitel.com number of the team, which the API gives as `sourceId`, and the size in pixels, for
+example `842-80.webp`. `src/features/teams/utils/logo-manifest.json` lists the teams that have a
+logo, so that the site asks only for files that exist. A team without a logo shows its initials.
+
+The script `scripts/logos` makes these files. The source images are not in the repository. Keep
+them on your machine and give their location to the script:
+
+```sh
+pnpm logos --png-dir <dir> [--sprite-sheet <png> --sprite-frames <json>]
+```
+
+The script needs Node 22.18 or later.
+
+`--png-dir` is a directory of files such as `OH-842.png`. The sprite sheet and its frames are
+optional. They give a logo to a team that has no PNG file. When a team has both, the script uses
+the PNG file. The frames are the JSON that [packer](https://github.com/unitoftime/packer) writes.
+
+The script makes all logos before it changes `public/logos`, so a bad source image stops the run
+and changes nothing. Then it removes the old logo files and writes the new ones. Commit the files
+and the manifest.
+
+The script fixes the settings of the encoder, so the same sources give the same files. A new
+version of `sharp` can change the bytes of each file. So `package.json` pins its version.
+
+The logos are marks of their schools. The license of this repository does not cover them.
+
 ## Check the site
 
 ```sh

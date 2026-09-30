@@ -14,6 +14,7 @@ coverage.out
 **/.vite
 **/.astro
 services/frontend/dist
+services/frontend/public/logos
 
 # Files of editors and coding assistants. No image needs them.
 .claude
