@@ -165,9 +165,6 @@ func (store *Postgres) Team(ctx context.Context, id string, season *int) (*model
 		return nil, err
 	}
 	team.RatingHistory = history
-	// The deprecated field answers with the same history, so a client that has not moved to the
-	// new name still works.
-	team.EloHistory = history
 	team.Schedule = schedule
 	return team, nil
 }
@@ -248,7 +245,6 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	team.SecondaryColor = optional(secondaryColor.Valid, secondaryColor.String)
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
 	team.RatingHistory = []*model.TeamRating{}
-	team.EloHistory = team.RatingHistory
 	team.Schedule = []*model.Game{}
 	if rating.Valid && relativeRating.Valid && ratingRank.Valid && asOf.Valid {
 		team.Rating = &model.TeamRating{
@@ -259,7 +255,6 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 			PreviousRank:   optional(previousRank.Valid, int(previousRank.Int64)),
 			AsOf:           asOf.Time.Format(time.DateOnly),
 		}
-		team.Elo = team.Rating
 	}
 	return &team, nil
 }
@@ -497,7 +492,7 @@ var listTeamsSQL = teamFacts + `
 	  AND ($3::smallint IS NULL OR team.region = $3::smallint)
 	  AND ($4::smallint IS NULL OR team.division = $4::smallint)
 	ORDER BY
-		CASE WHEN $5 IN ('RATING', 'ELO') THEN ratings.rating END DESC NULLS LAST,
+		CASE WHEN $5 = 'RATING' THEN ratings.rating END DESC NULLS LAST,
 		team.name,
 		team.team_key
 	LIMIT $6

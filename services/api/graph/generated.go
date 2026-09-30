@@ -86,8 +86,6 @@ type ComplexityRoot struct {
 	Team struct {
 		City           func(childComplexity int) int
 		Division       func(childComplexity int) int
-		Elo            func(childComplexity int) int
-		EloHistory     func(childComplexity int) int
 		ID             func(childComplexity int) int
 		Mascot         func(childComplexity int) int
 		Name           func(childComplexity int) int
@@ -335,20 +333,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Team.Division(childComplexity), true
-
-	case "Team.elo":
-		if e.complexity.Team.Elo == nil {
-			break
-		}
-
-		return e.complexity.Team.Elo(childComplexity), true
-
-	case "Team.eloHistory":
-		if e.complexity.Team.EloHistory == nil {
-			break
-		}
-
-		return e.complexity.Team.EloHistory(childComplexity), true
 
 	case "Team.id":
 		if e.complexity.Team.ID == nil {
@@ -1864,10 +1848,6 @@ func (ec *executionContext) fieldContext_Query_teams(ctx context.Context, field 
 				return ec.fieldContext_Team_rating(ctx, field)
 			case "ratingHistory":
 				return ec.fieldContext_Team_ratingHistory(ctx, field)
-			case "elo":
-				return ec.fieldContext_Team_elo(ctx, field)
-			case "eloHistory":
-				return ec.fieldContext_Team_eloHistory(ctx, field)
 			case "schedule":
 				return ec.fieldContext_Team_schedule(ctx, field)
 			}
@@ -1948,10 +1928,6 @@ func (ec *executionContext) fieldContext_Query_team(ctx context.Context, field g
 				return ec.fieldContext_Team_rating(ctx, field)
 			case "ratingHistory":
 				return ec.fieldContext_Team_ratingHistory(ctx, field)
-			case "elo":
-				return ec.fieldContext_Team_elo(ctx, field)
-			case "eloHistory":
-				return ec.fieldContext_Team_eloHistory(ctx, field)
 			case "schedule":
 				return ec.fieldContext_Team_schedule(ctx, field)
 			}
@@ -2752,119 +2728,6 @@ func (ec *executionContext) _Team_ratingHistory(ctx context.Context, field graph
 }
 
 func (ec *executionContext) fieldContext_Team_ratingHistory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Team",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "season":
-				return ec.fieldContext_TeamRating_season(ctx, field)
-			case "rating":
-				return ec.fieldContext_TeamRating_rating(ctx, field)
-			case "relativeRating":
-				return ec.fieldContext_TeamRating_relativeRating(ctx, field)
-			case "rank":
-				return ec.fieldContext_TeamRating_rank(ctx, field)
-			case "previousRank":
-				return ec.fieldContext_TeamRating_previousRank(ctx, field)
-			case "asOf":
-				return ec.fieldContext_TeamRating_asOf(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TeamRating", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Team_elo(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Team_elo(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Elo, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.TeamRating)
-	fc.Result = res
-	return ec.marshalOTeamRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRating(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Team_elo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Team",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "season":
-				return ec.fieldContext_TeamRating_season(ctx, field)
-			case "rating":
-				return ec.fieldContext_TeamRating_rating(ctx, field)
-			case "relativeRating":
-				return ec.fieldContext_TeamRating_relativeRating(ctx, field)
-			case "rank":
-				return ec.fieldContext_TeamRating_rank(ctx, field)
-			case "previousRank":
-				return ec.fieldContext_TeamRating_previousRank(ctx, field)
-			case "asOf":
-				return ec.fieldContext_TeamRating_asOf(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TeamRating", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Team_eloHistory(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Team_eloHistory(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.EloHistory, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.TeamRating)
-	fc.Result = res
-	return ec.marshalNTeamRating2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRatingᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Team_eloHistory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Team",
 		Field:      field,
@@ -5558,13 +5421,6 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Team_rating(ctx, field, obj)
 		case "ratingHistory":
 			out.Values[i] = ec._Team_ratingHistory(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "elo":
-			out.Values[i] = ec._Team_elo(ctx, field, obj)
-		case "eloHistory":
-			out.Values[i] = ec._Team_eloHistory(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

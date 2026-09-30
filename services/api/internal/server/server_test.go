@@ -156,16 +156,13 @@ func TestQueryReturnsThePreviousRank(t *testing.T) {
 	}
 }
 
-func TestTheDeprecatedNamesAnswerWithTheSameRating(t *testing.T) {
+func TestATeamAnswersWithItsRatingHistoryAndPredictedMargins(t *testing.T) {
 	rating := &model.TeamRating{Season: 2026, Rating: 40, RelativeRating: 14, Rank: 3, AsOf: "2026-09-29"}
-	history := []*model.TeamRating{rating}
 	team := &model.Team{
 		ID:            "moeller",
 		Record:        &model.Record{},
 		Rating:        rating,
-		Elo:           rating,
-		RatingHistory: history,
-		EloHistory:    history,
+		RatingHistory: []*model.TeamRating{rating},
 		Schedule: []*model.Game{{
 			ID: "game", Date: "2026-10-02", OpponentID: "elder", OpponentName: "Elder",
 			Location: model.GameLocationHome, Result: model.GameResultUnknown,
@@ -175,17 +172,14 @@ func TestTheDeprecatedNamesAnswerWithTheSameRating(t *testing.T) {
 			},
 		}},
 	}
-	handler := newHandler(t, &fakeStore{team: team, teams: []*model.Team{team}}, Options{})
+	handler := newHandler(t, &fakeStore{team: team}, Options{})
 
 	recorder := post(t, handler, `{
 		team(id: "moeller") {
 			rating { relativeRating }
-			elo { relativeRating }
 			ratingHistory { relativeRating }
-			eloHistory { relativeRating }
 			schedule { prediction { predictedMargin } }
 		}
-		teams(sort: ELO) { id }
 	}`)
 	response := decode(t, recorder)
 	if _, found := response["errors"]; found {
@@ -193,20 +187,26 @@ func TestTheDeprecatedNamesAnswerWithTheSameRating(t *testing.T) {
 	}
 	data, _ := response["data"].(map[string]any)
 	got, _ := data["team"].(map[string]any)
-	for _, name := range []string{"rating", "elo"} {
-		if value := got[name].(map[string]any)["relativeRating"]; value != float64(14) {
-			t.Fatalf("%s relativeRating = %v, want 14", name, value)
-		}
+	if value := got["rating"].(map[string]any)["relativeRating"]; value != float64(14) {
+		t.Fatalf("rating relativeRating = %v, want 14", value)
 	}
-	for _, name := range []string{"ratingHistory", "eloHistory"} {
-		if value := got[name].([]any)[0].(map[string]any)["relativeRating"]; value != float64(14) {
-			t.Fatalf("%s relativeRating = %v, want 14", name, value)
-		}
+	if value := got["ratingHistory"].([]any)[0].(map[string]any)["relativeRating"]; value != float64(14) {
+		t.Fatalf("ratingHistory relativeRating = %v, want 14", value)
 	}
 	schedule, _ := got["schedule"].([]any)
 	margin := schedule[0].(map[string]any)["prediction"].(map[string]any)["predictedMargin"]
 	if margin != 4.2 {
 		t.Fatalf("predictedMargin = %v, want 4.2", margin)
+	}
+}
+
+func TestTheEloNamesAreGone(t *testing.T) {
+	handler := newHandler(t, &fakeStore{}, Options{})
+
+	recorder := post(t, handler, "{ teams(sort: ELO) { id elo { rank } } }")
+	response := decode(t, recorder)
+	if _, found := response["errors"]; !found {
+		t.Fatalf("response = %v, want errors for the removed names", response)
 	}
 }
 

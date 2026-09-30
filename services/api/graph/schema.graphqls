@@ -1,6 +1,5 @@
 enum TeamSort {
   RATING
-  ELO @deprecated(reason: "Use RATING.")
   NAME
 }
 
@@ -93,8 +92,6 @@ type Team {
   record: Record!
   rating: TeamRating
   ratingHistory: [TeamRating!]!
-  elo: TeamRating @deprecated(reason: "Use rating.")
-  eloHistory: [TeamRating!]! @deprecated(reason: "Use ratingHistory.")
   schedule: [Game!]!
 }
 

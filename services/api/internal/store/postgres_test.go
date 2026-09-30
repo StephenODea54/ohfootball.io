@@ -97,9 +97,6 @@ func TestScanTeamReadsThePreviousRank(t *testing.T) {
 	if team.Rating.AsOf != "2026-09-29" || team.Rating.Season != 2026 {
 		t.Fatalf("rating = %+v, want the season 2026 as of 2026-09-29", team.Rating)
 	}
-	if team.Elo != team.Rating {
-		t.Fatalf("elo = %+v, want the same rating as the new field", team.Elo)
-	}
 	if *team.Division != 2 || *team.Region != 7 || team.Record.Wins != 5 {
 		t.Fatalf("team = %+v, want division 2, region 7, and 5 wins", team)
 	}
@@ -122,8 +119,8 @@ func TestScanTeamWithoutARating(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scanTeam: %v", err)
 	}
-	if team.Rating != nil || team.Elo != nil {
-		t.Fatalf("rating = %+v, elo = %+v, want nil", team.Rating, team.Elo)
+	if team.Rating != nil {
+		t.Fatalf("rating = %+v, want nil", team.Rating)
 	}
 }
 

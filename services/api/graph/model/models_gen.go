@@ -58,8 +58,6 @@ type Team struct {
 	Record         *Record       `json:"record"`
 	Rating         *TeamRating   `json:"rating,omitempty"`
 	RatingHistory  []*TeamRating `json:"ratingHistory"`
-	Elo            *TeamRating   `json:"elo,omitempty"`
-	EloHistory     []*TeamRating `json:"eloHistory"`
 	Schedule       []*Game       `json:"schedule"`
 }
 
@@ -173,19 +171,17 @@ type TeamSort string
 
 const (
 	TeamSortRating TeamSort = "RATING"
-	TeamSortElo    TeamSort = "ELO"
 	TeamSortName   TeamSort = "NAME"
 )
 
 var AllTeamSort = []TeamSort{
 	TeamSortRating,
-	TeamSortElo,
 	TeamSortName,
 }
 
 func (e TeamSort) IsValid() bool {
 	switch e {
-	case TeamSortRating, TeamSortElo, TeamSortName:
+	case TeamSortRating, TeamSortName:
 		return true
 	}
 	return false
