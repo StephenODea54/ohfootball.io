@@ -5,6 +5,7 @@
 export const teamFields = `
   id
   season
+  sourceId
   name
   mascot
   city

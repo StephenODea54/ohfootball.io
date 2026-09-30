@@ -7,6 +7,7 @@ function team(id: string, rank: number | null, region = 1): TeamSummary {
   return {
     id,
     season: 2026,
+    sourceId: id,
     name: id,
     mascot: null,
     city: null,

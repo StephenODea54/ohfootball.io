@@ -24,6 +24,7 @@ function team(id: string, rating: { rank: number; value: number } | null): TeamS
   return {
     id,
     season: 2025,
+    sourceId: id,
     name: `Team ${id}`,
     mascot: null,
     city: null,

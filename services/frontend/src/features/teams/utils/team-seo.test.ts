@@ -17,6 +17,7 @@ function team(overrides: Partial<TeamSummary> = {}): TeamSummary {
   return {
     id: "canfield",
     season: 2026,
+    sourceId: "248",
     name: "Canfield",
     mascot: "Cardinals",
     city: "Canfield",

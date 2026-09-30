@@ -48,8 +48,14 @@ export interface Game {
 }
 
 export interface Team {
+  /** The key of the team in one season. A team has a different id in each season. */
   id: string
   season: number
+  /**
+   * The identifier of the team in its source. For a team from joeeitel.com, it is the number that
+   * joeeitel.com gives to the team. It stays the same across seasons.
+   */
+  sourceId: string
   name: string
   mascot: string | null
   city: string | null
