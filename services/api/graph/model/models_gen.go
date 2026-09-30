@@ -51,18 +51,24 @@ type Team struct {
 	Season int    `json:"season"`
 	// The identifier of the team in its source. For a team from joeeitel.com, it is the number that
 	// joeeitel.com gives to the team. It stays the same from one season to the next.
-	SourceID       string        `json:"sourceId"`
-	Name           string        `json:"name"`
-	Mascot         *string       `json:"mascot,omitempty"`
-	City           *string       `json:"city,omitempty"`
-	Division       *int          `json:"division,omitempty"`
-	Region         *int          `json:"region,omitempty"`
-	PrimaryColor   *string       `json:"primaryColor,omitempty"`
-	SecondaryColor *string       `json:"secondaryColor,omitempty"`
-	Record         *Record       `json:"record"`
-	Rating         *TeamRating   `json:"rating,omitempty"`
-	RatingHistory  []*TeamRating `json:"ratingHistory"`
-	Schedule       []*Game       `json:"schedule"`
+	SourceID       string  `json:"sourceId"`
+	Name           string  `json:"name"`
+	Mascot         *string `json:"mascot,omitempty"`
+	City           *string `json:"city,omitempty"`
+	Division       *int    `json:"division,omitempty"`
+	Region         *int    `json:"region,omitempty"`
+	PrimaryColor   *string `json:"primaryColor,omitempty"`
+	SecondaryColor *string `json:"secondaryColor,omitempty"`
+	Record         *Record `json:"record"`
+	// The number of games this season that the team played against a team that is not recorded as an
+	// Ohio team. The rating leaves these games out, so a team with many of them has fewer games behind
+	// its rating. A game counts only when it has a result and both scores. A canceled game and a
+	// forfeit do not count. The number has a meaning only for an Ohio team, because the rating leaves
+	// out every game of a team from another state.
+	OutOfStateGamesPlayed int           `json:"outOfStateGamesPlayed"`
+	Rating                *TeamRating   `json:"rating,omitempty"`
+	RatingHistory         []*TeamRating `json:"ratingHistory"`
+	Schedule              []*Game       `json:"schedule"`
 }
 
 // The margin rating of a team on one date. A rating is a number of points. The gap between two

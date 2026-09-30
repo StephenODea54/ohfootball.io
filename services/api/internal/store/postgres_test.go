@@ -2,7 +2,9 @@ package store
 
 import (
 	"database/sql"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +60,9 @@ func TestPredictionForNeedsEveryStoredValueAndAGameThatWasNotCanceled(t *testing
 type fakeRow []any
 
 func (row fakeRow) Scan(dest ...any) error {
+	if len(dest) != len(row) {
+		return fmt.Errorf("scan reads %d values, the row has %d", len(dest), len(row))
+	}
 	for index, target := range dest {
 		if scanner, ok := target.(sql.Scanner); ok {
 			if err := scanner.Scan(row[index]); err != nil {
@@ -73,7 +78,7 @@ func (row fakeRow) Scan(dest ...any) error {
 func teamRow(rating, relativeRating, rank, asOf, previousRank any) fakeRow {
 	return fakeRow{
 		"team-key", 2026, "1624", "Massillon", "Tigers", "Massillon", int64(2), int64(7),
-		"#ff6600", "#000000", int64(5), int64(1), int64(0),
+		"#ff6600", "#000000", int64(5), int64(1), int64(0), int64(2),
 		rating, relativeRating, rank, asOf, previousRank,
 	}
 }
@@ -121,6 +126,32 @@ func TestScanTeamWithoutARating(t *testing.T) {
 	}
 	if team.Rating != nil {
 		t.Fatalf("rating = %+v, want nil", team.Rating)
+	}
+}
+
+func TestScanTeamReadsTheOutOfStateGamesPlayed(t *testing.T) {
+	team, err := scanTeam(teamRow(nil, nil, nil, nil, nil))
+	if err != nil {
+		t.Fatalf("scanTeam: %v", err)
+	}
+	if team.OutOfStateGamesPlayed != 2 {
+		t.Fatalf("out-of-state games played = %d, want 2", team.OutOfStateGamesPlayed)
+	}
+}
+
+// Each line of teamColumns must hold one column, and scanTeam reads one value for each column.
+func TestTeamColumnsMatchTheValuesThatScanTeamReads(t *testing.T) {
+	columns := strings.Split(strings.TrimSpace(teamColumns), "\n")
+	if row := teamRow(nil, nil, nil, nil, nil); len(columns) != len(row) {
+		t.Fatalf("teamColumns has %d columns, scanTeam reads %d values", len(columns), len(row))
+	}
+}
+
+func TestBothTeamQueriesJoinTheOutOfStateGames(t *testing.T) {
+	for name, query := range map[string]string{"list": listTeamsSQL, "team": teamSQL} {
+		if !strings.Contains(query, "LEFT JOIN out_of_state_games USING (team_key)") {
+			t.Errorf("the %s query does not join out_of_state_games", name)
+		}
 	}
 }
 

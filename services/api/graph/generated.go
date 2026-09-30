@@ -84,20 +84,21 @@ type ComplexityRoot struct {
 	}
 
 	Team struct {
-		City           func(childComplexity int) int
-		Division       func(childComplexity int) int
-		ID             func(childComplexity int) int
-		Mascot         func(childComplexity int) int
-		Name           func(childComplexity int) int
-		PrimaryColor   func(childComplexity int) int
-		Rating         func(childComplexity int) int
-		RatingHistory  func(childComplexity int) int
-		Record         func(childComplexity int) int
-		Region         func(childComplexity int) int
-		Schedule       func(childComplexity int) int
-		Season         func(childComplexity int) int
-		SecondaryColor func(childComplexity int) int
-		SourceID       func(childComplexity int) int
+		City                  func(childComplexity int) int
+		Division              func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		Mascot                func(childComplexity int) int
+		Name                  func(childComplexity int) int
+		OutOfStateGamesPlayed func(childComplexity int) int
+		PrimaryColor          func(childComplexity int) int
+		Rating                func(childComplexity int) int
+		RatingHistory         func(childComplexity int) int
+		Record                func(childComplexity int) int
+		Region                func(childComplexity int) int
+		Schedule              func(childComplexity int) int
+		Season                func(childComplexity int) int
+		SecondaryColor        func(childComplexity int) int
+		SourceID              func(childComplexity int) int
 	}
 
 	TeamRating struct {
@@ -355,6 +356,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Team.Name(childComplexity), true
+
+	case "Team.outOfStateGamesPlayed":
+		if e.complexity.Team.OutOfStateGamesPlayed == nil {
+			break
+		}
+
+		return e.complexity.Team.OutOfStateGamesPlayed(childComplexity), true
 
 	case "Team.primaryColor":
 		if e.complexity.Team.PrimaryColor == nil {
@@ -1854,6 +1862,8 @@ func (ec *executionContext) fieldContext_Query_teams(ctx context.Context, field 
 				return ec.fieldContext_Team_secondaryColor(ctx, field)
 			case "record":
 				return ec.fieldContext_Team_record(ctx, field)
+			case "outOfStateGamesPlayed":
+				return ec.fieldContext_Team_outOfStateGamesPlayed(ctx, field)
 			case "rating":
 				return ec.fieldContext_Team_rating(ctx, field)
 			case "ratingHistory":
@@ -1936,6 +1946,8 @@ func (ec *executionContext) fieldContext_Query_team(ctx context.Context, field g
 				return ec.fieldContext_Team_secondaryColor(ctx, field)
 			case "record":
 				return ec.fieldContext_Team_record(ctx, field)
+			case "outOfStateGamesPlayed":
+				return ec.fieldContext_Team_outOfStateGamesPlayed(ctx, field)
 			case "rating":
 				return ec.fieldContext_Team_rating(ctx, field)
 			case "ratingHistory":
@@ -2692,6 +2704,50 @@ func (ec *executionContext) fieldContext_Team_record(_ context.Context, field gr
 				return ec.fieldContext_Record_ties(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Record", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Team_outOfStateGamesPlayed(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Team_outOfStateGamesPlayed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OutOfStateGamesPlayed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Team_outOfStateGamesPlayed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -5475,6 +5531,11 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Team_secondaryColor(ctx, field, obj)
 		case "record":
 			out.Values[i] = ec._Team_record(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "outOfStateGamesPlayed":
+			out.Values[i] = ec._Team_outOfStateGamesPlayed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

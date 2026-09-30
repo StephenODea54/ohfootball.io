@@ -215,7 +215,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	var rating, relativeRating pgtype.Float8
 	var ratingRank, previousRank pgtype.Int8
 	var asOf pgtype.Date
-	var wins, losses, ties int64
+	var wins, losses, ties, outOfStateGamesPlayed int64
 	if err := row.Scan(
 		&team.ID,
 		&team.Season,
@@ -230,6 +230,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 		&wins,
 		&losses,
 		&ties,
+		&outOfStateGamesPlayed,
 		&rating,
 		&relativeRating,
 		&ratingRank,
@@ -245,6 +246,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	team.PrimaryColor = optional(primaryColor.Valid, primaryColor.String)
 	team.SecondaryColor = optional(secondaryColor.Valid, secondaryColor.String)
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
+	team.OutOfStateGamesPlayed = int(outOfStateGamesPlayed)
 	team.RatingHistory = []*model.TeamRating{}
 	team.Schedule = []*model.Game{}
 	if rating.Valid && relativeRating.Valid && ratingRank.Valid && asOf.Valid {
@@ -404,12 +406,18 @@ func buildPrediction(probability, margin, teamRating, opponentRating float64, as
 }
 
 const teamFacts = `
-	WITH team_results AS (
-		SELECT team_a_key AS team_key, team_a_result AS result
+	WITH team_games AS (
+		SELECT
+			team_a_key AS team_key,
+			team_b_key AS opponent_key,
+			team_a_result AS result,
+			team_a_score,
+			team_b_score,
+			notes
 		FROM ohfootball_marts.fct_games
 		WHERE is_current AND season = $1
 		UNION ALL
-		SELECT team_b_key AS team_key, team_b_result AS result
+		SELECT team_b_key, team_a_key, team_b_result, team_a_score, team_b_score, notes
 		FROM ohfootball_marts.fct_games
 		WHERE is_current AND season = $1
 	),
@@ -419,8 +427,25 @@ const teamFacts = `
 			COUNT(*) FILTER (WHERE result = 'W') AS wins,
 			COUNT(*) FILTER (WHERE result = 'L') AS losses,
 			COUNT(*) FILTER (WHERE result = 'T') AS ties
-		FROM team_results
+		FROM team_games
 		GROUP BY team_key
+	),
+	-- The played games that the rating leaves out because of the opponent. The rule is the rule of
+	-- the rating service. The game has a result of W, L or T, it is not a forfeit, and it has both
+	-- scores. The rating also needs the opponent to be a current Ohio team, so an opponent with no
+	-- state or no current row counts here as out of state.
+	out_of_state_games AS (
+		SELECT game.team_key, COUNT(*) AS played
+		FROM team_games AS game
+		LEFT JOIN ohfootball_marts.dim_teams AS opponent
+			ON opponent.team_key = game.opponent_key
+		   AND opponent.is_current
+		WHERE game.result IN ('W', 'L', 'T')
+		  AND game.team_a_score IS NOT NULL
+		  AND game.team_b_score IS NOT NULL
+		  AND LOWER(TRIM(COALESCE(game.notes, ''))) NOT IN ('forfeit', 'double forfeit')
+		  AND opponent.state_code IS DISTINCT FROM 'OH'
+		GROUP BY game.team_key
 	),
 	latest_snapshot AS (
 		SELECT MAX(as_of_date) AS as_of_date
@@ -469,6 +494,7 @@ const teamColumns = `
 	COALESCE(records.wins, 0),
 	COALESCE(records.losses, 0),
 	COALESCE(records.ties, 0),
+	COALESCE(out_of_state_games.played, 0),
 	ratings.rating,
 	ratings.relative_rating,
 	ratings.rating_rank,
@@ -480,6 +506,7 @@ var listTeamsSQL = teamFacts + `
 	SELECT ` + teamColumns + `
 	FROM ohfootball_marts.dim_teams AS team
 	LEFT JOIN records USING (team_key)
+	LEFT JOIN out_of_state_games USING (team_key)
 	LEFT JOIN ratings USING (team_key)
 	LEFT JOIN previous_ratings USING (team_key)
 	WHERE team.is_current
@@ -504,6 +531,7 @@ var teamSQL = teamFacts + `
 	SELECT ` + teamColumns + `
 	FROM ohfootball_marts.dim_teams AS team
 	LEFT JOIN records USING (team_key)
+	LEFT JOIN out_of_state_games USING (team_key)
 	LEFT JOIN ratings USING (team_key)
 	LEFT JOIN previous_ratings USING (team_key)
 	WHERE team.is_current

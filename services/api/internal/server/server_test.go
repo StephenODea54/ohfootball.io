@@ -156,6 +156,30 @@ func TestQueryReturnsThePreviousRank(t *testing.T) {
 	}
 }
 
+func TestQueryReturnsTheOutOfStateGamesPlayed(t *testing.T) {
+	store := &fakeStore{teams: []*model.Team{
+		{ID: "many", Record: &model.Record{}, OutOfStateGamesPlayed: 3},
+		{ID: "none", Record: &model.Record{}},
+	}}
+	handler := newHandler(t, store, Options{})
+
+	response := decode(t, post(t, handler, "{ teams { id outOfStateGamesPlayed } }"))
+	if _, found := response["errors"]; found {
+		t.Fatalf("response carried errors: %v", response["errors"])
+	}
+	data, _ := response["data"].(map[string]any)
+	teams, _ := data["teams"].([]any)
+	if len(teams) != 2 {
+		t.Fatalf("teams = %v, want 2 teams", data["teams"])
+	}
+	for index, want := range []float64{3, 0} {
+		count, found := teams[index].(map[string]any)["outOfStateGamesPlayed"]
+		if !found || count != want {
+			t.Fatalf("team %d outOfStateGamesPlayed = %v (present %t), want %v", index, count, found, want)
+		}
+	}
+}
+
 func TestATeamAnswersWithItsRatingHistoryAndPredictedMargins(t *testing.T) {
 	rating := &model.TeamRating{Season: 2026, Rating: 40, RelativeRating: 14, Rank: 3, AsOf: "2026-09-29"}
 	team := &model.Team{

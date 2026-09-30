@@ -25,6 +25,15 @@ snapshot before that one in the same season. It is null when the season has no e
 or when the team is not in that snapshot. A client finds the movement of a team as
 `previousRank - rank`, so a positive number means the team moved up.
 
+## Games the rating leaves out
+
+Each team carries `outOfStateGamesPlayed`. It is the number of games this season that the team
+played against a team that is not recorded as an Ohio team. The rating counts only games between
+two Ohio teams, so it leaves these games out. A game counts here only when it has a result of win,
+loss, or tie and both scores. A canceled game and a forfeit do not count. An opponent with no
+state, or with no current row in `dim_teams`, counts as out of state, because the rating also
+leaves out its games.
+
 ## Rules for callers
 
 The API needs no sign-in. Each caller follows two rules.

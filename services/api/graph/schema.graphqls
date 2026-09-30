@@ -98,6 +98,14 @@ type Team {
   primaryColor: String
   secondaryColor: String
   record: Record!
+  """
+  The number of games this season that the team played against a team that is not recorded as an
+  Ohio team. The rating leaves these games out, so a team with many of them has fewer games behind
+  its rating. A game counts only when it has a result and both scores. A canceled game and a
+  forfeit do not count. The number has a meaning only for an Ohio team, because the rating leaves
+  out every game of a team from another state.
+  """
+  outOfStateGamesPlayed: Int!
   rating: TeamRating
   ratingHistory: [TeamRating!]!
   schedule: [Game!]!
