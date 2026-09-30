@@ -3,6 +3,7 @@ import SiteLayout from "@/layouts/site-layout.astro"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
+import { RatingNote } from "@/features/methodology/components/rating-note"
 import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
 import { getTeams } from "@/features/teams/api/get-teams"
 import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
@@ -21,6 +22,7 @@ const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
       <header class="max-w-4xl">
         <Heading className="text-4xl/none sm:text-5xl/none">Leaderboard</Heading>
         <Text className="mt-3 text-base/7 sm:text-base/7">Schools listed by rating.</Text>
+        <RatingNote className="mt-2 max-w-3xl" />
       </header>
 
       <LeaderboardTable client:load season={season} teams={teams} />

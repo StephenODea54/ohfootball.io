@@ -8,12 +8,12 @@ import { Link } from "@/components/ui/link"
 import { Text, TextLink } from "@/components/ui/text"
 import { links, paths } from "@/config/paths"
 import { awesomeSites } from "@/features/about/awesome-sites"
+import { RATING_SUMMARY } from "@/features/methodology/rating-model"
 
 const questions = [
   {
     question: "What Is A Rating?",
-    answer:
-      "A rating is a number of points. It is how many points a team would be expected to beat the median Ohio team by on a neutral field, so 0 is an average team and the higher the better.",
+    answer: RATING_SUMMARY,
   },
   {
     question: "My Team Won. Why Did The Rating Go Down?",

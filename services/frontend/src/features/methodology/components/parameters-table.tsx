@@ -9,49 +9,60 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  CARRYOVER_LAST,
+  CARRYOVER_OLDER,
+  DIVISION_STEP,
+  HISTORY_SEASONS,
+  HOME_EDGE,
+  LEARNING_OFFSET,
+  LEARNING_RATE,
+  MARGIN_CAP,
+  SLOPE_SEASONS,
+} from "@/features/methodology/rating-model"
 
 /** The values the published ratings use. */
 const parameters = [
   {
     id: "home-edge",
     name: "Home edge",
-    value: "1.5",
+    value: HOME_EDGE.toString(),
     note: "Points added to the expected margin of the home team.",
   },
   {
     id: "learning-rate",
     name: "Learning rate",
-    value: "1.65 / (n + 5)",
+    value: `${LEARNING_RATE} / (n + ${LEARNING_OFFSET})`,
     note: "The share of a surprise that moves a rating. n is the games played this season.",
   },
   {
     id: "margin-cap",
     name: "Margin cap",
-    value: "56",
-    note: "The largest margin that a game counts. A bigger win counts as 56 points.",
+    value: MARGIN_CAP.toString(),
+    note: `The largest margin that a game counts. A bigger win counts as ${MARGIN_CAP} points.`,
   },
   {
     id: "division-step",
     name: "Division step",
-    value: "12",
+    value: DIVISION_STEP.toString(),
     note: "Points per division of separation in the prior of a new program.",
   },
   {
     id: "carryover-last",
     name: "Last season",
-    value: "0.8",
+    value: CARRYOVER_LAST.toString(),
     note: "The share of last season's final rating in the start of a season.",
   },
   {
     id: "carryover-older",
     name: "Earlier seasons",
-    value: "0.2",
-    note: "The share of the average of up to eight seasons before that one.",
+    value: CARRYOVER_OLDER.toString(),
+    note: `The share of the average of up to ${HISTORY_SEASONS} seasons before that one.`,
   },
   {
     id: "slope-window",
     name: "Slope window",
-    value: "10",
+    value: SLOPE_SEASONS.toString(),
     note: "The number of earlier seasons that each win probability slope is fit on.",
   },
 ]

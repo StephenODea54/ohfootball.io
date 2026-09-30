@@ -3,6 +3,7 @@ import SiteLayout from "@/layouts/site-layout.astro"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
+import { RatingNote } from "@/features/methodology/components/rating-note"
 import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
 import { getTeams } from "@/features/teams/api/get-teams"
 import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
@@ -29,6 +30,7 @@ const description =
       <Text className="mt-4 text-base/7 sm:text-lg/8">
         Statistical ratings and game predictions for every Ohio high school football team.
       </Text>
+      <RatingNote className="mt-3 max-w-3xl" />
 
       <TeamFinder client:load season={season} teams={teams} />
     </Container>
