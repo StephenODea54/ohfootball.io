@@ -9,7 +9,7 @@ export async function getTeam(id: string, season: number): Promise<Team> {
       query Team($id: ID!, $season: Int) {
         team(id: $id, season: $season) {
           ${teamFields}
-          ratingHistory: eloHistory { season value: rating rank asOf }
+          ratingHistory { season value: relativeRating rank asOf }
           schedule {
             id
             week
@@ -24,9 +24,7 @@ export async function getTeam(id: string, season: number): Promise<Team> {
             notes
             prediction {
               winProbability
-              predictedResult
-              teamRating
-              opponentRating
+              predictedMargin
               asOf
             }
           }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { twJoin } from "tailwind-merge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Link } from "@/components/ui/link"
 import { ProgressBar, ProgressBarTrack } from "@/components/ui/progress-bar"
@@ -20,7 +21,7 @@ import {
   filterTeams,
   type TeamFilterState,
 } from "@/features/teams/utils/filter-teams"
-import { formatRecord, teamMeta } from "@/features/teams/utils/format"
+import { formatRating, formatRecord, ratingTone, teamMeta } from "@/features/teams/utils/format"
 import type { TeamRating, TeamSummary } from "@/types/api"
 
 type RatedTeam = TeamSummary & { rating: TeamRating }
@@ -85,11 +86,16 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
                       </TableCell>
                       <TableCell>
                         <div className="ms-auto w-24 py-1">
-                          <p className="text-end font-semibold text-base/6 text-success-subtle-fg">
-                            {Math.round(rating)}
+                          <p
+                            className={twJoin(
+                              "text-end font-semibold text-base/6",
+                              ratingTone(rating),
+                            )}
+                          >
+                            {formatRating(rating)}
                           </p>
                           <ProgressBar
-                            aria-label={`${team.name} rating ${Math.round(rating)}`}
+                            aria-label={`${team.name} rating ${formatRating(rating)}`}
                             value={progress}
                             className="mt-1"
                           >

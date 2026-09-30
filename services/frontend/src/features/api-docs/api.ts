@@ -17,13 +17,13 @@ export const exampleQuery = "{ currentSeason }"
 /** The ten teams with the highest rating in the current season, with their records. */
 export const topTenQuery = `query TopTen {
   currentSeason
-  teams(sort: ELO, limit: 10) {
+  teams(sort: RATING, limit: 10) {
     name
     city
     division
     region
     record { wins losses ties }
-    elo { rating rank }
+    rating { relativeRating rank }
   }
 }`
 

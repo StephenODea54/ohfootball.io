@@ -29,15 +29,15 @@ const (
   primaryColor
   secondaryColor
   record { wins losses ties }
-  rating: elo { season value: rating rank asOf }
+  rating { season value: relativeRating rank asOf }
 `
 	siteCurrentSeason = `query CurrentSeason { currentSeason }`
 	siteTeams         = `query Teams($season: Int!) {
-  teams(season: $season, sort: ELO, limit: 1000) {` + siteTeamFields + `}
+  teams(season: $season, sort: RATING, limit: 1000) {` + siteTeamFields + `}
 }`
 	siteTeam = `query Team($id: ID!, $season: Int) {
   team(id: $id, season: $season) {` + siteTeamFields + `
-    ratingHistory: eloHistory { season value: rating rank asOf }
+    ratingHistory { season value: relativeRating rank asOf }
     schedule {
       id
       week
@@ -50,7 +50,7 @@ const (
       opponentScore
       playoff
       notes
-      prediction { winProbability predictedResult teamRating opponentRating asOf }
+      prediction { winProbability predictedMargin asOf }
     }
   }
 }`

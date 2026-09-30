@@ -2,8 +2,9 @@
  * The football entities the site reads. A component may take one as a prop without depending on
  * the code that fetches it.
  *
- * The rating fields are named for what they mean rather than for the Elo model that produces
- * them. The team queries alias the API fields to match.
+ * A rating value is the relative rating in points: the number of points by which a team would be
+ * expected to beat the median Ohio team on a neutral field. The team queries alias the API field
+ * to match.
  */
 
 export interface TeamRecord {
@@ -24,9 +25,8 @@ export type GameLocation = "HOME" | "AWAY" | "NEUTRAL"
 
 export interface GamePrediction {
   winProbability: number
-  predictedResult: GameResult
-  teamRating: number
-  opponentRating: number
+  /** The margin the model expects for the team, in points. A negative margin is a loss. */
+  predictedMargin: number
   asOf: string
 }
 

@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatMargin, marginIntent, winPercent } from "@/features/teams/utils/format"
 import type { ScheduleGame } from "@/features/teams/utils/opponent-links"
 import type { Game } from "@/types/api"
 import { formatDayAndMonth } from "@/utils/format"
@@ -37,7 +38,7 @@ export function TeamScheduleTable({ team }: { team: { name: string; schedule: Sc
           <TableBody items={team.schedule}>
             {(game) => {
               const probability = game.prediction
-                ? Math.round(game.prediction.winProbability * 100)
+                ? winPercent(game.prediction.winProbability)
                 : null
               return (
                 <TableRow id={game.id}>
@@ -61,11 +62,11 @@ export function TeamScheduleTable({ team }: { team: { name: string; schedule: Sc
                   <TableCell>
                     {game.prediction ? (
                       <Badge
-                        intent={game.prediction.predictedResult === "WIN" ? "success" : "danger"}
+                        intent={marginIntent(game.prediction.predictedMargin)}
                         isCircle={false}
                         className="text-sm/5 font-semibold"
                       >
-                        {game.prediction.predictedResult === "WIN" ? "W" : "L"}
+                        {formatMargin(game.prediction.predictedMargin)}
                       </Badge>
                     ) : (
                       <span className="text-muted-fg">—</span>

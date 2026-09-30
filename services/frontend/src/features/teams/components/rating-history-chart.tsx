@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "@/components/ui/chart"
+import { formatRating } from "@/features/teams/utils/format"
 import type { Team } from "@/types/api"
 
 const chartConfig = {
@@ -42,8 +43,10 @@ export function RatingHistoryChart({
   const ratingDelta =
     rating !== null && previousPoint ? rating - Math.round(previousPoint.value) : null
   const ratings = history.map((point) => point.rating)
-  const minimumRating = ratings.length ? Math.min(...ratings) - 25 : 1400
-  const maximumRating = ratings.length ? Math.max(...ratings) + 25 : 1600
+  // A rating is in points around the median team, so the axis leaves ten points of room on each
+  // side and shows 50 points each way when there is no history.
+  const minimumRating = ratings.length ? Math.min(...ratings) - 10 : -50
+  const maximumRating = ratings.length ? Math.max(...ratings) + 10 : 50
 
   return (
     <Card className="gap-4 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(6)]">
@@ -61,8 +64,7 @@ export function RatingHistoryChart({
         {ratingDelta !== null && previousPoint && (
           <CardAction>
             <Badge intent={ratingDelta >= 0 ? "success" : "danger"} className="font-semibold">
-              {ratingDelta >= 0 ? "+" : ""}
-              {ratingDelta} vs {previousPoint.season}
+              {formatRating(ratingDelta)} vs {previousPoint.season}
             </Badge>
           </CardAction>
         )}
@@ -79,7 +81,12 @@ export function RatingHistoryChart({
               </defs>
               <CartesianGrid vertical={false} />
               <XAxis />
-              <YAxis width={48} domain={[minimumRating, maximumRating]} />
+              <YAxis
+                width={48}
+                domain={[minimumRating, maximumRating]}
+                allowDecimals={false}
+                tickFormatter={formatRating}
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Area
                 dataKey="rating"

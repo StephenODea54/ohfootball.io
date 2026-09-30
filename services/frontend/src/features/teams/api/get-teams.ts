@@ -15,7 +15,7 @@ export function getTeams(): Promise<TeamSummary[]> {
     const data = await graphqlRequest<{ teams: TeamSummary[] }>(
       `
         query Teams($season: Int!) {
-          teams(season: $season, sort: ELO, limit: ${TEAM_QUERY_LIMIT}) {
+          teams(season: $season, sort: RATING, limit: ${TEAM_QUERY_LIMIT}) {
             ${teamFields}
           }
         }
