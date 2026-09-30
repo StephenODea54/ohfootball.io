@@ -80,8 +80,16 @@ type Game {
 }
 
 type Team {
+  """
+  The key of the team in one season. A team has a different id in each season.
+  """
   id: ID!
   season: Int!
+  """
+  The identifier of the team in its source. For a team from joeeitel.com, it is the number that
+  joeeitel.com gives to the team. It stays the same from one season to the next.
+  """
+  sourceId: String!
   name: String!
   mascot: String
   city: String

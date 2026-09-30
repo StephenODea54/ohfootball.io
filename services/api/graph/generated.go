@@ -97,6 +97,7 @@ type ComplexityRoot struct {
 		Schedule       func(childComplexity int) int
 		Season         func(childComplexity int) int
 		SecondaryColor func(childComplexity int) int
+		SourceID       func(childComplexity int) int
 	}
 
 	TeamRating struct {
@@ -410,6 +411,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Team.SecondaryColor(childComplexity), true
+
+	case "Team.sourceId":
+		if e.complexity.Team.SourceID == nil {
+			break
+		}
+
+		return e.complexity.Team.SourceID(childComplexity), true
 
 	case "TeamRating.asOf":
 		if e.complexity.TeamRating.AsOf == nil {
@@ -1828,6 +1836,8 @@ func (ec *executionContext) fieldContext_Query_teams(ctx context.Context, field 
 				return ec.fieldContext_Team_id(ctx, field)
 			case "season":
 				return ec.fieldContext_Team_season(ctx, field)
+			case "sourceId":
+				return ec.fieldContext_Team_sourceId(ctx, field)
 			case "name":
 				return ec.fieldContext_Team_name(ctx, field)
 			case "mascot":
@@ -1908,6 +1918,8 @@ func (ec *executionContext) fieldContext_Query_team(ctx context.Context, field g
 				return ec.fieldContext_Team_id(ctx, field)
 			case "season":
 				return ec.fieldContext_Team_season(ctx, field)
+			case "sourceId":
+				return ec.fieldContext_Team_sourceId(ctx, field)
 			case "name":
 				return ec.fieldContext_Team_name(ctx, field)
 			case "mascot":
@@ -2294,6 +2306,50 @@ func (ec *executionContext) fieldContext_Team_season(_ context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Team_sourceId(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Team_sourceId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SourceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Team_sourceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -5392,6 +5448,11 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "season":
 			out.Values[i] = ec._Team_season(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sourceId":
+			out.Values[i] = ec._Team_sourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

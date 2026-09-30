@@ -72,7 +72,7 @@ func (row fakeRow) Scan(dest ...any) error {
 
 func teamRow(rating, relativeRating, rank, asOf, previousRank any) fakeRow {
 	return fakeRow{
-		"team-key", 2026, "Massillon", "Tigers", "Massillon", int64(2), int64(7),
+		"team-key", 2026, "1624", "Massillon", "Tigers", "Massillon", int64(2), int64(7),
 		"#ff6600", "#000000", int64(5), int64(1), int64(0),
 		rating, relativeRating, rank, asOf, previousRank,
 	}
@@ -97,8 +97,8 @@ func TestScanTeamReadsThePreviousRank(t *testing.T) {
 	if team.Rating.AsOf != "2026-09-29" || team.Rating.Season != 2026 {
 		t.Fatalf("rating = %+v, want the season 2026 as of 2026-09-29", team.Rating)
 	}
-	if *team.Division != 2 || *team.Region != 7 || team.Record.Wins != 5 {
-		t.Fatalf("team = %+v, want division 2, region 7, and 5 wins", team)
+	if team.SourceID != "1624" || *team.Division != 2 || *team.Region != 7 || team.Record.Wins != 5 {
+		t.Fatalf("team = %+v, want source id 1624, division 2, region 7, and 5 wins", team)
 	}
 }
 

@@ -219,6 +219,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	if err := row.Scan(
 		&team.ID,
 		&team.Season,
+		&team.SourceID,
 		&team.Name,
 		&mascot,
 		&city,
@@ -457,6 +458,7 @@ const teamFacts = `
 const teamColumns = `
 	team.team_key::text,
 	team.season,
+	team.source_id,
 	team.name,
 	team.mascot,
 	team.city,

@@ -21,6 +21,7 @@ const (
 	siteTeamFields = `
   id
   season
+  sourceId
   name
   mascot
   city

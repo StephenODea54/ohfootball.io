@@ -160,6 +160,7 @@ func TestATeamAnswersWithItsRatingHistoryAndPredictedMargins(t *testing.T) {
 	rating := &model.TeamRating{Season: 2026, Rating: 40, RelativeRating: 14, Rank: 3, AsOf: "2026-09-29"}
 	team := &model.Team{
 		ID:            "moeller",
+		SourceID:      "1068",
 		Record:        &model.Record{},
 		Rating:        rating,
 		RatingHistory: []*model.TeamRating{rating},
@@ -176,6 +177,7 @@ func TestATeamAnswersWithItsRatingHistoryAndPredictedMargins(t *testing.T) {
 
 	recorder := post(t, handler, `{
 		team(id: "moeller") {
+			sourceId
 			rating { relativeRating }
 			ratingHistory { relativeRating }
 			schedule { prediction { predictedMargin } }
@@ -187,6 +189,9 @@ func TestATeamAnswersWithItsRatingHistoryAndPredictedMargins(t *testing.T) {
 	}
 	data, _ := response["data"].(map[string]any)
 	got, _ := data["team"].(map[string]any)
+	if value := got["sourceId"]; value != "1068" {
+		t.Fatalf("sourceId = %v, want 1068", value)
+	}
 	if value := got["rating"].(map[string]any)["relativeRating"]; value != float64(14) {
 		t.Fatalf("rating relativeRating = %v, want 14", value)
 	}

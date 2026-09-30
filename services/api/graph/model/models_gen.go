@@ -46,8 +46,12 @@ type Record struct {
 }
 
 type Team struct {
-	ID             string        `json:"id"`
-	Season         int           `json:"season"`
+	// The key of the team in one season. A team has a different id in each season.
+	ID     string `json:"id"`
+	Season int    `json:"season"`
+	// The identifier of the team in its source. For a team from joeeitel.com, it is the number that
+	// joeeitel.com gives to the team. It stays the same from one season to the next.
+	SourceID       string        `json:"sourceId"`
 	Name           string        `json:"name"`
 	Mascot         *string       `json:"mascot,omitempty"`
 	City           *string       `json:"city,omitempty"`
