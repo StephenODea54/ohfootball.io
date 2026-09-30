@@ -157,10 +157,15 @@ relative rating is the rating minus the median rating of the Ohio teams in the s
 are not in them yet. A team without a game yet gets the rating it opens the season with.
 
 Each run replaces the snapshot of the season in progress at its own `--as-of-date`, and the 31
-December snapshot of each past season. The weekly snapshots of earlier dates stay. The API
-compares the two newest snapshots of a season to give the previous rank of each team. A second
-run on a later day of the same week therefore compares ranks one day apart. To replace a snapshot
-instead, run again with the `--as-of-date` of that snapshot.
+December snapshot of each past season. The weekly snapshots of earlier dates stay. To replace a
+snapshot instead, run again with the `--as-of-date` of that snapshot.
+
+The API gives the rank of each team one week before a snapshot. It reads that rank from the
+ratings that the predictions of the games of the week hold, so it needs no earlier snapshot, and a
+second run in the same week does not change it. Every game that moves a rating must therefore get a
+prediction dated the day of the game. A run with an older `--as-of-date` dates the predictions of
+the later games that day, so until the next run with the current date, the newer snapshots of the
+season show no movement.
 
 The command also replaces every row of `ohfootball_marts.fct_game_predictions`. A game played
 before `--as-of-date` gets the prediction that the backtest made before its result was known,

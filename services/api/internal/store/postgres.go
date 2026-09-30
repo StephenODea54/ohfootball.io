@@ -463,20 +463,38 @@ const teamFacts = `
 		INNER JOIN latest_snapshot USING (as_of_date)
 		WHERE rating.season = $1
 	),
-	previous_snapshot AS (
-		SELECT MAX(rating.as_of_date) AS as_of_date
-		FROM ohfootball_marts.fct_team_ratings AS rating
+	-- The rating that each team carried into its first game in the week before the snapshot. A
+	-- rating changes only when the team plays, and the rating service keeps the ratings that both
+	-- teams carried into each played game. So this is the rating of the team one week before the
+	-- snapshot. A game not yet played has a prediction dated the day of the run, not the day of the
+	-- game, so the rule on the dates leaves it out.
+	week_earlier_ratings AS (
+		SELECT DISTINCT ON (side.team_key)
+			side.team_key,
+			side.rating
+		FROM ohfootball_marts.fct_game_predictions AS prediction
 		CROSS JOIN latest_snapshot
-		WHERE rating.season = $1
-		  AND rating.as_of_date < latest_snapshot.as_of_date
+		CROSS JOIN LATERAL (
+			VALUES
+				(prediction.team_a_key, prediction.team_a_rating),
+				(prediction.team_b_key, prediction.team_b_rating)
+		) AS side (team_key, rating)
+		WHERE prediction.season = $1
+		  AND prediction.as_of_date = prediction.game_date
+		  AND prediction.game_date >= latest_snapshot.as_of_date - 7
+		  AND prediction.game_date < latest_snapshot.as_of_date
+		ORDER BY side.team_key, prediction.game_date, prediction.game_key
 	),
+	-- A team with no game in that week had the rating of the snapshot. The rank uses the same order
+	-- and the same rule for ties as the current rank.
 	previous_ratings AS (
 		SELECT
-			rating.team_key,
-			RANK() OVER (ORDER BY rating.rating DESC) AS rating_rank
-		FROM ohfootball_marts.fct_team_ratings AS rating
-		INNER JOIN previous_snapshot USING (as_of_date)
-		WHERE rating.season = $1
+			ratings.team_key,
+			RANK() OVER (
+				ORDER BY COALESCE(week_earlier.rating, ratings.rating) DESC
+			) AS rating_rank
+		FROM ratings
+		LEFT JOIN week_earlier_ratings AS week_earlier USING (team_key)
 	)
 `
 
@@ -539,41 +557,97 @@ var teamSQL = teamFacts + `
 	  AND team.source_id = $2
 `
 
-// The weekly run publishes a snapshot for each week of the season in progress. A past season keeps
-// the weekly snapshots it had and ends with one on 31 December. The history therefore follows the
-// program through every snapshot of every season it has played. The previous rank of a point is
-// the rank of the same team at its snapshot before that one in the same season.
+// The history follows the program through every snapshot of every season it has played. The
+// rank of a point is one more than the number of teams of the same snapshot with a higher rating,
+// which is the rank of RANK(). The previous rank of a point is the rank of the team one week before
+// the date of the point. It comes from the ratings that the teams carried into the games of that
+// week, as in teamFacts, so it needs no earlier snapshot. A snapshot with no game in the week before
+// it, such as one of 31 December, has a previous rank equal to its rank.
 const ratingHistorySQL = `
-	WITH program_seasons AS (
-		SELECT team_key
-		FROM ohfootball_marts.dim_teams
-		WHERE is_current AND source_id = $1
+	WITH points AS (
+		SELECT rating.team_key, rating.season, rating.rating, rating.relative_rating, rating.as_of_date
+		FROM ohfootball_marts.fct_team_ratings AS rating
+		INNER JOIN ohfootball_marts.dim_teams AS team
+			ON team.team_key = rating.team_key
+		   AND team.is_current
+		WHERE team.source_id = $1
+	),
+	week_earlier_ratings AS (
+		SELECT DISTINCT ON (point.season, point.as_of_date, side.team_key)
+			point.season,
+			point.as_of_date,
+			side.team_key,
+			side.rating
+		FROM points AS point
+		CROSS JOIN LATERAL (
+			SELECT
+				prediction.game_date,
+				prediction.game_key,
+				prediction.team_a_key,
+				prediction.team_a_rating,
+				prediction.team_b_key,
+				prediction.team_b_rating
+			FROM ohfootball_marts.fct_game_predictions AS prediction
+			WHERE prediction.season = point.season
+			  AND prediction.game_date >= point.as_of_date - 7
+			  AND prediction.game_date < point.as_of_date
+			  AND prediction.as_of_date = prediction.game_date
+			-- OFFSET 0 keeps the planner from folding this into one join over the whole table, so
+			-- each snapshot reads only the games of its own week through the index on the season
+			-- and the game date.
+			OFFSET 0
+		) AS game
+		CROSS JOIN LATERAL (
+			VALUES (game.team_a_key, game.team_a_rating), (game.team_b_key, game.team_b_rating)
+		) AS side (team_key, rating)
+		ORDER BY point.season, point.as_of_date, side.team_key, game.game_date, game.game_key
+	),
+	-- Only a snapshot with a game in the week before it can have a previous rank that differs from
+	-- its rank, so only such a snapshot is ranked again.
+	week_snapshots AS (
+		SELECT DISTINCT season, as_of_date
+		FROM week_earlier_ratings
+	),
+	week_earlier AS (
+		SELECT
+			other.season,
+			other.as_of_date,
+			other.team_key,
+			COALESCE(week.rating, other.rating) AS rating
+		FROM ohfootball_marts.fct_team_ratings AS other
+		INNER JOIN week_snapshots USING (season, as_of_date)
+		LEFT JOIN week_earlier_ratings AS week USING (season, as_of_date, team_key)
 	),
 	ranked AS (
 		SELECT
-			rating.team_key,
-			rating.season,
-			rating.rating,
-			rating.relative_rating,
-			rating.as_of_date,
-			RANK() OVER (
-				PARTITION BY rating.season, rating.as_of_date
-				ORDER BY rating.rating DESC
+			point.*,
+			(
+				SELECT COUNT(*) + 1
+				FROM ohfootball_marts.fct_team_ratings AS other
+				WHERE other.season = point.season
+				  AND other.as_of_date = point.as_of_date
+				  AND other.rating > point.rating
 			) AS rating_rank
-		FROM ohfootball_marts.fct_team_ratings AS rating
+		FROM points AS point
 	)
 	SELECT
 		ranked.season,
 		ranked.rating,
 		ranked.relative_rating,
 		ranked.rating_rank,
-		LAG(ranked.rating_rank) OVER (
-			PARTITION BY ranked.team_key, ranked.season
-			ORDER BY ranked.as_of_date
-		) AS previous_rank,
+		CASE
+			WHEN own.rating IS NULL THEN ranked.rating_rank
+			ELSE (
+				SELECT COUNT(*) + 1
+				FROM week_earlier AS other
+				WHERE other.season = ranked.season
+				  AND other.as_of_date = ranked.as_of_date
+				  AND other.rating > own.rating
+			)
+		END AS previous_rank,
 		ranked.as_of_date
 	FROM ranked
-	INNER JOIN program_seasons USING (team_key)
+	LEFT JOIN week_earlier AS own USING (season, as_of_date, team_key)
 	ORDER BY ranked.season, ranked.as_of_date
 `
 

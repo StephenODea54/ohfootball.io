@@ -107,7 +107,7 @@ func TestScanTeamReadsThePreviousRank(t *testing.T) {
 	}
 }
 
-func TestScanTeamWithoutAnEarlierSnapshot(t *testing.T) {
+func TestScanTeamWithoutAPreviousRank(t *testing.T) {
 	asOf := time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC)
 
 	team, err := scanTeam(teamRow(-12.0, -38.5, int64(40), asOf, nil))
@@ -175,5 +175,23 @@ func TestScanRatingReadsThePreviousRank(t *testing.T) {
 	}
 	if first.PreviousRank != nil {
 		t.Fatalf("previous rank = %v, want nil", *first.PreviousRank)
+	}
+}
+
+// The previous rank comes from the ratings that the teams carried into the games of the week before
+// a snapshot. A prediction of a game not yet played is dated the day of the run, so both queries
+// must keep only the predictions dated the day of their game, in the seven days before the
+// snapshot.
+func TestThePreviousRankReadsTheGamesOfTheWeekBeforeTheSnapshot(t *testing.T) {
+	for name, query := range map[string]string{"teamFacts": teamFacts, "ratingHistorySQL": ratingHistorySQL} {
+		for _, rule := range []string{
+			"prediction.as_of_date = prediction.game_date",
+			"as_of_date - 7",
+			"prediction.game_date <",
+		} {
+			if !strings.Contains(query, rule) {
+				t.Errorf("%s does not hold %q", name, rule)
+			}
+		}
 	}
 }

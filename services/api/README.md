@@ -20,10 +20,13 @@ docker compose up -d --build --wait
 
 ## Rank movement
 
-Each rating carries `rank` and `previousRank`. `previousRank` is the rank of the team in the
-snapshot before that one in the same season. It is null when the season has no earlier snapshot,
-or when the team is not in that snapshot. A client finds the movement of a team as
-`previousRank - rank`, so a positive number means the team moved up.
+Each rating carries `rank` and `previousRank`. `previousRank` is the rank of the team one week
+before the date of the rating, among the teams of the same snapshot. A rating changes only when a
+team plays, and the rating service keeps the ratings that both teams carried into each played game.
+So the API reads the rating of each team on that day from its first game of that week, or keeps
+the rating of the snapshot when the team did not play. It needs no earlier snapshot. A snapshot
+with no game in the week before it, such as one of 31 December, shows no movement. A client finds
+the movement of a team as `previousRank - rank`, so a positive number means the team moved up.
 
 ## Games the rating leaves out
 

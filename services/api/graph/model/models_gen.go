@@ -81,8 +81,12 @@ type TeamRating struct {
 	// team.
 	RelativeRating float64 `json:"relativeRating"`
 	Rank           int     `json:"rank"`
-	// The rank of the team in the snapshot before this one in the same season. It is null when the
-	// season has no earlier snapshot, or when the team is not in that snapshot.
+	// The rank of the team one week before asOf, among the teams of the same snapshot. A rating changes
+	// only when a team plays, and the rating service keeps the ratings that both teams carried into
+	// each played game. So the API reads the rating of each team on that day from the games of the
+	// week, and it needs no earlier snapshot. A team with no game in that week keeps its rating. A
+	// snapshot with no game in the week before it, such as one of 31 December, has the same rank here
+	// as in rank.
 	PreviousRank *int   `json:"previousRank,omitempty"`
 	AsOf         string `json:"asOf"`
 }

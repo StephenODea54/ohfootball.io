@@ -30,6 +30,7 @@ APPLIED = {
     "006_margin_ratings.up.sql": "49dbd3a6ec3841af78b8a0358299939af4b0c65e4c2f1a2719df84d19a8e843a",
     "007_drop_elo_ratings.up.sql": "f5ef438bb5665800adb2c8ce6c5bb229a3c12857ddf5957f541de4ccfb0c7203",
     "008_recruiting_snapshots.up.sql": "2d80251595c824a0fd9ae1b9b86597ce125d318eae425dacfd233ebc3628ba44",
+    "009_game_predictions_by_week.up.sql": "2f33005726db0fb92e1ae57f3d6e6dabac3b3306332f00a486ec2a5572f910e4",
 }
 
 
