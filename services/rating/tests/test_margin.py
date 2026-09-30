@@ -167,6 +167,12 @@ class ConfigTests(unittest.TestCase):
         self.assertAlmostEqual(CONFIG.learning_weight(3), 1.65 / 8)
         self.assertAlmostEqual(CONFIG.learning_weight(10), 0.11)
 
+    def test_clip_margin_keeps_a_margin_inside_the_cap(self) -> None:
+        self.assertEqual(CONFIG.clip_margin(70), 56)
+        self.assertEqual(CONFIG.clip_margin(-70), -56)
+        self.assertEqual(CONFIG.clip_margin(3), 3)
+        self.assertEqual(MarginConfig(margin_cap=10).clip_margin(12), 10)
+
 
 class WinProbabilityTests(unittest.TestCase):
     def test_an_even_game_is_even(self) -> None:
@@ -415,6 +421,50 @@ class BacktestTests(unittest.TestCase):
                 result = backtest([game("one", date(2025, 8, 22), "a", "b", "W", scores=scores)])
                 self.assertAlmostEqual(result.ratings[(2025, "a")], 0.33 * margin)
                 self.assertEqual(result.predictions[0].actual_margin, scores[0] - scores[1])
+
+    def test_the_expected_margin_is_clipped_at_the_cap_too(self) -> None:
+        # A new division 1 program opens at 36 and a new division 7 program at -36, so the
+        # expected margin is 72, more than the cap of 56.
+        for scores, change in (((70, 0), 0.0), ((40, 0), 0.33 * (40 - 56)), ((0, 70), 0.33 * -112)):
+            with self.subTest(scores=scores):
+                result = backtest(
+                    [
+                        game(
+                            "one",
+                            date(2025, 8, 22),
+                            "a",
+                            "b",
+                            "W" if scores[0] > scores[1] else "L",
+                            scores=scores,
+                            team_a_division=1,
+                            team_b_division=7,
+                        )
+                    ]
+                )
+
+                self.assertEqual(result.predictions[0].predicted_margin, 72.0)
+                self.assertAlmostEqual(result.ratings[(2025, "a")], 36.0 + change)
+                self.assertAlmostEqual(result.ratings[(2025, "b")], -36.0 - change)
+
+    def test_the_expected_margin_is_clipped_for_the_underdog_too(self) -> None:
+        result = backtest(
+            [
+                game(
+                    "one",
+                    date(2025, 8, 22),
+                    "b",
+                    "a",
+                    "L",
+                    scores=(0, 70),
+                    team_a_division=7,
+                    team_b_division=1,
+                )
+            ]
+        )
+
+        self.assertEqual(result.predictions[0].predicted_margin, -72.0)
+        self.assertAlmostEqual(result.ratings[(2025, "b")], -36.0)
+        self.assertAlmostEqual(result.ratings[(2025, "a")], 36.0)
 
     def test_a_tie_scores_half_a_win_and_a_margin_of_zero(self) -> None:
         (only,) = backtest(

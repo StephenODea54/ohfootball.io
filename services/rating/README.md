@@ -22,7 +22,7 @@ edge.
 After a game with both scores, each rating moves toward the margin that the game had:
 
 ```text
-surprise     = clip(actual margin, -56, 56) - expected margin
+surprise     = clip(actual margin, -56, 56) - clip(expected margin, -56, 56)
 new rating A = rating A + k(n A) * surprise
 new rating B = rating B - k(n B) * surprise
 k(n)         = 1.65 / (n + 5)
@@ -31,6 +31,10 @@ k(n)         = 1.65 / (n + 5)
 `n` is the number of games with scores that the team played earlier in the season. A rating moves
 by a third of the surprise in the first game of a season, and by about an eighth in the tenth game.
 Each team uses its own `k`, so the two changes of a game do not always cancel.
+
+Both margins pass through the cap. A team expected to win by 60 that wins by 70 has no surprise.
+Without the cap on the expected margin, such a team could only lose rating. The expected margin
+that gives the win probability is not clipped.
 
 All games on one date use the ratings of the start of that date, because kickoff times are not
 known. A game without both scores gets a prediction but moves no rating. Forfeits, canceled games
@@ -76,14 +80,14 @@ season, so the model is less sure of a margin in the first weeks:
 
 | Group | 0 | 1 | 2 | 3 | 4 | 5 | 6+ | Playoff |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Slope for 2026 | 0.073 | 0.095 | 0.105 | 0.122 | 0.126 | 0.127 | 0.132 | 0.139 |
+| Slope for 2026 | 0.072 | 0.095 | 0.104 | 0.121 | 0.125 | 0.126 | 0.131 | 0.137 |
 
 ### Parameters
 
 | Parameter | Value | What it does |
 | --- | ---: | --- |
 | Home edge | 1.5 points | Added to the expected margin of the home team |
-| Margin cap | 56 points | The largest margin that an update reads |
+| Margin cap | 56 points | The largest margin that an update reads, for the actual and for the expected margin |
 | Learning rate | 1.65 / (n + 5) | The share of a surprise that moves a rating |
 | Division step | 12 points | The gap between the priors of two divisions |
 | Last season | 0.8 | The share of the last season in the start of a season |
@@ -92,32 +96,35 @@ season, so the model is less sure of a margin in the first weeks:
 | Fallback slope | 0.10 | The slope of a group without games in the window |
 
 The values were chosen by a grid search on the seasons 2000 through 2011, which is not part of this
-repository. The same values are the best on 2000 through 2023. The margin cap clips about 1.3% of
-games and changes the log loss by less than 0.0001, so it stays only as a guard against a wrong
-score.
+repository. The same values are the best on 2000 through 2023. About 1.3% of games have a margin
+larger than the cap, and about 1.7% have an expected margin larger than the cap. A cap on the
+actual margin alone changed the log loss by less than 0.0001. With the cap on the expected margin
+as well, the log loss of 2000 through 2023 goes from 0.4041 to 0.4036 and the Brier score from
+0.1318 to 0.1317, and the log loss of the 2024-2025 holdout goes from 0.3695 to 0.3692. The update
+with both caps is better in 11 of the 12 two-season windows.
 
 ## Evidence
 
 The `evaluate` command gives every number below. It replays the record from 1972, scores each
 two-season window from 2000 through 2023, and scores 2024 and 2025 as a holdout. No choice of a
-value saw the holdout. The numbers come from the public dataset export of 2026-09-28.
+value saw the holdout. The numbers come from the public dataset export of 2026-09-29.
 
 | Seasons | Games | Log loss | Brier score | Winner picked |
 | --- | ---: | ---: | ---: | ---: |
-| 2000-2001 | 7,270 | 0.4225 | 0.1384 | 79.4% |
-| 2002-2003 | 7,297 | 0.4280 | 0.1410 | 79.1% |
-| 2004-2005 | 7,299 | 0.4314 | 0.1417 | 79.1% |
-| 2006-2007 | 7,352 | 0.4092 | 0.1334 | 80.4% |
-| 2008-2009 | 7,380 | 0.4036 | 0.1315 | 80.5% |
-| 2010-2011 | 7,366 | 0.3968 | 0.1291 | 81.0% |
-| 2012-2013 | 7,415 | 0.3990 | 0.1305 | 81.0% |
-| 2014-2015 | 7,448 | 0.4067 | 0.1338 | 79.8% |
-| 2016-2017 | 7,433 | 0.3877 | 0.1259 | 81.7% |
-| 2018-2019 | 7,389 | 0.3988 | 0.1294 | 81.4% |
-| 2020-2021 | 6,680 | 0.3977 | 0.1280 | 81.9% |
-| 2022-2023 | 7,726 | 0.3701 | 0.1198 | 82.7% |
-| **2000-2023** | **88,055** | **0.4041** | **0.1318** | **80.7%** |
-| **2024-2025 holdout** | **7,608** | **0.3695** | **0.1195** | **82.2%** |
+| 2000-2001 | 7,270 | 0.4224 | 0.1383 | 79.5% |
+| 2002-2003 | 7,297 | 0.4277 | 0.1409 | 79.0% |
+| 2004-2005 | 7,299 | 0.4316 | 0.1418 | 79.1% |
+| 2006-2007 | 7,352 | 0.4088 | 0.1333 | 80.3% |
+| 2008-2009 | 7,380 | 0.4031 | 0.1314 | 80.6% |
+| 2010-2011 | 7,366 | 0.3961 | 0.1288 | 81.0% |
+| 2012-2013 | 7,415 | 0.3988 | 0.1304 | 81.1% |
+| 2014-2015 | 7,448 | 0.4060 | 0.1336 | 79.9% |
+| 2016-2017 | 7,433 | 0.3870 | 0.1257 | 81.7% |
+| 2018-2019 | 7,389 | 0.3982 | 0.1292 | 81.3% |
+| 2020-2021 | 6,680 | 0.3969 | 0.1277 | 81.8% |
+| 2022-2023 | 7,726 | 0.3690 | 0.1194 | 82.8% |
+| **2000-2023** | **88,055** | **0.4036** | **0.1317** | **80.7%** |
+| **2024-2025 holdout** | **7,608** | **0.3692** | **0.1194** | **82.2%** |
 
 The Elo rating that this model replaced scored a log loss of 0.4248 and picked 79.5% of winners
 on the same 2024-2025 holdout, as recorded on 2026-08-09.
@@ -200,3 +207,6 @@ The margin of victory as a multiplier on the Elo update did not help: a weight o
 the log loss by only 0.00029. A model that predicts the margin itself did help, because every
 game then says how much better one team is, not only which team won. On the same holdout the
 margin rating scores 0.3695.
+
+The first margin rating capped only the actual margin in the update. With the cap on the expected
+margin too, the holdout log loss went from 0.3695 to 0.3692.

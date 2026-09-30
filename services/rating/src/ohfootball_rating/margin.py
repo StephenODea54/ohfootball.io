@@ -2,8 +2,8 @@
 
 Each team has one rating for each season. The rating of team A minus the rating of team B, plus
 an edge for the home team, is the margin that the model expects. After a game, each rating moves
-toward the margin that the game had. A logistic curve then turns the expected margin into a win
-probability.
+toward the margin that the game had, with both margins kept inside a cap. A logistic curve then
+turns the expected margin into a win probability.
 """
 
 from __future__ import annotations
@@ -70,6 +70,10 @@ class MarginConfig:
             raise ValueError("bucket_games cannot be negative")
         if self.fallback_slope <= 0:
             raise ValueError("fallback_slope must be greater than zero")
+
+    def clip_margin(self, margin: float) -> float:
+        """Keep a margin inside the cap on both sides."""
+        return max(-self.margin_cap, min(self.margin_cap, margin))
 
     def learning_weight(self, scored_games: int) -> float:
         """Give the share of a surprise that moves the rating of a team.
@@ -260,6 +264,11 @@ def backtest(games: Iterable[Game], config: MarginConfig | None = None) -> Margi
     counts as a game played for the choice of a slope group, and it keeps the season of each team
     in the history of its program. Each team moves by its own learning weight, so the two changes
     of a game do not always cancel.
+
+    The update reads both the actual and the expected margin through the cap. A team expected to
+    win by more than the cap that also wins by more than the cap is no surprise. Without the cap on
+    the expected margin, such a team could only lose rating. The expected margin that gives the win
+    probability is not clipped.
     """
     config = config or MarginConfig()
     ratings: dict[RatingKey, float] = {}
@@ -315,11 +324,9 @@ def backtest(games: Iterable[Game], config: MarginConfig | None = None) -> Margi
                 )
             )
             if game.team_a_score is not None and game.team_b_score is not None:
-                margin = max(
-                    -config.margin_cap,
-                    min(config.margin_cap, game.team_a_score - game.team_b_score),
-                )
-                surprise = margin - predicted_margin
+                surprise = config.clip_margin(
+                    game.team_a_score - game.team_b_score
+                ) - config.clip_margin(predicted_margin)
                 changes[team_a] += config.learning_weight(scored_games[team_a]) * surprise
                 changes[team_b] -= config.learning_weight(scored_games[team_b]) * surprise
                 scored_today[team_a] += 1
