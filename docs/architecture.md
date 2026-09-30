@@ -83,7 +83,7 @@ main is deployed even when a check fails.
 | Job in `checks.yml` | Does |
 | --- | --- |
 | `go` | format, vet, and test the API and the scraper |
-| `python` | lint and format check the Python and the SQL, then vet and test the rating, the dataset, the request that builds the site, the output of the site build, and the migration files |
+| `python` | lint and format check the Python and the SQL, then vet and test the rating, the dataset, the recruiting snapshot, the request that builds the site, the output of the site build, and the migration files |
 | `frontend` | lint and format check the site, type check the site and its Astro pages, and run its unit tests |
 | `migrations` | build the migration image, apply every migration to an empty database, apply them again, and validate the record |
 
@@ -160,8 +160,9 @@ container every Tuesday at 13:00 UTC.
 
 ```mermaid
 flowchart TD
-    cron(["Dokploy schedule<br/>Tuesday 13:00 UTC"]) --> scrape
+    cron(["Dokploy schedule<br/>Tuesday 13:00 UTC"]) --> snapshot
 
+    snapshot["snapshot-recruits<br/>ohfootball-recruiting snapshot"] --> scrape
     scrape["scrape<br/>joe-eitel"] --> transform["transform<br/>dbt build"]
     transform --> rate["rate<br/>ohfootball-rating publish"]
     rate --> site["publish-site<br/>start the site workflow"]
@@ -169,10 +170,13 @@ flowchart TD
     download --> dataset["publish-dataset<br/>ohfootball-dataset publish"]
 
     warehouse[("PostgreSQL")]
+    cfbd[("CollegeFootballData")]
     build["GitHub Actions builds the site<br/>and uploads it to Pages"]
     r2[("R2 bucket<br/>data.ohfootball.io")]
     kaggle[("Kaggle")]
 
+    snapshot -. reads three classes .-> cfbd
+    snapshot -. writes the private schema .-> warehouse
     scrape -. writes .-> warehouse
     transform -. reads and writes .-> warehouse
     rate -. reads and writes .-> warehouse
@@ -184,6 +188,7 @@ flowchart TD
 
 | Target | Runs | Does |
 | --- | --- | --- |
+| `snapshot-recruits` | Python | stores the answer of CollegeFootballData for the three recruiting classes still in high school, in the private schema `ohfootball_private`; three calls |
 | `scrape` | Go | collects the games of the season named by `SCRAPER_SEASON` |
 | `transform` | dbt | rebuilds staging, intermediate, and the marts |
 | `rate` | Python | rates every team in every season and stores a pregame prediction for every game played and for every game of the season in progress not yet played |
@@ -194,6 +199,16 @@ flowchart TD
 
 Each target runs on its own. A run that stops part way is finished by running the targets that did
 not run, in the order above.
+
+`snapshot-recruits` goes first. It needs nothing else in the run, and it must store the classes
+before the games of the week, however long the scrape takes. When it fails, the run stops, the
+same as when any other source fails. A run again on the same day calls only for the classes that
+are missing. To finish a run that stopped at this target, run it again, or run the targets after
+it by hand: `cd /app && make scrape transform rate publish-site publish-download publish-dataset`.
+
+Set `CFBD_API_KEY` on the `pipeline` application before a deploy that adds `snapshot-recruits`
+reaches the host. Without the key, the next weekly run stops at its first target, and no other
+target runs.
 
 `publish-site` sends `POST /repos/StephenODea54/ohfootball.io/actions/workflows/site.yml/dispatches`
 with the body `{"ref":"main"}`. `SITE_REPOSITORY`, `SITE_WORKFLOW`, and `SITE_BRANCH` change the
@@ -322,6 +337,21 @@ sets `SCRAPER_SEASON`, so clear it for that one command: `SCRAPER_SEASON= make b
 of its objects. `snapshots.json` at the top of the bucket lists the dates, and each run writes it
 again from the list that the token can read.
 
+**The recruiting data stays private.** The terms of CollegeFootballData allow private storage,
+private models and published results such as ratings, but they do not allow the raw records to be
+published. `snapshot-recruits` writes them to the schema `ohfootball_private` only. The API, dbt,
+the download and the Kaggle dataset read fixed tables in `ohfootball_marts`. Every service
+connects as the owner of the warehouse, so a grant does not keep them out. The control is
+`infra/postgres/tests/test_private_schema.py`: it fails when a file outside `infra/postgres`,
+`services/recruiting` and `docs` names the schema. The rating does not read the snapshots.
+
+**The recruiting key has a monthly limit.** The free key of CollegeFootballData allows 1,000 calls
+a month and stops working when a month goes over. Use this key for nothing else. The weekly run
+makes three calls, and a run again on the same day makes calls only for the classes that are
+missing. The snapshot stops, and the run fails, when the API reports fewer than 100 calls left
+while classes remain. Once the month is near its limit, each run fails at this step until the count
+starts again the next month. Until then, run the targets after `snapshot-recruits` by hand.
+
 **The schedule runs in UTC.** Set the time zone of the schedule to `UTC`. 13:00 UTC is 09:00 in
 New York in summer and 08:00 in winter.
 
@@ -376,6 +406,7 @@ workflow reads them only in its run on main.
 | `OHFOOTBALL_TIME_ZONE` | `America/New_York` |
 | `SCRAPER_SEASON` | the year of the season in progress |
 | `SITE_WORKFLOW_TOKEN` | a fine-grained personal access token for `StephenODea54/ohfootball.io` with the repository permission Actions, read and write |
+| `CFBD_API_KEY` | the key of CollegeFootballData that `snapshot-recruits` sends, used for nothing else |
 | `SITE_REPOSITORY`, `SITE_WORKFLOW`, `SITE_BRANCH` | optional, default `StephenODea54/ohfootball.io`, `site.yml`, and `main`, the workflow that `publish-site` starts |
 | `KAGGLE_USERNAME`, `KAGGLE_KEY`, `KAGGLE_DATASET` | the Kaggle account, its legacy API key from `kaggle.json`, and the dataset as `owner/slug`; `KAGGLE_API_TOKEN` can take the place of the key |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | the ID of the Cloudflare account, the two parts of an R2 API token with the permission Object Read & Write on the one bucket, and the name of the bucket, `ohfootball-data` |
@@ -406,8 +437,8 @@ project of their own. Do these steps in this order.
 6. Make the fine-grained token in the settings of the GitHub account that owns the repository.
    Select Only select repositories and `StephenODea54/ohfootball.io`. Under Repository
    permissions, set Actions to Read and write. Set an expiry and write down the date.
-7. Create the `pipeline` application with its settings, including `SITE_WORKFLOW_TOKEN`. Deploy
-   it.
+7. Get a free key at `https://collegefootballdata.com/key`. Create the `pipeline` application with
+   its settings, including `SITE_WORKFLOW_TOKEN` and the key as `CFBD_API_KEY`. Deploy it.
 8. Open a terminal in the `pipeline` container and load the record. The load reads every season
    and runs for more than two hours. A terminal that closes stops a command that runs in it, so
    start the load in the background. The terminal opens in `/` and the Makefile is in `/app`, the
@@ -440,8 +471,8 @@ project of their own. Do these steps in this order.
 11. Run `cd /app && make publish-dataset` when the Kaggle settings are in place.
 12. Add a schedule to the `pipeline` application. Set its time zone to `UTC`. It runs
     `cd /app && make pipeline` with the cron expression `0 13 * * 2`. Until the R2 and the Kaggle
-    settings are in place, run `cd /app && make scrape transform rate publish-site` instead,
-    because `make pipeline` ends with the two publications and fails without them.
+    settings are in place, run `cd /app && make snapshot-recruits scrape transform rate publish-site`
+    instead, because `make pipeline` ends with the two publications and fails without them.
 
 After the first deploy, a push to main deploys each application on the host and publishes the site
 when the site changed, and the schedule rebuilds the data and the site each week.

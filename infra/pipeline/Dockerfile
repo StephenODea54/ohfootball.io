@@ -53,6 +53,10 @@ COPY services/dataset/pyproject.toml services/dataset/README.md /tmp/dataset/
 COPY services/dataset/src /tmp/dataset/src
 RUN pip install --no-cache-dir /tmp/dataset && rm -rf /tmp/dataset
 
+COPY services/recruiting/pyproject.toml services/recruiting/README.md /tmp/recruiting/
+COPY services/recruiting/src /tmp/recruiting/src
+RUN pip install --no-cache-dir /tmp/recruiting && rm -rf /tmp/recruiting
+
 COPY --from=build /out/joe-eitel /usr/local/bin/joe-eitel
 COPY --from=build /out/ohhsfbdb /usr/local/bin/ohhsfbdb
 

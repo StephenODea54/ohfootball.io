@@ -7,7 +7,7 @@ Install these tools:
 | Tool | Version | Used by |
 | --- | --- | --- |
 | Go | 1.25 | the API and the scrapers |
-| Python | 3.12 | the rating, the dataset, the migrations and their tests |
+| Python | 3.12 | the rating, the dataset, the recruiting snapshot, the migrations and their tests |
 | uv | any | installs Python 3.12, ruff and sqlfluff |
 | Node | 22.12 or later | the site |
 | pnpm | 10 | the site. `corepack enable` installs the version that `package.json` names. |

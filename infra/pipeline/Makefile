@@ -1,8 +1,8 @@
 # The weekly run.
 #
 # Every target here runs inside the pipeline image, which holds the scraper, dbt, the rating
-# package, the dataset package and a PostgreSQL client. The image is copied this file as its
-# Makefile, so a scheduled job runs `make rate` and nothing else.
+# package, the dataset package, the recruiting package and a PostgreSQL client. The image is copied
+# this file as its Makefile, so a scheduled job runs `make rate` and nothing else.
 #
 # Each target runs on its own. A run that stops part way is finished by calling the targets that
 # did not run, in the order below.
@@ -10,22 +10,36 @@
 # Run one of these on a workstation with:
 #   make pipeline ARGS=rate
 
-.PHONY: pipeline scrape transform rate publish-site publish-download publish-dataset backfill
+.PHONY: pipeline snapshot-recruits scrape transform rate publish-site publish-download \
+	publish-dataset backfill
 
-# The order matters. The transform reads what the scrape collected, the rating reads the marts the
-# transform built, and the site is drawn from the API after the ratings land.
+# The order matters. The recruiting snapshot goes first, because it needs nothing else in the run
+# and it must be stored before the games of the week, however long the scrape takes. The run stops
+# when the snapshot fails, the same as when any other source fails. The transform reads what the
+# scrape collected, the rating reads the marts the transform built, and the site is drawn from the
+# API after the ratings land.
 #
 # The download and the dataset are published last. Nothing else in the run reads them, so a
 # refusal by R2 or by Kaggle costs that publication and not the publication of the site. The
 # download goes first, because its upload is short and nothing is sent after it that can be
 # refused. The Kaggle publication can wait for 10 minutes and can fail after its upload.
 pipeline:
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) snapshot-recruits
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) scrape
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) transform
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) rate
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-site
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-download
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-dataset
+
+# Stores the recruiting classes that are still in high school, with one call to CollegeFootballData
+# for each class. The command reads the key from CFBD_API_KEY in the environment, so the key is not
+# part of a command line. The free key allows 1,000 calls a month, and this target makes three a
+# week. The terms of CollegeFootballData do not allow the records to be published, so they go in a
+# private schema that nothing publishes. The rating does not read them. See
+# services/recruiting/README.md.
+snapshot-recruits:
+	ohfootball-recruiting snapshot
 
 # Collects the games the season has added. The season is named by SCRAPER_SEASON, which has to be
 # set to the year of the season in progress. It does not follow the calendar on its own.
