@@ -556,16 +556,20 @@ class TheHeaders(unittest.TestCase):
             ("Cache-Control", "public, max-age=31536000, immutable"), self.rules["/assets/*"]
         )
 
+    def test_let_a_browser_keep_a_logo_for_a_week(self) -> None:
+        self.assertIn(("Cache-Control", "public, max-age=604800"), self.rules["/logos/*"])
+
     def test_set_the_cache_of_a_file_in_one_rule_only(self) -> None:
         # Pages joins the values of a header that two matching rules set. An asset that matched a
-        # second rule with Cache-Control would be sent both values.
+        # second rule with Cache-Control would be sent both values. No address matches both
+        # /assets/* and /logos/*.
         setting = [
             address
             for address, headers in self.rules.items()
             for name, _ in headers
             if name.lower() == "cache-control"
         ]
-        self.assertEqual(setting, ["/assets/*"])
+        self.assertEqual(setting, ["/assets/*", "/logos/*"])
 
     def test_keep_the_address_of_the_project_out_of_search_engines(self) -> None:
         self.assertIn(("X-Robots-Tag", "noindex"), self.rules["https://:project.pages.dev/*"])

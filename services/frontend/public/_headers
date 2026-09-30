@@ -5,12 +5,17 @@
 # each weekly run, so that is what a page needs, and no rule here sets it.
 #
 # When more than one rule matches an address, Pages joins the values of a header that two rules
-# set. Only one rule may therefore set Cache-Control.
+# set. So no two rules that match one address may set Cache-Control.
 
 # Every name in this directory carries a hash of what the file holds, so a change to the file
 # changes its name. A browser can keep one of these for as long as it likes.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# A logo has the name of its team and not a hash, so a new logo keeps the old name. Logos do not
+# change often and each weekly run draws the site again, so a browser keeps a logo for one week.
+/logos/*
+  Cache-Control: public, max-age=604800
 
 # The address that Pages gives the project is a second copy of the site. Search engines are told
 # to leave it out.
