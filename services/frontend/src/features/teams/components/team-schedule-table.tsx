@@ -13,14 +13,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { formatMargin, marginIntent, winPercent } from "@/features/teams/utils/format"
-import type { ScheduleGame } from "@/features/teams/utils/opponent-links"
+import {
+  formatMargin,
+  formatRank,
+  formatRating,
+  marginIntent,
+  winPercent,
+} from "@/features/teams/utils/format"
+import type { LinkedGame } from "@/features/teams/utils/opponent-links"
+import type { OpponentStanding, StandingGame } from "@/features/teams/utils/opponent-standings"
 import type { Game } from "@/types/api"
 import { formatDayAndMonth } from "@/utils/format"
 
+/** A row of the schedule: the game, the link to the opponent, and the standing of the opponent. */
+export type ScheduleGame = StandingGame<LinkedGame>
+
 /**
- * Every game a school plays in a season, with the prediction made for it. The name of an opponent
- * that has a page links to that page.
+ * Every game a school plays in a season, with the prediction made for it and the current rank and
+ * rating of each opponent. The name of an opponent that has a page links to that page. On a narrow
+ * screen the rank and rating move under the name of the opponent, so the table stays narrow.
  */
 export function TeamScheduleTable({ team }: { team: { name: string; schedule: ScheduleGame[] } }) {
   return (
@@ -31,6 +42,10 @@ export function TeamScheduleTable({ team }: { team: { name: string; schedule: Sc
             <TableColumn isRowHeader>Wk</TableColumn>
             <TableColumn>Date</TableColumn>
             <TableColumn>Opponent</TableColumn>
+            {/* On a narrow screen these two columns are hidden, and the arrow keys move through
+              them without a visible change. The table has no selection, so this is acceptable. */}
+            <TableColumn className="text-end max-sm:hidden">Rank</TableColumn>
+            <TableColumn className="text-end max-sm:hidden">Rating</TableColumn>
             <TableColumn>Pred</TableColumn>
             <TableColumn>Win Probability</TableColumn>
             <TableColumn className="text-end">Result</TableColumn>
@@ -45,18 +60,39 @@ export function TeamScheduleTable({ team }: { team: { name: string; schedule: Sc
                   <TableCell className="font-semibold text-muted-fg">{game.week}</TableCell>
                   <TableCell className="text-muted-fg">{formatDayAndMonth(game.date)}</TableCell>
                   <TableCell>
-                    {/* The cell lays its children out with flex, which drops a plain
-                          whitespace node, so the gap has to be a margin. */}
-                    <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
-                    {game.opponentHref ? (
-                      <Link
-                        href={game.opponentHref}
-                        className="font-medium text-fg hover:text-primary-subtle-fg"
-                      >
-                        {game.opponentName}
-                      </Link>
+                    <div>
+                      <p>
+                        {/* JSX drops the line break between the label and the name, so the
+                          gap must be a margin. */}
+                        <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
+                        {game.opponentHref ? (
+                          <Link
+                            href={game.opponentHref}
+                            className="font-medium text-fg hover:text-primary-subtle-fg"
+                          >
+                            {game.opponentName}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-fg">{game.opponentName}</span>
+                        )}
+                      </p>
+                      {game.opponentStanding && (
+                        <p className="text-muted-fg text-xs/5 sm:hidden">
+                          {standingLabel(game.opponentStanding)}
+                        </p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-end text-muted-fg max-sm:hidden">
+                    {game.opponentStanding ? formatRank(game.opponentStanding.rank) : "—"}
+                  </TableCell>
+                  <TableCell className="text-end max-sm:hidden">
+                    {game.opponentStanding ? (
+                      <span className="font-medium text-fg">
+                        {formatRating(game.opponentStanding.value)}
+                      </span>
                     ) : (
-                      <span className="font-medium text-fg">{game.opponentName}</span>
+                      <span className="text-muted-fg">—</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -127,6 +163,10 @@ function GameResult({ game }: { game: Game }) {
       {score}
     </p>
   )
+}
+
+function standingLabel(standing: OpponentStanding) {
+  return `${formatRank(standing.rank)} · ${formatRating(standing.value)}`
 }
 
 function locationLabel(game: Game) {
