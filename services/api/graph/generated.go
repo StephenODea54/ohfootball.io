@@ -46,14 +46,6 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
-	EloRating struct {
-		AsOf         func(childComplexity int) int
-		PreviousRank func(childComplexity int) int
-		Rank         func(childComplexity int) int
-		Rating       func(childComplexity int) int
-		Season       func(childComplexity int) int
-	}
-
 	Game struct {
 		Date          func(childComplexity int) int
 		ID            func(childComplexity int) int
@@ -72,6 +64,7 @@ type ComplexityRoot struct {
 	GamePrediction struct {
 		AsOf            func(childComplexity int) int
 		OpponentRating  func(childComplexity int) int
+		PredictedMargin func(childComplexity int) int
 		PredictedResult func(childComplexity int) int
 		TeamRating      func(childComplexity int) int
 		WinProbability  func(childComplexity int) int
@@ -99,11 +92,22 @@ type ComplexityRoot struct {
 		Mascot         func(childComplexity int) int
 		Name           func(childComplexity int) int
 		PrimaryColor   func(childComplexity int) int
+		Rating         func(childComplexity int) int
+		RatingHistory  func(childComplexity int) int
 		Record         func(childComplexity int) int
 		Region         func(childComplexity int) int
 		Schedule       func(childComplexity int) int
 		Season         func(childComplexity int) int
 		SecondaryColor func(childComplexity int) int
+	}
+
+	TeamRating struct {
+		AsOf           func(childComplexity int) int
+		PreviousRank   func(childComplexity int) int
+		Rank           func(childComplexity int) int
+		Rating         func(childComplexity int) int
+		RelativeRating func(childComplexity int) int
+		Season         func(childComplexity int) int
 	}
 }
 
@@ -132,41 +136,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
-
-	case "EloRating.asOf":
-		if e.complexity.EloRating.AsOf == nil {
-			break
-		}
-
-		return e.complexity.EloRating.AsOf(childComplexity), true
-
-	case "EloRating.previousRank":
-		if e.complexity.EloRating.PreviousRank == nil {
-			break
-		}
-
-		return e.complexity.EloRating.PreviousRank(childComplexity), true
-
-	case "EloRating.rank":
-		if e.complexity.EloRating.Rank == nil {
-			break
-		}
-
-		return e.complexity.EloRating.Rank(childComplexity), true
-
-	case "EloRating.rating":
-		if e.complexity.EloRating.Rating == nil {
-			break
-		}
-
-		return e.complexity.EloRating.Rating(childComplexity), true
-
-	case "EloRating.season":
-		if e.complexity.EloRating.Season == nil {
-			break
-		}
-
-		return e.complexity.EloRating.Season(childComplexity), true
 
 	case "Game.date":
 		if e.complexity.Game.Date == nil {
@@ -265,6 +234,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GamePrediction.OpponentRating(childComplexity), true
+
+	case "GamePrediction.predictedMargin":
+		if e.complexity.GamePrediction.PredictedMargin == nil {
+			break
+		}
+
+		return e.complexity.GamePrediction.PredictedMargin(childComplexity), true
 
 	case "GamePrediction.predictedResult":
 		if e.complexity.GamePrediction.PredictedResult == nil {
@@ -402,6 +378,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Team.PrimaryColor(childComplexity), true
 
+	case "Team.rating":
+		if e.complexity.Team.Rating == nil {
+			break
+		}
+
+		return e.complexity.Team.Rating(childComplexity), true
+
+	case "Team.ratingHistory":
+		if e.complexity.Team.RatingHistory == nil {
+			break
+		}
+
+		return e.complexity.Team.RatingHistory(childComplexity), true
+
 	case "Team.record":
 		if e.complexity.Team.Record == nil {
 			break
@@ -436,6 +426,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Team.SecondaryColor(childComplexity), true
+
+	case "TeamRating.asOf":
+		if e.complexity.TeamRating.AsOf == nil {
+			break
+		}
+
+		return e.complexity.TeamRating.AsOf(childComplexity), true
+
+	case "TeamRating.previousRank":
+		if e.complexity.TeamRating.PreviousRank == nil {
+			break
+		}
+
+		return e.complexity.TeamRating.PreviousRank(childComplexity), true
+
+	case "TeamRating.rank":
+		if e.complexity.TeamRating.Rank == nil {
+			break
+		}
+
+		return e.complexity.TeamRating.Rank(childComplexity), true
+
+	case "TeamRating.rating":
+		if e.complexity.TeamRating.Rating == nil {
+			break
+		}
+
+		return e.complexity.TeamRating.Rating(childComplexity), true
+
+	case "TeamRating.relativeRating":
+		if e.complexity.TeamRating.RelativeRating == nil {
+			break
+		}
+
+		return e.complexity.TeamRating.RelativeRating(childComplexity), true
+
+	case "TeamRating.season":
+		if e.complexity.TeamRating.Season == nil {
+			break
+		}
+
+		return e.complexity.TeamRating.Season(childComplexity), true
 
 	}
 	return 0, false
@@ -886,223 +918,6 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
-
-func (ec *executionContext) _EloRating_season(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EloRating_season(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Season, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EloRating_season(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EloRating",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EloRating_rating(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EloRating_rating(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Rating, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(float64)
-	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EloRating_rating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EloRating",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EloRating_rank(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EloRating_rank(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Rank, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EloRating_rank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EloRating",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EloRating_previousRank(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EloRating_previousRank(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PreviousRank, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EloRating_previousRank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EloRating",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EloRating_asOf(ctx context.Context, field graphql.CollectedField, obj *model.EloRating) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EloRating_asOf(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.AsOf, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EloRating_asOf(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EloRating",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
 
 func (ec *executionContext) _Game_id(ctx context.Context, field graphql.CollectedField, obj *model.Game) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Game_id(ctx, field)
@@ -1619,6 +1434,8 @@ func (ec *executionContext) fieldContext_Game_prediction(_ context.Context, fiel
 				return ec.fieldContext_GamePrediction_winProbability(ctx, field)
 			case "predictedResult":
 				return ec.fieldContext_GamePrediction_predictedResult(ctx, field)
+			case "predictedMargin":
+				return ec.fieldContext_GamePrediction_predictedMargin(ctx, field)
 			case "teamRating":
 				return ec.fieldContext_GamePrediction_teamRating(ctx, field)
 			case "opponentRating":
@@ -1715,6 +1532,50 @@ func (ec *executionContext) fieldContext_GamePrediction_predictedResult(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type GameResult does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GamePrediction_predictedMargin(ctx context.Context, field graphql.CollectedField, obj *model.GamePrediction) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GamePrediction_predictedMargin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PredictedMargin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GamePrediction_predictedMargin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GamePrediction",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1999,6 +1860,10 @@ func (ec *executionContext) fieldContext_Query_teams(ctx context.Context, field 
 				return ec.fieldContext_Team_secondaryColor(ctx, field)
 			case "record":
 				return ec.fieldContext_Team_record(ctx, field)
+			case "rating":
+				return ec.fieldContext_Team_rating(ctx, field)
+			case "ratingHistory":
+				return ec.fieldContext_Team_ratingHistory(ctx, field)
 			case "elo":
 				return ec.fieldContext_Team_elo(ctx, field)
 			case "eloHistory":
@@ -2079,6 +1944,10 @@ func (ec *executionContext) fieldContext_Query_team(ctx context.Context, field g
 				return ec.fieldContext_Team_secondaryColor(ctx, field)
 			case "record":
 				return ec.fieldContext_Team_record(ctx, field)
+			case "rating":
+				return ec.fieldContext_Team_rating(ctx, field)
+			case "ratingHistory":
+				return ec.fieldContext_Team_ratingHistory(ctx, field)
 			case "elo":
 				return ec.fieldContext_Team_elo(ctx, field)
 			case "eloHistory":
@@ -2796,6 +2665,119 @@ func (ec *executionContext) fieldContext_Team_record(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Team_rating(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Team_rating(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rating, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.TeamRating)
+	fc.Result = res
+	return ec.marshalOTeamRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRating(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Team_rating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "season":
+				return ec.fieldContext_TeamRating_season(ctx, field)
+			case "rating":
+				return ec.fieldContext_TeamRating_rating(ctx, field)
+			case "relativeRating":
+				return ec.fieldContext_TeamRating_relativeRating(ctx, field)
+			case "rank":
+				return ec.fieldContext_TeamRating_rank(ctx, field)
+			case "previousRank":
+				return ec.fieldContext_TeamRating_previousRank(ctx, field)
+			case "asOf":
+				return ec.fieldContext_TeamRating_asOf(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TeamRating", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Team_ratingHistory(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Team_ratingHistory(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RatingHistory, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.TeamRating)
+	fc.Result = res
+	return ec.marshalNTeamRating2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRatingᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Team_ratingHistory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "season":
+				return ec.fieldContext_TeamRating_season(ctx, field)
+			case "rating":
+				return ec.fieldContext_TeamRating_rating(ctx, field)
+			case "relativeRating":
+				return ec.fieldContext_TeamRating_relativeRating(ctx, field)
+			case "rank":
+				return ec.fieldContext_TeamRating_rank(ctx, field)
+			case "previousRank":
+				return ec.fieldContext_TeamRating_previousRank(ctx, field)
+			case "asOf":
+				return ec.fieldContext_TeamRating_asOf(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TeamRating", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Team_elo(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Team_elo(ctx, field)
 	if err != nil {
@@ -2819,9 +2801,9 @@ func (ec *executionContext) _Team_elo(ctx context.Context, field graphql.Collect
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.EloRating)
+	res := resTmp.(*model.TeamRating)
 	fc.Result = res
-	return ec.marshalOEloRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐEloRating(ctx, field.Selections, res)
+	return ec.marshalOTeamRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRating(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Team_elo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2833,17 +2815,19 @@ func (ec *executionContext) fieldContext_Team_elo(_ context.Context, field graph
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "season":
-				return ec.fieldContext_EloRating_season(ctx, field)
+				return ec.fieldContext_TeamRating_season(ctx, field)
 			case "rating":
-				return ec.fieldContext_EloRating_rating(ctx, field)
+				return ec.fieldContext_TeamRating_rating(ctx, field)
+			case "relativeRating":
+				return ec.fieldContext_TeamRating_relativeRating(ctx, field)
 			case "rank":
-				return ec.fieldContext_EloRating_rank(ctx, field)
+				return ec.fieldContext_TeamRating_rank(ctx, field)
 			case "previousRank":
-				return ec.fieldContext_EloRating_previousRank(ctx, field)
+				return ec.fieldContext_TeamRating_previousRank(ctx, field)
 			case "asOf":
-				return ec.fieldContext_EloRating_asOf(ctx, field)
+				return ec.fieldContext_TeamRating_asOf(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type EloRating", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type TeamRating", field.Name)
 		},
 	}
 	return fc, nil
@@ -2875,9 +2859,9 @@ func (ec *executionContext) _Team_eloHistory(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.EloRating)
+	res := resTmp.([]*model.TeamRating)
 	fc.Result = res
-	return ec.marshalNEloRating2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐEloRatingᚄ(ctx, field.Selections, res)
+	return ec.marshalNTeamRating2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRatingᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Team_eloHistory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2889,17 +2873,19 @@ func (ec *executionContext) fieldContext_Team_eloHistory(_ context.Context, fiel
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "season":
-				return ec.fieldContext_EloRating_season(ctx, field)
+				return ec.fieldContext_TeamRating_season(ctx, field)
 			case "rating":
-				return ec.fieldContext_EloRating_rating(ctx, field)
+				return ec.fieldContext_TeamRating_rating(ctx, field)
+			case "relativeRating":
+				return ec.fieldContext_TeamRating_relativeRating(ctx, field)
 			case "rank":
-				return ec.fieldContext_EloRating_rank(ctx, field)
+				return ec.fieldContext_TeamRating_rank(ctx, field)
 			case "previousRank":
-				return ec.fieldContext_EloRating_previousRank(ctx, field)
+				return ec.fieldContext_TeamRating_previousRank(ctx, field)
 			case "asOf":
-				return ec.fieldContext_EloRating_asOf(ctx, field)
+				return ec.fieldContext_TeamRating_asOf(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type EloRating", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type TeamRating", field.Name)
 		},
 	}
 	return fc, nil
@@ -2970,6 +2956,267 @@ func (ec *executionContext) fieldContext_Team_schedule(_ context.Context, field 
 				return ec.fieldContext_Game_prediction(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Game", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TeamRating_season(ctx context.Context, field graphql.CollectedField, obj *model.TeamRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TeamRating_season(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Season, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TeamRating_season(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TeamRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TeamRating_rating(ctx context.Context, field graphql.CollectedField, obj *model.TeamRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TeamRating_rating(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rating, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TeamRating_rating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TeamRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TeamRating_relativeRating(ctx context.Context, field graphql.CollectedField, obj *model.TeamRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TeamRating_relativeRating(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RelativeRating, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TeamRating_relativeRating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TeamRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TeamRating_rank(ctx context.Context, field graphql.CollectedField, obj *model.TeamRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TeamRating_rank(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rank, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TeamRating_rank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TeamRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TeamRating_previousRank(ctx context.Context, field graphql.CollectedField, obj *model.TeamRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TeamRating_previousRank(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreviousRank, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TeamRating_previousRank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TeamRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TeamRating_asOf(ctx context.Context, field graphql.CollectedField, obj *model.TeamRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TeamRating_asOf(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AsOf, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TeamRating_asOf(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TeamRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4934,62 +5181,6 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** object.gotpl ****************************
 
-var eloRatingImplementors = []string{"EloRating"}
-
-func (ec *executionContext) _EloRating(ctx context.Context, sel ast.SelectionSet, obj *model.EloRating) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, eloRatingImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("EloRating")
-		case "season":
-			out.Values[i] = ec._EloRating_season(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "rating":
-			out.Values[i] = ec._EloRating_rating(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "rank":
-			out.Values[i] = ec._EloRating_rank(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "previousRank":
-			out.Values[i] = ec._EloRating_previousRank(ctx, field, obj)
-		case "asOf":
-			out.Values[i] = ec._EloRating_asOf(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var gameImplementors = []string{"Game"}
 
 func (ec *executionContext) _Game(ctx context.Context, sel ast.SelectionSet, obj *model.Game) graphql.Marshaler {
@@ -5090,6 +5281,11 @@ func (ec *executionContext) _GamePrediction(ctx context.Context, sel ast.Selecti
 			}
 		case "predictedResult":
 			out.Values[i] = ec._GamePrediction_predictedResult(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "predictedMargin":
+			out.Values[i] = ec._GamePrediction_predictedMargin(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -5358,6 +5554,13 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "rating":
+			out.Values[i] = ec._Team_rating(ctx, field, obj)
+		case "ratingHistory":
+			out.Values[i] = ec._Team_ratingHistory(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "elo":
 			out.Values[i] = ec._Team_elo(ctx, field, obj)
 		case "eloHistory":
@@ -5367,6 +5570,67 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "schedule":
 			out.Values[i] = ec._Team_schedule(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var teamRatingImplementors = []string{"TeamRating"}
+
+func (ec *executionContext) _TeamRating(ctx context.Context, sel ast.SelectionSet, obj *model.TeamRating) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, teamRatingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TeamRating")
+		case "season":
+			out.Values[i] = ec._TeamRating_season(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rating":
+			out.Values[i] = ec._TeamRating_rating(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "relativeRating":
+			out.Values[i] = ec._TeamRating_relativeRating(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rank":
+			out.Values[i] = ec._TeamRating_rank(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "previousRank":
+			out.Values[i] = ec._TeamRating_previousRank(ctx, field, obj)
+		case "asOf":
+			out.Values[i] = ec._TeamRating_asOf(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -5743,60 +6007,6 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNEloRating2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐEloRatingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EloRating) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNEloRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐEloRating(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNEloRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐEloRating(ctx context.Context, sel ast.SelectionSet, v *model.EloRating) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._EloRating(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6025,6 +6235,60 @@ func (ec *executionContext) marshalNTeam2ᚖgithubᚗcomᚋStephenODea54ᚋservi
 		return graphql.Null
 	}
 	return ec._Team(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTeamRating2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRatingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TeamRating) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTeamRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRating(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTeamRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRating(ctx context.Context, sel ast.SelectionSet, v *model.TeamRating) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TeamRating(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -6306,13 +6570,6 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) marshalOEloRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐEloRating(ctx context.Context, sel ast.SelectionSet, v *model.EloRating) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._EloRating(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOGamePrediction2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐGamePrediction(ctx context.Context, sel ast.SelectionSet, v *model.GamePrediction) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -6357,6 +6614,13 @@ func (ec *executionContext) marshalOTeam2ᚖgithubᚗcomᚋStephenODea54ᚋservi
 		return graphql.Null
 	}
 	return ec._Team(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOTeamRating2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamRating(ctx context.Context, sel ast.SelectionSet, v *model.TeamRating) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TeamRating(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOTeamSort2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐTeamSort(ctx context.Context, v any) (*model.TeamSort, error) {

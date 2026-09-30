@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/StephenODea54/services/api/graph/model"
@@ -18,27 +17,18 @@ const (
 	maxLimit     = 1000
 )
 
-type PredictionConfig struct {
-	HomeAdvantage float64
-	RatingScale   float64
-}
-
 // Postgres reads the marts through the shared database client. The client owns the connection
 // pool, so every service of this repository connects in the same way.
 type Postgres struct {
-	client     *database.Client
-	prediction PredictionConfig
+	client *database.Client
 }
 
-func Open(ctx context.Context, databaseURL string, prediction PredictionConfig) (*Postgres, error) {
-	if prediction.RatingScale <= 0 {
-		return nil, errors.New("the Elo rating scale must be more than 0")
-	}
+func Open(ctx context.Context, databaseURL string) (*Postgres, error) {
 	client, err := database.Open(ctx, databaseURL)
 	if err != nil {
 		return nil, err
 	}
-	return &Postgres{client: client, prediction: prediction}, nil
+	return &Postgres{client: client}, nil
 }
 
 func (store *Postgres) Close() {
@@ -174,6 +164,9 @@ func (store *Postgres) Team(ctx context.Context, id string, season *int) (*model
 	if err != nil {
 		return nil, err
 	}
+	team.RatingHistory = history
+	// The deprecated field answers with the same history, so a client that has not moved to the
+	// new name still works.
 	team.EloHistory = history
 	team.Schedule = schedule
 	return team, nil
@@ -207,7 +200,7 @@ func listTeamsArguments(search *string, sort *model.TeamSort, limit *int) (strin
 	if search != nil {
 		searchTerm = *search
 	}
-	sortOrder := model.TeamSortElo
+	sortOrder := model.TeamSortRating
 	if sort != nil {
 		sortOrder = *sort
 	}
@@ -222,7 +215,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	var team model.Team
 	var mascot, city, primaryColor, secondaryColor pgtype.Text
 	var division, region pgtype.Int2
-	var rating pgtype.Float8
+	var rating, relativeRating pgtype.Float8
 	var ratingRank, previousRank pgtype.Int8
 	var asOf pgtype.Date
 	var wins, losses, ties int64
@@ -240,6 +233,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 		&losses,
 		&ties,
 		&rating,
+		&relativeRating,
 		&ratingRank,
 		&asOf,
 		&previousRank,
@@ -253,28 +247,31 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	team.PrimaryColor = optional(primaryColor.Valid, primaryColor.String)
 	team.SecondaryColor = optional(secondaryColor.Valid, secondaryColor.String)
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
-	team.EloHistory = []*model.EloRating{}
+	team.RatingHistory = []*model.TeamRating{}
+	team.EloHistory = team.RatingHistory
 	team.Schedule = []*model.Game{}
-	if rating.Valid && ratingRank.Valid && asOf.Valid {
-		team.Elo = &model.EloRating{
-			Season:       team.Season,
-			Rating:       rating.Float64,
-			Rank:         int(ratingRank.Int64),
-			PreviousRank: optional(previousRank.Valid, int(previousRank.Int64)),
-			AsOf:         asOf.Time.Format(time.DateOnly),
+	if rating.Valid && relativeRating.Valid && ratingRank.Valid && asOf.Valid {
+		team.Rating = &model.TeamRating{
+			Season:         team.Season,
+			Rating:         rating.Float64,
+			RelativeRating: relativeRating.Float64,
+			Rank:           int(ratingRank.Int64),
+			PreviousRank:   optional(previousRank.Valid, int(previousRank.Int64)),
+			AsOf:           asOf.Time.Format(time.DateOnly),
 		}
+		team.Elo = team.Rating
 	}
 	return &team, nil
 }
 
-func (store *Postgres) ratingHistory(ctx context.Context, sourceID string) ([]*model.EloRating, error) {
+func (store *Postgres) ratingHistory(ctx context.Context, sourceID string) ([]*model.TeamRating, error) {
 	rows, err := store.client.Query(ctx, ratingHistorySQL, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("select rating history: %w", err)
 	}
 	defer rows.Close()
 
-	history := make([]*model.EloRating, 0)
+	history := make([]*model.TeamRating, 0)
 	for rows.Next() {
 		rating, err := scanRating(rows)
 		if err != nil {
@@ -285,12 +282,19 @@ func (store *Postgres) ratingHistory(ctx context.Context, sourceID string) ([]*m
 	return history, rows.Err()
 }
 
-func scanRating(row rowScanner) (*model.EloRating, error) {
-	var rating model.EloRating
+func scanRating(row rowScanner) (*model.TeamRating, error) {
+	var rating model.TeamRating
 	var asOf time.Time
 	var rank int64
 	var previousRank pgtype.Int8
-	if err := row.Scan(&rating.Season, &rating.Rating, &rank, &previousRank, &asOf); err != nil {
+	if err := row.Scan(
+		&rating.Season,
+		&rating.Rating,
+		&rating.RelativeRating,
+		&rank,
+		&previousRank,
+		&asOf,
+	); err != nil {
 		return nil, err
 	}
 	rating.Rank = int(rank)
@@ -313,10 +317,8 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 		var rawLocation, rawResult string
 		var teamScore, opponentScore pgtype.Int2
 		var notes pgtype.Text
-		var teamRating, opponentRating pgtype.Float8
-		var ratingDate pgtype.Date
-		var pregameTeamRating, pregameOpponentRating, pregameProbability pgtype.Float8
-		var pregameDate pgtype.Date
+		var teamRating, opponentRating, probability, margin pgtype.Float8
+		var predictionDate pgtype.Date
 		if err := rows.Scan(
 			&game.ID,
 			&gameDate,
@@ -330,11 +332,9 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 			&notes,
 			&teamRating,
 			&opponentRating,
-			&ratingDate,
-			&pregameTeamRating,
-			&pregameOpponentRating,
-			&pregameProbability,
-			&pregameDate,
+			&probability,
+			&margin,
+			&predictionDate,
 		); err != nil {
 			return nil, fmt.Errorf("scan schedule: %w", err)
 		}
@@ -345,30 +345,9 @@ func (store *Postgres) schedule(ctx context.Context, teamID string, season int) 
 		game.TeamScore = optional(teamScore.Valid, int(teamScore.Int16))
 		game.OpponentScore = optional(opponentScore.Valid, int(opponentScore.Int16))
 		game.Notes = optional(notes.Valid, notes.String)
-		switch {
-		// A played game keeps the prediction that was made from the ratings both teams carried
-		// into it, so the page shows what was expected rather than hindsight.
-		case pregameProbability.Valid && pregameTeamRating.Valid && pregameOpponentRating.Valid && pregameDate.Valid:
-			game.Prediction = buildPrediction(
-				pregameProbability.Float64,
-				pregameTeamRating.Float64,
-				pregameOpponentRating.Float64,
-				pregameDate.Time.Format(time.DateOnly),
-			)
-		// An unplayed game has no stored prediction, so it is estimated from the latest ratings.
-		case game.Result == model.GameResultUnknown && teamRating.Valid && opponentRating.Valid && ratingDate.Valid:
-			game.Prediction = buildPrediction(
-				winProbability(
-					teamRating.Float64,
-					opponentRating.Float64,
-					game.Location,
-					store.prediction,
-				),
-				teamRating.Float64,
-				opponentRating.Float64,
-				ratingDate.Time.Format(time.DateOnly),
-			)
-		}
+		game.Prediction = predictionFor(
+			game.Result, teamRating, opponentRating, probability, margin, predictionDate,
+		)
 		games = append(games, &game)
 	}
 	return games, rows.Err()
@@ -389,7 +368,31 @@ func result(raw string) model.GameResult {
 	}
 }
 
-func buildPrediction(probability, teamRating, opponentRating float64, asOf string) *model.GamePrediction {
+// predictionFor reads the stored prediction of a game. The rating job stores a prediction for each
+// played game, made from the ratings both teams carried into it, and for each game of the season in
+// progress not yet played. A row from before the margin rating has no margin, so it gives no
+// prediction. A canceled game gives none, because its row can come from before it was canceled.
+func predictionFor(
+	result model.GameResult,
+	teamRating, opponentRating, probability, margin pgtype.Float8,
+	predictionDate pgtype.Date,
+) *model.GamePrediction {
+	if result == model.GameResultCanceled {
+		return nil
+	}
+	if !teamRating.Valid || !opponentRating.Valid || !probability.Valid || !margin.Valid || !predictionDate.Valid {
+		return nil
+	}
+	return buildPrediction(
+		probability.Float64,
+		margin.Float64,
+		teamRating.Float64,
+		opponentRating.Float64,
+		predictionDate.Time.Format(time.DateOnly),
+	)
+}
+
+func buildPrediction(probability, margin, teamRating, opponentRating float64, asOf string) *model.GamePrediction {
 	predictedResult := model.GameResultLoss
 	if probability >= 0.5 {
 		predictedResult = model.GameResultWin
@@ -397,19 +400,11 @@ func buildPrediction(probability, teamRating, opponentRating float64, asOf strin
 	return &model.GamePrediction{
 		WinProbability:  probability,
 		PredictedResult: predictedResult,
+		PredictedMargin: margin,
 		TeamRating:      teamRating,
 		OpponentRating:  opponentRating,
 		AsOf:            asOf,
 	}
-}
-
-func winProbability(teamRating, opponentRating float64, location model.GameLocation, config PredictionConfig) float64 {
-	if location == model.GameLocationHome {
-		teamRating += config.HomeAdvantage
-	} else if location == model.GameLocationAway {
-		opponentRating += config.HomeAdvantage
-	}
-	return 1 / (1 + math.Pow(10, (opponentRating-teamRating)/config.RatingScale))
 }
 
 const teamFacts = `
@@ -433,22 +428,23 @@ const teamFacts = `
 	),
 	latest_snapshot AS (
 		SELECT MAX(as_of_date) AS as_of_date
-		FROM ohfootball_marts.fct_team_elo_ratings
+		FROM ohfootball_marts.fct_team_ratings
 		WHERE season = $1
 	),
 	ratings AS (
 		SELECT
 			rating.team_key,
-			rating.elo_rating,
+			rating.rating,
+			rating.relative_rating,
 			rating.as_of_date,
-			RANK() OVER (ORDER BY rating.elo_rating DESC) AS rating_rank
-		FROM ohfootball_marts.fct_team_elo_ratings AS rating
+			RANK() OVER (ORDER BY rating.rating DESC) AS rating_rank
+		FROM ohfootball_marts.fct_team_ratings AS rating
 		INNER JOIN latest_snapshot USING (as_of_date)
 		WHERE rating.season = $1
 	),
 	previous_snapshot AS (
 		SELECT MAX(rating.as_of_date) AS as_of_date
-		FROM ohfootball_marts.fct_team_elo_ratings AS rating
+		FROM ohfootball_marts.fct_team_ratings AS rating
 		CROSS JOIN latest_snapshot
 		WHERE rating.season = $1
 		  AND rating.as_of_date < latest_snapshot.as_of_date
@@ -456,8 +452,8 @@ const teamFacts = `
 	previous_ratings AS (
 		SELECT
 			rating.team_key,
-			RANK() OVER (ORDER BY rating.elo_rating DESC) AS rating_rank
-		FROM ohfootball_marts.fct_team_elo_ratings AS rating
+			RANK() OVER (ORDER BY rating.rating DESC) AS rating_rank
+		FROM ohfootball_marts.fct_team_ratings AS rating
 		INNER JOIN previous_snapshot USING (as_of_date)
 		WHERE rating.season = $1
 	)
@@ -476,7 +472,8 @@ const teamColumns = `
 	COALESCE(records.wins, 0),
 	COALESCE(records.losses, 0),
 	COALESCE(records.ties, 0),
-	ratings.elo_rating,
+	ratings.rating,
+	ratings.relative_rating,
 	ratings.rating_rank,
 	ratings.as_of_date,
 	previous_ratings.rating_rank
@@ -500,7 +497,7 @@ var listTeamsSQL = teamFacts + `
 	  AND ($3::smallint IS NULL OR team.region = $3::smallint)
 	  AND ($4::smallint IS NULL OR team.division = $4::smallint)
 	ORDER BY
-		CASE WHEN $5 = 'ELO' THEN ratings.elo_rating END DESC NULLS LAST,
+		CASE WHEN $5 IN ('RATING', 'ELO') THEN ratings.rating END DESC NULLS LAST,
 		team.name,
 		team.team_key
 	LIMIT $6
@@ -531,17 +528,19 @@ const ratingHistorySQL = `
 		SELECT
 			rating.team_key,
 			rating.season,
-			rating.elo_rating,
+			rating.rating,
+			rating.relative_rating,
 			rating.as_of_date,
 			RANK() OVER (
 				PARTITION BY rating.season, rating.as_of_date
-				ORDER BY rating.elo_rating DESC
+				ORDER BY rating.rating DESC
 			) AS rating_rank
-		FROM ohfootball_marts.fct_team_elo_ratings AS rating
+		FROM ohfootball_marts.fct_team_ratings AS rating
 	)
 	SELECT
 		ranked.season,
-		ranked.elo_rating,
+		ranked.rating,
+		ranked.relative_rating,
 		ranked.rating_rank,
 		LAG(ranked.rating_rank) OVER (
 			PARTITION BY ranked.team_key, ranked.season
@@ -554,17 +553,6 @@ const ratingHistorySQL = `
 `
 
 const scheduleSQL = `
-	WITH latest_snapshot AS (
-		SELECT MAX(as_of_date) AS as_of_date
-		FROM ohfootball_marts.fct_team_elo_ratings
-		WHERE season = $2
-	),
-	ratings AS (
-		SELECT rating.team_key, rating.elo_rating, rating.as_of_date
-		FROM ohfootball_marts.fct_team_elo_ratings AS rating
-		INNER JOIN latest_snapshot USING (as_of_date)
-		WHERE rating.season = $2
-	)
 	SELECT
 		game.game_key::text,
 		date.date_day,
@@ -582,9 +570,6 @@ const scheduleSQL = `
 		CASE WHEN game.team_a_key = $1::uuid THEN game.team_b_score ELSE game.team_a_score END,
 		game.is_playoff_game,
 		game.notes,
-		team_rating.elo_rating,
-		opponent_rating.elo_rating,
-		team_rating.as_of_date,
 		CASE
 			WHEN game.team_a_key = $1::uuid THEN prediction.team_a_rating
 			ELSE prediction.team_b_rating
@@ -597,7 +582,11 @@ const scheduleSQL = `
 			WHEN game.team_a_key = $1::uuid THEN prediction.team_a_win_probability
 			ELSE 1 - prediction.team_a_win_probability
 		END AS pregame_win_probability,
-		prediction.game_date
+		CASE
+			WHEN game.team_a_key = $1::uuid THEN prediction.predicted_margin
+			ELSE -prediction.predicted_margin
+		END AS predicted_margin,
+		prediction.as_of_date
 	FROM ohfootball_marts.fct_games AS game
 	INNER JOIN ohfootball_marts.dim_dates AS date
 		ON date.date_key = game.game_date_key
@@ -607,10 +596,6 @@ const scheduleSQL = `
 			ELSE game.team_a_key
 		END
 	   AND opponent.is_current
-	LEFT JOIN ratings AS team_rating
-		ON team_rating.team_key = $1::uuid
-	LEFT JOIN ratings AS opponent_rating
-		ON opponent_rating.team_key = opponent.team_key
 	LEFT JOIN ohfootball_marts.fct_game_predictions AS prediction
 		ON prediction.game_key = game.game_key
 	WHERE game.is_current

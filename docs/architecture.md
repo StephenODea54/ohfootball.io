@@ -186,7 +186,7 @@ flowchart TD
 | --- | --- | --- |
 | `scrape` | Go | collects the games of the season named by `SCRAPER_SEASON` |
 | `transform` | dbt | rebuilds staging, intermediate, and the marts |
-| `rate` | Python | rates every team in every season and stores a pregame prediction for every game played |
+| `rate` | Python | rates every team in every season and stores a pregame prediction for every game played and for every game of the season in progress not yet played |
 | `publish-site` | curl | starts the site workflow through the REST API of GitHub |
 | `publish-download` | Python | zips the marts and sends the zip to R2, under the date and under `latest/` |
 | `publish-dataset` | Python | sends the marts to Kaggle as one new version |
@@ -346,8 +346,6 @@ Dokploy shows for the database as `DATABASE_URL`.
 | `RATE_LIMIT_TOTAL_PER_SECOND` | optional, default `20`, the requests all callers together may send each second |
 | `RATE_LIMIT_TOTAL_BURST` | optional, default `40`, the requests all callers together may send at once |
 | `HTTP_ADDR` | optional, default `:8082` |
-| `ELO_HOME_ADVANTAGE` | optional, default `30` |
-| `ELO_RATING_SCALE` | optional, default `400` |
 | `GRAPHQL_COMPLEXITY_LIMIT` | optional, default `1000` |
 | `GRAPHQL_FIELD_LIMIT` | optional, default `300`, the most fields that one query may select. It must be at least 1. |
 

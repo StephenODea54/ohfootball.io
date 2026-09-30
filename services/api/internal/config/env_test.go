@@ -16,22 +16,6 @@ func TestString(t *testing.T) {
 	}
 }
 
-func TestFloat(t *testing.T) {
-	value, err := Float("OHFOOTBALL_TEST_UNSET", 30)
-	if err != nil || value != 30 {
-		t.Fatalf("Float on an unset variable = %v, %v, want 30, nil", value, err)
-	}
-	t.Setenv("OHFOOTBALL_TEST_FLOAT", "12.5")
-	value, err = Float("OHFOOTBALL_TEST_FLOAT", 30)
-	if err != nil || value != 12.5 {
-		t.Fatalf("Float = %v, %v, want 12.5, nil", value, err)
-	}
-	t.Setenv("OHFOOTBALL_TEST_FLOAT", "not a number")
-	if _, err := Float("OHFOOTBALL_TEST_FLOAT", 30); err == nil {
-		t.Fatal("Float on an unparsable value returned no error")
-	}
-}
-
 func TestInt(t *testing.T) {
 	value, err := Int("OHFOOTBALL_TEST_UNSET", 7)
 	if err != nil || value != 7 {

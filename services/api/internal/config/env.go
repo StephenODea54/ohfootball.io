@@ -16,21 +16,6 @@ func String(name, fallback string) string {
 	return fallback
 }
 
-// Float returns the named variable parsed as a floating point number. An unset or empty variable
-// returns the fallback. A value that does not parse is an error, because a silent fallback would
-// hide a typo in a deployment setting.
-func Float(name string, fallback float64) (float64, error) {
-	raw := os.Getenv(name)
-	if raw == "" {
-		return fallback, nil
-	}
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse %s as a number: %w", name, err)
-	}
-	return value, nil
-}
-
 // Int returns the named variable parsed as an integer. An unset or empty variable returns the
 // fallback. A value that does not parse is an error.
 func Int(name string, fallback int) (int, error) {

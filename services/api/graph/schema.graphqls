@@ -1,5 +1,6 @@
 enum TeamSort {
-  ELO
+  RATING
+  ELO @deprecated(reason: "Use RATING.")
   NAME
 }
 
@@ -23,9 +24,21 @@ type Record {
   ties: Int!
 }
 
-type EloRating {
+"""
+The margin rating of a team on one date. A rating is a number of points. The gap between two
+ratings of the same date is the margin that the model expects on a neutral field.
+"""
+type TeamRating {
   season: Int!
+  """
+  The rating in points. The value 0 has no meaning of its own, so compare two ratings of one date.
+  """
   rating: Float!
+  """
+  The rating minus the median rating of the Ohio teams on the same date, so that 0 is the median
+  team.
+  """
+  relativeRating: Float!
   rank: Int!
   """
   The rank of the team in the snapshot before this one in the same season. It is null when the
@@ -38,8 +51,17 @@ type EloRating {
 type GamePrediction {
   winProbability: Float!
   predictedResult: GameResult!
+  """
+  The margin that the model expects for this team, in points, with the home edge included. A
+  negative margin is an expected loss.
+  """
+  predictedMargin: Float!
   teamRating: Float!
   opponentRating: Float!
+  """
+  The date of the prediction. It is the date of the game for a game played before the last
+  update, and the date of the last update for a game not yet played.
+  """
   asOf: String!
 }
 
@@ -69,8 +91,10 @@ type Team {
   primaryColor: String
   secondaryColor: String
   record: Record!
-  elo: EloRating
-  eloHistory: [EloRating!]!
+  rating: TeamRating
+  ratingHistory: [TeamRating!]!
+  elo: TeamRating @deprecated(reason: "Use rating.")
+  eloHistory: [TeamRating!]! @deprecated(reason: "Use ratingHistory.")
   schedule: [Game!]!
 }
 
@@ -82,7 +106,7 @@ type Query {
     search: String
     region: Int
     division: Int
-    sort: TeamSort = ELO
+    sort: TeamSort = RATING
     limit: Int = 1000
   ): [Team!]!
   team(id: ID!, season: Int): Team

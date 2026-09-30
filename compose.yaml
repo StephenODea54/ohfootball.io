@@ -56,8 +56,6 @@ services:
       # Lets a build of the site skip the contact rule and the rate limits. Set the same value as
       # GRAPHQL_API_KEY in services/frontend/.env. Empty lets no request skip them.
       SITE_BUILD_KEY: ${SITE_BUILD_KEY:-}
-      ELO_HOME_ADVANTAGE: ${ELO_HOME_ADVANTAGE:-30}
-      ELO_RATING_SCALE: ${ELO_RATING_SCALE:-400}
     ports:
       - "8082:8082"
     depends_on:

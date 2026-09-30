@@ -1,8 +1,9 @@
 # GraphQL API
 
-The API exposes current dbt marts and published Elo rating snapshots without
-leaking source-system identifiers. Start PostgreSQL, publish a rating snapshot,
-then run:
+The API exposes current dbt marts and published rating snapshots without
+leaking source-system identifiers. The rating job stores the rating of each team and a prediction
+for each game, so the API reads them and calculates nothing. Start PostgreSQL, publish a rating
+snapshot, then run:
 
 ```bash
 go run ./cmd/server
@@ -114,7 +115,6 @@ playground is on the origin of the API, so a page on another origin cannot read 
 | `RATE_LIMIT_TOTAL_BURST` | `40` | The requests all callers together may send at once. |
 | `GRAPHQL_COMPLEXITY_LIMIT` | `1000` | The highest cost of one operation. |
 | `GRAPHQL_FIELD_LIMIT` | `300` | The most fields that one query may select. It must be a whole number of at least 1. |
-| `ELO_HOME_ADVANTAGE`, `ELO_RATING_SCALE` | `30`, `400` | The settings of the win chance. |
 
 Each limit is a whole number of at least 1. The server does not start when a setting is not valid.
 

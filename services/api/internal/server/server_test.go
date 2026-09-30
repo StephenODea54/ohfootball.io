@@ -23,6 +23,7 @@ type fakeStore struct {
 	season  int
 	pingErr error
 	teams   []*model.Team
+	team    *model.Team
 	// calls counts the calls of CurrentSeason, so a test can tell that no resolver ran.
 	calls int
 }
@@ -45,7 +46,9 @@ func (fake *fakeStore) ListTeams(
 	return fake.teams, nil
 }
 
-func (fake *fakeStore) Team(context.Context, string, *int) (*model.Team, error) { return nil, nil }
+func (fake *fakeStore) Team(context.Context, string, *int) (*model.Team, error) {
+	return fake.team, nil
+}
 
 func newHandler(t *testing.T, store Store, options Options) http.Handler {
 	t.Helper()
@@ -124,13 +127,13 @@ func TestQueryReturnsThePreviousRank(t *testing.T) {
 		return &model.Team{
 			ID:     id,
 			Record: &model.Record{},
-			Elo:    &model.EloRating{Season: 2026, Rating: 1600, Rank: 12, PreviousRank: previous},
+			Rating: &model.TeamRating{Season: 2026, Rating: 40, RelativeRating: 14, Rank: 12, PreviousRank: previous},
 		}
 	}
 	store := &fakeStore{teams: []*model.Team{rated("moved", &previousRank), rated("new", nil)}}
 	handler := newHandler(t, store, Options{})
 
-	recorder := post(t, handler, "{ teams { id elo { rank previousRank } } }")
+	recorder := post(t, handler, "{ teams { id rating { rank previousRank relativeRating } } }")
 	response := decode(t, recorder)
 	if _, found := response["errors"]; found {
 		t.Fatalf("response carried errors: %v", response["errors"])
@@ -142,11 +145,68 @@ func TestQueryReturnsThePreviousRank(t *testing.T) {
 	}
 	want := []any{float64(15), nil}
 	for index, entry := range teams {
-		elo, _ := entry.(map[string]any)["elo"].(map[string]any)
-		previous, found := elo["previousRank"]
+		rating, _ := entry.(map[string]any)["rating"].(map[string]any)
+		if rating["relativeRating"] != float64(14) {
+			t.Fatalf("team %d relativeRating = %v, want 14", index, rating["relativeRating"])
+		}
+		previous, found := rating["previousRank"]
 		if !found || previous != want[index] {
 			t.Fatalf("team %d previousRank = %v (present %t), want %v", index, previous, found, want[index])
 		}
+	}
+}
+
+func TestTheDeprecatedNamesAnswerWithTheSameRating(t *testing.T) {
+	rating := &model.TeamRating{Season: 2026, Rating: 40, RelativeRating: 14, Rank: 3, AsOf: "2026-09-29"}
+	history := []*model.TeamRating{rating}
+	team := &model.Team{
+		ID:            "moeller",
+		Record:        &model.Record{},
+		Rating:        rating,
+		Elo:           rating,
+		RatingHistory: history,
+		EloHistory:    history,
+		Schedule: []*model.Game{{
+			ID: "game", Date: "2026-10-02", OpponentID: "elder", OpponentName: "Elder",
+			Location: model.GameLocationHome, Result: model.GameResultUnknown,
+			Prediction: &model.GamePrediction{
+				WinProbability: 0.61, PredictedResult: model.GameResultWin, PredictedMargin: 4.2,
+				TeamRating: 40, OpponentRating: 37, AsOf: "2026-09-29",
+			},
+		}},
+	}
+	handler := newHandler(t, &fakeStore{team: team, teams: []*model.Team{team}}, Options{})
+
+	recorder := post(t, handler, `{
+		team(id: "moeller") {
+			rating { relativeRating }
+			elo { relativeRating }
+			ratingHistory { relativeRating }
+			eloHistory { relativeRating }
+			schedule { prediction { predictedMargin } }
+		}
+		teams(sort: ELO) { id }
+	}`)
+	response := decode(t, recorder)
+	if _, found := response["errors"]; found {
+		t.Fatalf("response carried errors: %v", response["errors"])
+	}
+	data, _ := response["data"].(map[string]any)
+	got, _ := data["team"].(map[string]any)
+	for _, name := range []string{"rating", "elo"} {
+		if value := got[name].(map[string]any)["relativeRating"]; value != float64(14) {
+			t.Fatalf("%s relativeRating = %v, want 14", name, value)
+		}
+	}
+	for _, name := range []string{"ratingHistory", "eloHistory"} {
+		if value := got[name].([]any)[0].(map[string]any)["relativeRating"]; value != float64(14) {
+			t.Fatalf("%s relativeRating = %v, want 14", name, value)
+		}
+	}
+	schedule, _ := got["schedule"].([]any)
+	margin := schedule[0].(map[string]any)["prediction"].(map[string]any)["predictedMargin"]
+	if margin != 4.2 {
+		t.Fatalf("predictedMargin = %v, want 4.2", margin)
 	}
 }
 

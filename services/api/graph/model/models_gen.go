@@ -8,16 +8,6 @@ import (
 	"strconv"
 )
 
-type EloRating struct {
-	Season int     `json:"season"`
-	Rating float64 `json:"rating"`
-	Rank   int     `json:"rank"`
-	// The rank of the team in the snapshot before this one in the same season. It is null when the
-	// season has no earlier snapshot, or when the team is not in that snapshot.
-	PreviousRank *int   `json:"previousRank,omitempty"`
-	AsOf         string `json:"asOf"`
-}
-
 type Game struct {
 	ID            string          `json:"id"`
 	Week          int             `json:"week"`
@@ -36,9 +26,14 @@ type Game struct {
 type GamePrediction struct {
 	WinProbability  float64    `json:"winProbability"`
 	PredictedResult GameResult `json:"predictedResult"`
-	TeamRating      float64    `json:"teamRating"`
-	OpponentRating  float64    `json:"opponentRating"`
-	AsOf            string     `json:"asOf"`
+	// The margin that the model expects for this team, in points, with the home edge included. A
+	// negative margin is an expected loss.
+	PredictedMargin float64 `json:"predictedMargin"`
+	TeamRating      float64 `json:"teamRating"`
+	OpponentRating  float64 `json:"opponentRating"`
+	// The date of the prediction. It is the date of the game for a game played before the last
+	// update, and the date of the last update for a game not yet played.
+	AsOf string `json:"asOf"`
 }
 
 type Query struct {
@@ -51,19 +46,37 @@ type Record struct {
 }
 
 type Team struct {
-	ID             string       `json:"id"`
-	Season         int          `json:"season"`
-	Name           string       `json:"name"`
-	Mascot         *string      `json:"mascot,omitempty"`
-	City           *string      `json:"city,omitempty"`
-	Division       *int         `json:"division,omitempty"`
-	Region         *int         `json:"region,omitempty"`
-	PrimaryColor   *string      `json:"primaryColor,omitempty"`
-	SecondaryColor *string      `json:"secondaryColor,omitempty"`
-	Record         *Record      `json:"record"`
-	Elo            *EloRating   `json:"elo,omitempty"`
-	EloHistory     []*EloRating `json:"eloHistory"`
-	Schedule       []*Game      `json:"schedule"`
+	ID             string        `json:"id"`
+	Season         int           `json:"season"`
+	Name           string        `json:"name"`
+	Mascot         *string       `json:"mascot,omitempty"`
+	City           *string       `json:"city,omitempty"`
+	Division       *int          `json:"division,omitempty"`
+	Region         *int          `json:"region,omitempty"`
+	PrimaryColor   *string       `json:"primaryColor,omitempty"`
+	SecondaryColor *string       `json:"secondaryColor,omitempty"`
+	Record         *Record       `json:"record"`
+	Rating         *TeamRating   `json:"rating,omitempty"`
+	RatingHistory  []*TeamRating `json:"ratingHistory"`
+	Elo            *TeamRating   `json:"elo,omitempty"`
+	EloHistory     []*TeamRating `json:"eloHistory"`
+	Schedule       []*Game       `json:"schedule"`
+}
+
+// The margin rating of a team on one date. A rating is a number of points. The gap between two
+// ratings of the same date is the margin that the model expects on a neutral field.
+type TeamRating struct {
+	Season int `json:"season"`
+	// The rating in points. The value 0 has no meaning of its own, so compare two ratings of one date.
+	Rating float64 `json:"rating"`
+	// The rating minus the median rating of the Ohio teams on the same date, so that 0 is the median
+	// team.
+	RelativeRating float64 `json:"relativeRating"`
+	Rank           int     `json:"rank"`
+	// The rank of the team in the snapshot before this one in the same season. It is null when the
+	// season has no earlier snapshot, or when the team is not in that snapshot.
+	PreviousRank *int   `json:"previousRank,omitempty"`
+	AsOf         string `json:"asOf"`
 }
 
 type GameLocation string
@@ -159,18 +172,20 @@ func (e GameResult) MarshalGQL(w io.Writer) {
 type TeamSort string
 
 const (
-	TeamSortElo  TeamSort = "ELO"
-	TeamSortName TeamSort = "NAME"
+	TeamSortRating TeamSort = "RATING"
+	TeamSortElo    TeamSort = "ELO"
+	TeamSortName   TeamSort = "NAME"
 )
 
 var AllTeamSort = []TeamSort{
+	TeamSortRating,
 	TeamSortElo,
 	TeamSortName,
 }
 
 func (e TeamSort) IsValid() bool {
 	switch e {
-	case TeamSortElo, TeamSortName:
+	case TeamSortRating, TeamSortElo, TeamSortName:
 		return true
 	}
 	return false

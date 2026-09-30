@@ -33,14 +33,6 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	homeAdvantage, err := config.Float("ELO_HOME_ADVANTAGE", 30)
-	if err != nil {
-		return err
-	}
-	ratingScale, err := config.Float("ELO_RATING_SCALE", 400)
-	if err != nil {
-		return err
-	}
 	complexityLimit, err := config.Int("GRAPHQL_COMPLEXITY_LIMIT", server.DefaultComplexityLimit)
 	if err != nil {
 		return err
@@ -59,11 +51,7 @@ func run() error {
 		return fmt.Errorf("SITE_BUILD_KEY: %w", err)
 	}
 
-	database, err := store.Open(
-		ctx,
-		config.String("DATABASE_URL", defaultDatabaseURL),
-		store.PredictionConfig{HomeAdvantage: homeAdvantage, RatingScale: ratingScale},
-	)
+	database, err := store.Open(ctx, config.String("DATABASE_URL", defaultDatabaseURL))
 	if err != nil {
 		return err
 	}
