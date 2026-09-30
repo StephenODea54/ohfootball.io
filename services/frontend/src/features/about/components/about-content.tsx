@@ -27,7 +27,7 @@ const questions = [
   {
     question: "When Do Ratings Change?",
     answer:
-      "Once a week, every Tuesday morning, Eastern time. A game counts once its score is posted.",
+      "Once a week, on Tuesday at 13:00 UTC. That is 9 AM Eastern for most of the season and 8 AM after the clocks change in November. A game counts once its score is posted.",
   },
   {
     question: "Why Is My School Missing?",
@@ -50,8 +50,7 @@ export function AboutContent() {
           <Text className="mt-4 text-base/7 sm:text-lg/8">
             ohfootball.io is an incredibly nerdy attempt at rating and making predictions for Ohio
             high school football teams. The ratings and predictions are based only on the scores of
-            past games, and predictions are made using a statistical model. The current accuracy of
-            the predictions hovers around 81%.
+            past games, and predictions are made using a statistical model.
           </Text>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -97,8 +96,8 @@ export function AboutContent() {
           <Text className="mt-3 text-base/7">
             That is also why only the season in progress is shown here. A page for every old score
             would turn ohfootball.io into a place to look up past results, and that takes away from
-            those two. So you will find ratings and predictions for the current season only. For
-            earlier seasons, and for the predictions made for them, check out the{" "}
+            the two sites mentioned above. So you will find ratings and predictions for the current
+            season only. For earlier seasons, and for the predictions made for them, check out the{" "}
             <TextLink href={paths.data.getHref()}>Data tab</TextLink>.
           </Text>
         </section>
@@ -164,7 +163,6 @@ export function AboutContent() {
               Not affiliated with the OHSAA, any school, Joe Eitel, Drew Pasteur, or any other
               entity.
             </li>
-            <li>A prediction is a guess, not a promise.</li>
             <li>
               Scores come from public results. Predictions are a reflection of that, whether right
               or wrong.

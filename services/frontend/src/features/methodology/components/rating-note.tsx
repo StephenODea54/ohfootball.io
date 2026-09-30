@@ -1,20 +1,12 @@
 import { Text, TextLink } from "@/components/ui/text"
 import { paths } from "@/config/paths"
-import { HOME_FIELD_NOTE, RATING_SUMMARY } from "@/features/methodology/rating-model"
 
-interface RatingNoteProps {
-  className?: string
-  /** Add how home field changes a win chance. Use it where the page shows predictions. */
-  homeField?: boolean
-}
-
-/** A short explanation of what a rating means, with a link to the methodology page. */
-export function RatingNote({ className, homeField = false }: RatingNoteProps) {
-  const text = homeField ? `${RATING_SUMMARY} ${HOME_FIELD_NOTE}` : RATING_SUMMARY
-
+/** A short pointer to the methodology page, for the pages that show ratings. */
+export function RatingNote({ className }: { className?: string }) {
   return (
     <Text className={className}>
-      {text} See <TextLink href={paths.methodology.getHref()}>how the ratings work</TextLink>.
+      Curious about what the ratings represent?{" "}
+      <TextLink href={paths.methodology.getHref()}>Check here</TextLink>.
     </Text>
   )
 }

@@ -12,7 +12,6 @@ import {
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Text, TextLink } from "@/components/ui/text"
-import { links } from "@/config/paths"
 
 const limits = [
   {
@@ -66,9 +65,17 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
             <Heading className="mt-3 text-4xl/none sm:text-5xl/none">How The Ratings Work</Heading>
             <Text className="mt-5 text-base/7 sm:text-lg/8">
               Each team has a rating in points, and the gap between two ratings is the margin the
-              model expects when they play. It belongs to the same family as margin ratings like
-              Massey and the Simple Rating System, but it updates one game at a time. This page is
-              meant to serve as an overview of the model, its parameters, and its known limits.
+              model expects when they play. It is a close cousin of a traditional{" "}
+              <TextLink href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo</TextLink>{" "}
+              rating: each team carries one number, and after every game the number moves by how
+              much the result surprised the model. The difference is that it learns from the score
+              and not only from the win or the loss. It belongs to the same family as margin ratings
+              like <TextLink href="https://masseyratings.com/">Massey</TextLink> and the{" "}
+              <TextLink href="https://www.sports-reference.com/blog/2015/03/srs-calculation-details/">
+                Simple Rating System
+              </TextLink>
+              , but it updates one game at a time. This page is meant to serve as an overview of the
+              model, its parameters, and its known limits.
             </Text>
           </section>
 
@@ -295,31 +302,21 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               prediction that was made before the result was known. Three numbers are tracked: Brier
               score, log loss, and straight accuracy on games with a decided result. Brier score and
               log loss both reward calibration, so a model that says 90% needs to be right about 90%
-              of the time, not merely on the correct side. On the 2024–2025 test seasons the model
-              scores a log loss of 0.370 and picks 82.2% of winners. The Elo rating it replaced
-              scored 0.425 and picked 79.5%.
+              of the time, not merely on the correct side.
             </Text>
           </section>
 
-          <section className="mt-12" aria-labelledby="pipeline-heading">
-            <Heading id="pipeline-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-              Where The Data Comes From
-            </Heading>
-            <Text className="mt-3 text-base/7 sm:text-base/7">
-              The data is sourced from a combination of{" "}
-              <TextLink href={links.joeEitel}>Joe Eitel</TextLink> and the{" "}
-              <TextLink href={links.ohhsfbdb}>Ohio Highschool Football Database</TextLink>.
-            </Text>
-          </section>
-
-          <section className="mt-12" aria-labelledby="pipeline-heading">
-            <Heading id="pipeline-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+          <section className="mt-12" aria-labelledby="accuracy-heading">
+            <Heading id="accuracy-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
               Are The Predictions Any Good?
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              Idk. Historical accuracy sits around 81%, so it's better than a coin flip. I think a
-              definition of "good" would be when it's able to consistently outpredict humans. An
-              example might be checking if the model's predictions are better than{" "}
+              Idk. Historical accuracy sits around 81%, so it's better than a coin flip. It is less
+              sure early in the season, when it knows the least about each team, and it picks about
+              76% of winners in the first three weeks. It gets much better after that, at about 84%
+              from week 7 on. I think a definition of "good" would be when it's able to consistently
+              outpredict humans. An example might be checking if the model's predictions are better
+              than{" "}
               <TextLink href="https://www.wfmj.com/sports/local-sports/dana-s-2026-high-school-football-predictions/article_9bd3f21d-8129-415a-b822-e6127661f01a.html">
                 WFMJ's predictions
               </TextLink>

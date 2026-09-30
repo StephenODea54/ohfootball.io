@@ -40,8 +40,3 @@ export function learningWeight(gamesPlayed: number) {
 export const RATING_SUMMARY =
   "A rating is a number of points. The gap between two ratings is the margin the model expects " +
   "on a neutral field, and 0 is the median Ohio team."
-
-/** How home field changes a prediction. It goes next to a prediction that includes home field. */
-export const HOME_FIELD_NOTE =
-  `In a home game, the home team gets ${HOME_EDGE} more points in its expected margin. ` +
-  "The rating that the site shows does not include these points."

@@ -46,7 +46,7 @@ export function TeamHeader({ team }: { team: Team }) {
       </dl>
 
       {/* The schedule on this page shows win chances, so the note also covers home field. */}
-      <RatingNote homeField className="max-w-3xl sm:col-span-2" />
+      <RatingNote className="max-w-3xl sm:col-span-2" />
     </header>
   )
 }

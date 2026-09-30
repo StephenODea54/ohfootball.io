@@ -6,7 +6,6 @@ import {
   DIVISION_STEP,
   HISTORY_SEASONS,
   HOME_EDGE,
-  HOME_FIELD_NOTE,
   LEARNING_OFFSET,
   LEARNING_RATE,
   learningWeight,
@@ -26,10 +25,6 @@ describe("rating text", () => {
   it("says that a rating is a number of points around the median team", () => {
     expect(RATING_SUMMARY).toContain("number of points")
     expect(RATING_SUMMARY).toContain("0 is the median Ohio team")
-  })
-
-  it("states the home edge of the production model", () => {
-    expect(HOME_FIELD_NOTE).toContain("gets 1.5 more points")
   })
 })
 
