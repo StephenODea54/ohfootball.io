@@ -7,6 +7,7 @@ import {
   GridListItem,
   GridListLabel,
 } from "@/components/ui/grid-list"
+import { OutOfStateMarker } from "@/features/teams/components/out-of-state-marker"
 import { TeamLogo } from "@/features/teams/components/team-logo"
 import { formatRank, formatRating, ratingTone } from "@/features/teams/utils/format"
 import { openTeam } from "@/features/teams/utils/open-team"
@@ -33,6 +34,9 @@ export function TeamColorGrid({ label, teams }: TeamColorGridProps) {
       // The base style is a bordered, divided list. A card grid needs none of that chrome.
       className="grid grid-cols-1 gap-3 divide-y-0 overflow-visible rounded-none border-0 bg-transparent p-0 sm:grid-cols-2 lg:grid-cols-3 dark:bg-transparent"
       items={teams}
+      // A card can hold a button. In a grid the arrow keys move between cards, so Tab is what
+      // moves into a card and to its button.
+      keyboardNavigationBehavior="tab"
       // "grid" tells React Aria the items wrap, so the arrow keys move in two directions.
       layout="grid"
       onAction={(teamId) => openTeam(String(teamId))}
@@ -79,9 +83,12 @@ export function TeamColorGrid({ label, teams }: TeamColorGridProps) {
             <div className="flex w-full items-center gap-3">
               <TeamLogo team={team} size="sm" />
               <div className="min-w-0">
-                <GridListLabel className="font-semibold text-base/6 text-fg">
-                  {team.name}
-                </GridListLabel>
+                <div className="flex items-center gap-2">
+                  <GridListLabel className="font-semibold text-base/6 text-fg">
+                    {team.name}
+                  </GridListLabel>
+                  <OutOfStateMarker team={team} />
+                </div>
                 <p className="text-muted-fg text-sm/5">{team.mascot ?? "—"}</p>
               </div>
             </div>

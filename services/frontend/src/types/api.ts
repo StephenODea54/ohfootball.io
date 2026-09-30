@@ -64,6 +64,11 @@ export interface Team {
   primaryColor: string | null
   secondaryColor: string | null
   record: TeamRecord
+  /**
+   * The number of games this season that the team played against an out-of-state team. The rating
+   * leaves these games out.
+   */
+  outOfStateGamesPlayed: number
   rating: TeamRating | null
   ratingHistory: TeamRating[]
   schedule: Game[]

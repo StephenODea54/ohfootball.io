@@ -16,6 +16,7 @@ function team(id: string, rank: number | null, region = 1): TeamSummary {
     primaryColor: null,
     secondaryColor: null,
     record: { wins: 0, losses: 0, ties: 0 },
+    outOfStateGamesPlayed: 0,
     rating:
       rank === null
         ? null

@@ -26,6 +26,7 @@ function team(overrides: Partial<TeamSummary> = {}): TeamSummary {
     primaryColor: null,
     secondaryColor: null,
     record: { wins: 2, losses: 4, ties: 0 },
+    outOfStateGamesPlayed: 0,
     rating: { season: 2026, value: 3.6, rank: 149, previousRank: null, asOf: "2026-09-27" },
     ...overrides,
   }

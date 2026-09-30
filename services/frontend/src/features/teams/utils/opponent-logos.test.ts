@@ -32,6 +32,7 @@ function team(id: string, sourceId: string): TeamSummary {
     primaryColor: null,
     secondaryColor: null,
     record: { wins: 0, losses: 0, ties: 0 },
+    outOfStateGamesPlayed: 0,
     rating: null,
   }
 }

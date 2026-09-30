@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
+import { OutOfStateLegend } from "@/features/teams/components/out-of-state-legend"
 import { TeamColorGrid } from "@/features/teams/components/team-color-grid"
 import { DivisionSelect, RegionSelect } from "@/features/teams/components/team-filter-controls"
 import { ALL_DIVISIONS, ALL_REGIONS } from "@/features/teams/utils/filter-teams"
@@ -47,6 +48,7 @@ export function TeamBrowser({ className, season, teams }: TeamBrowserProps) {
 
       <div className="mt-6">
         <TeamColorGrid label={view.gridLabel} teams={view.tiles} />
+        <OutOfStateLegend teams={view.tiles} className="mt-4" />
       </div>
     </section>
   )

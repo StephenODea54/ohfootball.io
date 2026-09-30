@@ -14,5 +14,6 @@ export const teamFields = `
   primaryColor
   secondaryColor
   record { wins losses ties }
+  outOfStateGamesPlayed
   rating { season value: relativeRating rank previousRank asOf }
 `

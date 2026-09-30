@@ -24,7 +24,7 @@ const limits = [
   },
   {
     title: "Out-of-state opponents are invisible",
-    body: "Only games between rated Ohio teams update ratings. A game against an out-of-state program is skipped, so it neither helps nor hurts.",
+    body: "Only games between rated Ohio teams update ratings. A game against an out-of-state program is skipped, so it neither helps nor hurts. The leaderboard and the home page mark a school with two or more of these games this season.",
   },
   {
     title: "New schools start below the field",

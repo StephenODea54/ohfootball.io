@@ -33,6 +33,7 @@ function team(id: string, rating: { rank: number; value: number } | null): TeamS
     primaryColor: null,
     secondaryColor: null,
     record: { wins: 0, losses: 0, ties: 0 },
+    outOfStateGamesPlayed: 0,
     rating: rating ? { season: 2025, previousRank: null, asOf: "2025-08-20", ...rating } : null,
   }
 }
