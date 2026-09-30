@@ -13,58 +13,46 @@ import {
 /** The values the published ratings use. */
 const parameters = [
   {
-    id: "initial-rating",
-    name: "Initial rating",
-    value: "1500",
-    note: "The rating of a team with no history and no division.",
+    id: "home-edge",
+    name: "Home edge",
+    value: "1.5",
+    note: "Points added to the expected margin of the home team.",
   },
   {
-    id: "k-factor",
-    name: "K factor",
-    value: "148",
-    note: "The maximum rating a single game can move. It is large because a season is only about ten games.",
+    id: "learning-rate",
+    name: "Learning rate",
+    value: "1.65 / (n + 5)",
+    note: "The share of a surprise that moves a rating. n is the games played this season.",
   },
   {
-    id: "rating-scale",
-    name: "Rating scale",
-    value: "400",
-    note: "A 400 point gap means the stronger team is expected to win about 91% of the time.",
+    id: "margin-cap",
+    name: "Margin cap",
+    value: "56",
+    note: "The largest margin that a game counts. A bigger win counts as 56 points.",
   },
   {
-    id: "home-advantage",
-    name: "Home advantage",
-    value: "30",
-    note: "Added to the home team's rating before the probability is calculated. It never changes the stored rating.",
+    id: "division-step",
+    name: "Division step",
+    value: "12",
+    note: "Points per division of separation in the prior of a new program.",
   },
   {
-    id: "season-carryover",
-    name: "Season carryover",
-    value: "0.85",
-    note: "The share of last season's ending rating that a returning program keeps.",
+    id: "carryover-last",
+    name: "Last season",
+    value: "0.8",
+    note: "The share of last season's final rating in the start of a season.",
   },
   {
-    id: "division-rating-step",
-    name: "Division rating step",
-    value: "140",
-    note: "Points per division of separation in the preseason prior.",
+    id: "carryover-older",
+    name: "Earlier seasons",
+    value: "0.2",
+    note: "The share of the average of up to eight seasons before that one.",
   },
   {
-    id: "provisional-games",
-    name: "Provisional games",
-    value: "3",
-    note: "How long a team's early-season rating moves faster than normal.",
-  },
-  {
-    id: "provisional-multiplier",
-    name: "Provisional K multiplier",
-    value: "1.6",
-    note: "The size of that early-season boost. It decays linearly to 1.0.",
-  },
-  {
-    id: "margin-weight",
-    name: "Margin weight",
-    value: "0",
-    note: "Margin of victory is available in the model but is switched off in production.",
+    id: "slope-window",
+    name: "Slope window",
+    value: "10",
+    note: "The number of earlier seasons that each win probability slope is fit on.",
   },
 ]
 
@@ -76,7 +64,7 @@ export function ParametersTable() {
         <Table aria-label="Production rating parameters" bleed>
           <TableHeader className="bg-muted/70 uppercase text-xs/5 tracking-wide">
             <TableColumn isRowHeader>Parameter</TableColumn>
-            <TableColumn className="w-24 text-end">Value</TableColumn>
+            <TableColumn className="w-32 text-end">Value</TableColumn>
             <TableColumn>What It Does</TableColumn>
           </TableHeader>
           <TableBody items={parameters}>

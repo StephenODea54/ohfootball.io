@@ -16,12 +16,8 @@ import { links } from "@/config/paths"
 
 const limits = [
   {
-    title: "Margin of victory is ignored",
-    body: "A one point win and a forty point win move a rating by exactly the same amount. This keeps the model resistant to running up the score.",
-  },
-  {
-    title: "Ratings are zero sum inside a season",
-    body: "Every point one team gains, its opponent loses. Ohio as a whole cannot get stronger or weaker, so ratings compare teams to each other and not to some fixed standard.",
+    title: "Running up the score counts, up to a point",
+    body: "A forty point win moves a rating more than a one point win. A margin larger than 56 points counts as 56, so one wild score cannot take over a season.",
   },
   {
     title: "Schedules are regional",
@@ -32,16 +28,16 @@ const limits = [
     body: "Only games between rated Ohio teams update ratings. A game against an out-of-state program is skipped, so it neither helps nor hurts.",
   },
   {
-    title: "The preseason prior is a guess about school size",
-    body: "Division is mostly an enrollment bracket, not a strength measure. Using it as a prior helps on average and is wrong for any specific program that is unusually strong or weak for its size.",
+    title: "New schools start below the field",
+    body: "A program with no history starts at a prior set by its division, and most established programs sit above those priors. A brand new school therefore starts about 25 points below the median team and needs a few games to find its level. This will cause really awful predictions for brand new schools.",
   },
   {
     title: "Program continuity can break",
-    body: "Carryover follows a program identifier across seasons, so a program that misses a season keeps the rating it last earned. Co-ops, mergers, and renames can still split one program into two histories, which resets a team to its prior. This will cause really awful predictions for brand new schools.",
+    body: "The start of a season follows a program identifier, so a program that misses a season keeps the rating it last earned. Co-ops, mergers, and renames can still split one program into two histories, which starts a team over as a new school.",
   },
   {
     title: "The model knows nothing about football",
-    body: "There is no roster, no injury report, no weather, no travel distance, and no notion of matchup style. It simply looks at who played and what the result was.",
+    body: "There is no roster, no injury report, no weather, no travel distance, and no notion of matchup style. It simply looks at who played, where, and what the score was.",
   },
   {
     title: "Source data can be wrong",
@@ -57,7 +53,7 @@ interface MethodologyContentProps {
   children: React.ReactNode
 }
 
-/** The model behind the ratings: the update rule, the tuned parameters, and its known limits. */
+/** The model behind the ratings: the prediction, the update rule, the parameters, and its limits. */
 export function MethodologyContent({ children }: MethodologyContentProps) {
   return (
     <main>
@@ -69,27 +65,50 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
             </p>
             <Heading className="mt-3 text-4xl/none sm:text-5xl/none">How The Ratings Work</Heading>
             <Text className="mt-5 text-base/7 sm:text-lg/8">
-              The ratings are calculated using a modified{" "}
-              <TextLink href="https://en.wikipedia.org/wiki/Elo_rating_system">elo</TextLink>{" "}
-              system. This page is meant to serve as an overview of the model, its parameters, and
-              its known limits.
+              Each team has a rating in points, and the gap between two ratings is the margin the
+              model expects when they play. It belongs to the same family as margin ratings like
+              Massey and the Simple Rating System, but it updates one game at a time. This page is
+              meant to serve as an overview of the model, its parameters, and its known limits.
             </Text>
           </section>
 
-          <section className="mt-12" aria-labelledby="core-heading">
-            <Heading id="core-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-              The Update Rule
+          <section className="mt-12" aria-labelledby="prediction-heading">
+            <Heading id="prediction-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+              The Prediction
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              Before a game, each team has a rating. The expected score for team A against team B is
-              a logistic function of the gap between them:
+              Before a game, the expected margin for team A against team B is the gap between their
+              ratings, plus a small edge for the home team:
             </Text>
             <Formula
               className="mt-4"
-              label="E sub a equals 1 divided by 1 plus 10 raised to the power of R sub b minus R sub a, all divided by 400."
+              label="m equals R sub a minus R sub b plus 1.5 times h, where h is 1 when team A is home, minus 1 when team B is home, and 0 on a neutral field."
             >
               <FormulaLine>
-                <Var sub="a">E</Var>
+                <Var>m</Var>
+                <Op>=</Op>
+                <Var sub="a">R</Var>
+                <Op>&minus;</Op>
+                <Var sub="b">R</Var>
+                <Op>+</Op>
+                <span>1.5</span>
+                <Op>&middot;</Op>
+                <Var>h</Var>
+              </FormulaLine>
+            </Formula>
+            <Text className="mt-4 text-base/7 sm:text-base/7">
+              <InlineMath label="h">
+                <Var>h</Var>
+              </InlineMath>{" "}
+              is 1 when team A is home, &minus;1 when team B is home, and 0 on a neutral field. A
+              logistic curve then turns the margin into a win probability:
+            </Text>
+            <Formula
+              className="mt-4"
+              label="P equals 1 divided by 1 plus e raised to the power of minus s times m."
+            >
+              <FormulaLine>
+                <Var>P</Var>
                 <Op>=</Op>
                 <Frac
                   num={<span>1</span>}
@@ -98,16 +117,13 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
                       <span>1</span>
                       <Op>+</Op>
                       <Pow
-                        base={<span>10</span>}
+                        base={<span>e</span>}
                         exp={
                           <>
-                            <Group>
-                              <Var sub="b">R</Var>
-                              <Op>&minus;</Op>
-                              <Var sub="a">R</Var>
-                            </Group>
-                            <Op>/</Op>
-                            <span>400</span>
+                            <Op>&minus;</Op>
+                            <Var>s</Var>
+                            <Op>&middot;</Op>
+                            <Var>m</Var>
                           </>
                         }
                       />
@@ -117,12 +133,28 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               </FormulaLine>
             </Formula>
             <Text className="mt-4 text-base/7 sm:text-base/7">
-              After the game, the rating moves by the difference between what happened and what was
-              expected, scaled by the K factor and by a per game multiplier:
+              The slope{" "}
+              <InlineMath label="s">
+                <Var>s</Var>
+              </InlineMath>{" "}
+              depends on how many games the two teams have played this season, with one more slope
+              for the playoffs. Each slope is fit on the ten seasons before the season being
+              predicted, so a season never grades itself. The slopes are smaller early in a season,
+              so the model is less sure of a margin in week one than in week eight.
+            </Text>
+          </section>
+
+          <section className="mt-12" aria-labelledby="core-heading">
+            <Heading id="core-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
+              The Update Rule
+            </Heading>
+            <Text className="mt-3 text-base/7 sm:text-base/7">
+              After the game, each rating moves by a share of the surprise, the gap between the
+              actual margin and the expected one:
             </Text>
             <Formula
               className="mt-4"
-              label="The new R sub a equals R sub a plus K times m times S sub a minus E sub a."
+              label="The new R sub a equals R sub a plus k of n times the actual margin minus m. k of n equals 1.65 divided by n plus 5."
             >
               <FormulaLine>
                 <Var prime sub="a">
@@ -131,22 +163,43 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
                 <Op>=</Op>
                 <Var sub="a">R</Var>
                 <Op>+</Op>
-                <Var>K</Var>
-                <Op>&middot;</Op>
-                <Var>m</Var>
+                <Var>k</Var>
+                <Group>
+                  <Var>n</Var>
+                </Group>
                 <Op>&middot;</Op>
                 <Group>
-                  <Var sub="a">S</Var>
+                  <Name>margin</Name>
                   <Op>&minus;</Op>
-                  <Var sub="a">E</Var>
+                  <Var>m</Var>
                 </Group>
+              </FormulaLine>
+              <FormulaLine>
+                <Var>k</Var>
+                <Group>
+                  <Var>n</Var>
+                </Group>
+                <Op>=</Op>
+                <Frac
+                  num={<span>1.65</span>}
+                  den={
+                    <>
+                      <Var>n</Var>
+                      <Op>+</Op>
+                      <span>5</span>
+                    </>
+                  }
+                />
               </FormulaLine>
             </Formula>
             <Text className="mt-4 text-base/7 sm:text-base/7">
-              <InlineMath label="S sub a">
-                <Var sub="a">S</Var>
+              <InlineMath label="n">
+                <Var>n</Var>
               </InlineMath>{" "}
-              is 1 for a win and 0 for a loss. Team B receives the exact opposite change.
+              is the number of games the team has already played this season. A rating moves by a
+              third of the surprise in week one and by about an eighth by week ten, because early
+              games say the most about a team that may have changed since last year. Team B moves
+              the other way by its own share, so the two changes do not always cancel.
             </Text>
           </section>
 
@@ -155,9 +208,8 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Production Parameters
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              These values are used for the published snapshots. Each parameter was tuned
-              independently using the 2000–2023 seasons as the training/validation set, with final
-              performance evaluated on the 2024–2025 seasons as the test set.
+              These values are used for the published snapshots. They were chosen on the 2000–2011
+              seasons, checked on 2012–2023, and scored one time on 2024–2025 as the test set.
             </Text>
             {children}
           </section>
@@ -167,19 +219,17 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Where A Season Starts
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              A team's preseason rating is built from its division, then pulled toward what the
-              program finished with in the most recent season it played:
+              A brand new program starts at a prior set by its division. A returning program starts
+              from its own history instead:
             </Text>
             <Formula
               className="mt-4"
-              label="The prior equals 1500 plus 140 times 4 minus the division. The starting rating equals the prior plus 0.85 times the last played rating minus the prior."
+              label="The prior equals 12 times 4 minus the division. The starting rating equals the prior plus 0.8 times the last rating minus the prior, plus 0.2 times the older rating minus the prior."
             >
               <FormulaLine>
                 <Name>prior</Name>
                 <Op>=</Op>
-                <span>1500</span>
-                <Op>+</Op>
-                <span>140</span>
+                <span>12</span>
                 <Op>&middot;</Op>
                 <Group>
                   <span>4</span>
@@ -192,39 +242,35 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
                 <Op>=</Op>
                 <Name>prior</Name>
                 <Op>+</Op>
-                <span>0.85</span>
+                <span>0.8</span>
                 <Op>&middot;</Op>
                 <Group>
-                  <Name>last played rating</Name>
+                  <Name>last</Name>
+                  <Op>&minus;</Op>
+                  <Name>prior</Name>
+                </Group>
+                <Op>+</Op>
+                <span>0.2</span>
+                <Op>&middot;</Op>
+                <Group>
+                  <Name>older</Name>
                   <Op>&minus;</Op>
                   <Name>prior</Name>
                 </Group>
               </FormulaLine>
             </Formula>
             <Text className="mt-4 text-base/7 sm:text-base/7">
-              Division I sits 420 points above the baseline and Division VII sits 420 below it, with
-              Division IV at the baseline. Independent teams get no division adjustment. A program
-              that has never played stays at its prior.
-            </Text>
-            <Text className="mt-4 text-base/7 sm:text-base/7">
-              A program that stops for a season or more keeps the rating it last earned rather than
-              starting again at its prior, because a team that comes back is not a new team. The
-              pull toward the prior is applied once, however long the program was away. A program
-              that returns in a different division is pulled toward the prior of the division it
-              returns in.
-            </Text>
-          </section>
-
-          <section className="mt-12" aria-labelledby="provisional-heading">
-            <Heading id="provisional-heading" level={2} className="text-2xl/8 sm:text-3xl/9">
-              Early Season Behavior
-            </Heading>
-            <Text className="mt-3 text-base/7 sm:text-base/7">
-              For a team's first three games, the K factor is multiplied by a boost that starts at
-              1.6 and decays linearly to 1.0. Both teams in a game share one multiplier, taken from
-              whichever team is further from settled. This is an attempt to reduce the amount of
-              variance in early season matchups since the model doesn't take into account things
-              like roster changes, injuries, coaching changes, etc.
+              <InlineMath label="last">
+                <Name>last</Name>
+              </InlineMath>{" "}
+              is the final rating of the most recent season the program played, and{" "}
+              <InlineMath label="older">
+                <Name>older</Name>
+              </InlineMath>{" "}
+              is its average over up to eight seasons before that. The two shares add up to one, so
+              a returning program keeps its full history and the prior drops out. A program that
+              stops for a season or more comes back with the rating it last earned, because a team
+              that comes back is not a new team.
             </Text>
           </section>
 
@@ -233,10 +279,10 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               What Counts
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              A win, a loss, and a tie all move ratings, with a tie counted as half a win for both
-              teams. A forfeit never moves a rating, because no team played the game. Cancellations
-              are excluded for the same reason. Upcoming games get a probability but never change a
-              rating.
+              Every game with both scores moves ratings, and a tie is a margin of 0. A game without
+              a score gets a prediction but moves no rating. A forfeit never moves a rating, because
+              no team played the game. Cancellations are excluded for the same reason. Upcoming
+              games get a prediction but never change a rating.
             </Text>
           </section>
 
@@ -249,7 +295,9 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               prediction that was made before the result was known. Three numbers are tracked: Brier
               score, log loss, and straight accuracy on games with a decided result. Brier score and
               log loss both reward calibration, so a model that says 90% needs to be right about 90%
-              of the time, not merely on the correct side.
+              of the time, not merely on the correct side. On the 2024–2025 test seasons the model
+              scores a log loss of 0.370 and picks 82.2% of winners. The Elo rating it replaced
+              scored 0.425 and picked 79.5%.
             </Text>
           </section>
 
@@ -269,7 +317,7 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               Are The Predictions Any Good?
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              Idk. Historical accuracy sits around 80%, so it's better than a coin flip. I think a
+              Idk. Historical accuracy sits around 81%, so it's better than a coin flip. I think a
               definition of "good" would be when it's able to consistently outpredict humans. An
               example might be checking if the model's predictions are better than{" "}
               <TextLink href="https://www.wfmj.com/sports/local-sports/dana-s-2026-high-school-football-predictions/article_9bd3f21d-8129-415a-b822-e6127661f01a.html">

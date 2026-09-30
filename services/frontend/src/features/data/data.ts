@@ -32,12 +32,12 @@ export const files = [
   { name: "dim_dates.csv", holds: "The calendar that the games are dated against." },
   { name: "fct_games.csv", holds: "Each game, with both scores and the home side." },
   {
-    name: "fct_team_elo_ratings.csv",
-    holds: "The Elo rating of each Ohio team through each season.",
+    name: "fct_team_ratings.csv",
+    holds: "The rating of each Ohio team through each season, in points.",
   },
   {
     name: "fct_game_predictions.csv",
-    holds: "The win probability of each completed game between two Ohio teams.",
+    holds: "The expected margin and the win probability of each game between two Ohio teams.",
   },
 ] as const
 

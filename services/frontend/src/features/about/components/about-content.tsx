@@ -12,11 +12,13 @@ import { awesomeSites } from "@/features/about/awesome-sites"
 const questions = [
   {
     question: "What Is A Rating?",
-    answer: "A rating is meant to be a measure of how good a team is. The higher the better.",
+    answer:
+      "A rating is a number of points. It is how many points a team would be expected to beat the median Ohio team by on a neutral field, so 0 is an average team and the higher the better.",
   },
   {
-    question: "My Team Won. Why Did The Rating Barely Move?",
-    answer: "Beating a weak team is worth little. Beating a strong team is worth a lot.",
+    question: "My Team Won. Why Did The Rating Go Down?",
+    answer:
+      "A rating moves by how much the score beat what was expected, not by the win alone. Winning by 7 when the model expected 20 lowers a rating a little.",
   },
   {
     question: "What Does A 68% Win Chance Mean?",
@@ -47,9 +49,9 @@ export function AboutContent() {
           <Heading className="text-4xl/none sm:text-5xl/none">About</Heading>
           <Text className="mt-4 text-base/7 sm:text-lg/8">
             ohfootball.io is an incredibly nerdy attempt at rating and making predictions for Ohio
-            high school football teams. The ratings and predictions are solely based on historical
-            win and loss results, and predictions are made using a statistical model. The current
-            accuracy of the predictions hover around 80%.
+            high school football teams. The ratings and predictions are based only on the scores of
+            past games, and predictions are made using a statistical model. The current accuracy of
+            the predictions hovers around 81%.
           </Text>
 
           <div className="mt-8 flex flex-wrap gap-3">

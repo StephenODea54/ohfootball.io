@@ -22,7 +22,7 @@ describe("the Data page", () => {
       "dim_teams.csv",
       "dim_dates.csv",
       "fct_games.csv",
-      "fct_team_elo_ratings.csv",
+      "fct_team_ratings.csv",
       "fct_game_predictions.csv",
     ])
     for (const file of files) {

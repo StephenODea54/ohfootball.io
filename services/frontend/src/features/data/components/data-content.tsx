@@ -53,7 +53,7 @@ export function DataContent() {
           </p>
           <Heading className="mt-3 text-4xl/none sm:text-5xl/none">Download The Data</Heading>
           <Text className="mt-5 text-base/7 sm:text-lg/8">
-            The full record of games, teams, and Elo ratings, as CSV files in one zip. A new copy is
+            The full record of games, teams, and ratings, as CSV files in one zip. A new copy is
             published each week. It is free to use for any purpose under{" "}
             <TextLink href={licenseUrl}>{license}</TextLink>.
           </Text>
