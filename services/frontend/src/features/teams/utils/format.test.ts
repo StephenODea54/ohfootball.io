@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   formatMargin,
+  formatRank,
   formatRating,
   marginIntent,
   ratingTone,
@@ -20,6 +21,12 @@ describe("formatRating", () => {
     expect(ratingTone(12)).toBe("text-success-subtle-fg")
     expect(ratingTone(-8)).toBe("text-danger-subtle-fg")
     expect(ratingTone(0.2)).toBe("text-fg")
+  })
+})
+
+describe("formatRank", () => {
+  it("writes a rank with a number sign", () => {
+    expect(formatRank(18)).toBe("#18")
   })
 })
 

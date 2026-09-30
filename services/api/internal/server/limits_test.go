@@ -29,7 +29,7 @@ const (
   primaryColor
   secondaryColor
   record { wins losses ties }
-  rating { season value: relativeRating rank asOf }
+  rating { season value: relativeRating rank previousRank asOf }
 `
 	siteCurrentSeason = `query CurrentSeason { currentSeason }`
 	siteTeams         = `query Teams($season: Int!) {
@@ -37,7 +37,7 @@ const (
 }`
 	siteTeam = `query Team($id: ID!, $season: Int) {
   team(id: $id, season: $season) {` + siteTeamFields + `
-    ratingHistory { season value: relativeRating rank asOf }
+    ratingHistory { season value: relativeRating rank previousRank asOf }
     schedule {
       id
       week

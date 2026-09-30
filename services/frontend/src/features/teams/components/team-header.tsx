@@ -1,8 +1,11 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { twJoin } from "tailwind-merge"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
+import { RatingNote } from "@/features/methodology/components/rating-note"
+import { RankMovement } from "@/features/teams/components/rank-movement"
 import { formatRating, formatRecord, ratingTone, teamMeta } from "@/features/teams/utils/format"
 import type { Team } from "@/types/api"
 
@@ -26,9 +29,24 @@ export function TeamHeader({ team }: { team: Team }) {
           value={rating ?? "—"}
           tone={team.rating ? ratingTone(team.rating.value) : "text-fg"}
         />
-        <TeamStat label="Rank" value={team.rating ? `#${team.rating.rank}` : "—"} />
+        <TeamStat
+          label="Rank"
+          value={
+            team.rating ? (
+              <>
+                #{team.rating.rank}
+                <RankMovement rating={team.rating} className="ms-2 text-base/7" />
+              </>
+            ) : (
+              "—"
+            )
+          }
+        />
         <TeamStat label="Record" value={formatRecord(team.record)} />
       </dl>
+
+      {/* The schedule on this page shows win chances, so the note also covers home field. */}
+      <RatingNote homeField className="max-w-3xl sm:col-span-2" />
     </header>
   )
 }
@@ -39,7 +57,7 @@ function TeamStat({
   tone = "text-fg",
 }: {
   label: string
-  value: string
+  value: ReactNode
   tone?: string
 }) {
   return (

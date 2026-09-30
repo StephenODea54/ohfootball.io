@@ -23,7 +23,7 @@ export const topTenQuery = `query TopTen {
     division
     region
     record { wins losses ties }
-    rating { relativeRating rank }
+    rating { relativeRating rank previousRank }
   }
 }`
 

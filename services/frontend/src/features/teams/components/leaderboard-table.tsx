@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table"
 import { Text } from "@/components/ui/text"
 import { paths } from "@/config/paths"
+import { RankMovement } from "@/features/teams/components/rank-movement"
 import { TeamFilterControls } from "@/features/teams/components/team-filter-controls"
 import {
   EMPTY_TEAM_FILTERS,
@@ -52,7 +53,7 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
           <CardContent>
             <Table aria-label={`${season} Rating Leaderboard`} bleed>
               <TableHeader className="bg-muted/70 text-xs/5 uppercase tracking-wide">
-                <TableColumn isRowHeader className="w-16">
+                <TableColumn isRowHeader className="w-24">
                   Rank
                 </TableColumn>
                 <TableColumn>School</TableColumn>
@@ -67,8 +68,11 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
 
                   return (
                     <TableRow id={team.id}>
-                      <TableCell className="font-semibold text-lg/6 text-muted-fg">
-                        {team.rating.rank}
+                      <TableCell>
+                        <span className="font-semibold text-lg/6 text-muted-fg">
+                          {team.rating.rank}
+                        </span>
+                        <RankMovement rating={team.rating} className="ms-2" />
                       </TableCell>
                       <TableCell>
                         <div className="py-1">

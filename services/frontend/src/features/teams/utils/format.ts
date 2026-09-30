@@ -6,6 +6,10 @@ export function formatRecord(record: TeamRecord) {
     : `${record.wins}–${record.losses}`
 }
 
+export function formatRank(rank: number) {
+  return `#${rank}`
+}
+
 /** The city, region, and division of a school, joined for one line of text. */
 export function teamMeta(team: TeamSummary) {
   return [team.city, team.region ? `Region ${team.region}` : null, formatDivision(team.division)]

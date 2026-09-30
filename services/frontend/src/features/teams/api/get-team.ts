@@ -9,7 +9,7 @@ export async function getTeam(id: string, season: number): Promise<Team> {
       query Team($id: ID!, $season: Int) {
         team(id: $id, season: $season) {
           ${teamFields}
-          ratingHistory { season value: relativeRating rank asOf }
+          ratingHistory { season value: relativeRating rank previousRank asOf }
           schedule {
             id
             week

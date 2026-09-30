@@ -33,7 +33,7 @@ describe("the API page", () => {
   it("asks for the ten teams with the highest rating", () => {
     expect(topTenQuery).toContain("teams(sort: RATING, limit: 10)")
     expect(oneLine(topTenQuery)).toBe(
-      "query TopTen { currentSeason teams(sort: RATING, limit: 10) { name city division region record { wins losses ties } rating { relativeRating rank } } }",
+      "query TopTen { currentSeason teams(sort: RATING, limit: 10) { name city division region record { wins losses ties } rating { relativeRating rank previousRank } } }",
     )
     // The body of the command holds the query on one line, so JSON writes no escaped line break.
     expect(curlExample(oneLine(topTenQuery))).not.toContain("\\n")

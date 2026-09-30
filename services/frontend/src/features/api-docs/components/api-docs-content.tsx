@@ -170,6 +170,11 @@ export function ApiDocsContent() {
             <CodeBlock label="The ten teams with the highest rating" className="mt-4">
               {topTenQuery}
             </CodeBlock>
+            <Text className="mt-4 text-base/7">
+              <Code>previousRank</Code> is the rank of the team at the update before that one in the
+              same season. It is null when the season has no earlier update, or when the team had no
+              rating at it.
+            </Text>
             <Text className="mt-4 text-base/7">Or send the same query with curl:</Text>
             <CodeBlock
               label="A curl command for the ten teams with the highest rating"
