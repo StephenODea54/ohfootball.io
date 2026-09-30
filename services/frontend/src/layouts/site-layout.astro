@@ -12,9 +12,11 @@ interface Props {
   noindex?: boolean
   /** Structured data about the page, for search engines. */
   jsonLd?: object
+  /** The title of a link preview. It is the title of the page when it is not set. */
+  socialTitle?: string
 }
 
-const { title, description, noindex = false, jsonLd } = Astro.props
+const { title, description, noindex = false, jsonLd, socialTitle = title } = Astro.props
 
 const pathname = visitorPathname(Astro.url.pathname)
 // A page that search engines leave out has no address for them.
@@ -33,7 +35,7 @@ const canonical = noindex ? undefined : pageUrl(siteUrl(Astro.site), Astro.url.p
     <!-- The preview of a link to the page. The site has no image yet, so there is no og:image. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ohfootball.io" />
-    <meta property="og:title" content={title} />
+    <meta property="og:title" content={socialTitle} />
     <meta property="og:description" content={description} />
     {canonical && <meta property="og:url" content={canonical} />}
     <meta name="twitter:card" content="summary" />

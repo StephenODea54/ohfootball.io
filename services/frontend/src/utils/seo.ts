@@ -37,3 +37,27 @@ export function webSiteJsonLd(site: URL, name: string, description: string) {
     description,
   }
 }
+
+/** One step on the path from the home page to a page. */
+export interface Breadcrumb {
+  name: string
+  url: string
+}
+
+/** The BreadcrumbList record: the path from the home page to the page. It needs at least one step. */
+export function breadcrumbListJsonLd(crumbs: readonly [Breadcrumb, ...Breadcrumb[]]) {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: crumb.name,
+      item: crumb.url,
+    })),
+  }
+}
+
+/** One script that holds more than one record. Each record is written without its own context. */
+export function jsonLdGraph(...nodes: object[]) {
+  return { "@context": "https://schema.org", "@graph": nodes }
+}

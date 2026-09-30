@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { jsonLdScript, pageUrl, siteUrl, webSiteJsonLd } from "@/utils/seo"
+import {
+  breadcrumbListJsonLd,
+  jsonLdGraph,
+  jsonLdScript,
+  pageUrl,
+  siteUrl,
+  webSiteJsonLd,
+} from "@/utils/seo"
 
 const site = new URL("https://ohfootball.io")
 
@@ -71,5 +78,42 @@ describe("webSiteJsonLd", () => {
       url: "https://ohfootball.io/",
       description: "Ratings",
     })
+  })
+})
+
+describe("breadcrumbListJsonLd", () => {
+  it("numbers each step from one", () => {
+    expect(
+      breadcrumbListJsonLd([
+        { name: "Home", url: "https://ohfootball.io/" },
+        { name: "Leaderboard", url: "https://ohfootball.io/leaderboard" },
+      ]),
+    ).toEqual({
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://ohfootball.io/" },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Leaderboard",
+          item: "https://ohfootball.io/leaderboard",
+        },
+      ],
+    })
+  })
+})
+
+describe("jsonLdGraph", () => {
+  it("puts the records under one context", () => {
+    expect(jsonLdGraph({ "@type": "A" }, { "@type": "B" })).toEqual({
+      "@context": "https://schema.org",
+      "@graph": [{ "@type": "A" }, { "@type": "B" }],
+    })
+  })
+
+  it("reads back as the same data from its script", () => {
+    const graph = jsonLdGraph({ "@type": "SportsTeam", name: "St John's Eagles (club)" })
+
+    expect(JSON.parse(jsonLdScript(graph))).toEqual(graph)
   })
 })
