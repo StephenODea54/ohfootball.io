@@ -139,8 +139,21 @@ class TheErrors(unittest.TestCase):
     def test_refuse_an_answer_that_is_not_json(self) -> None:
         self.assert_fails(Opener(Response(b"<html>")), "not JSON")
 
+    def test_refuse_json_that_nests_too_deep(self) -> None:
+        self.assert_fails(Opener(Response(b"[" * 200_000 + b"]" * 200_000)), "not JSON")
+
+    def test_keep_finite_numbers(self) -> None:
+        answer = fetch(Opener(Response(b'[{"rating": 0.9953, "height": 79}]')))
+
+        self.assertEqual(answer.records, [{"rating": 0.9953, "height": 79}])
+
     def test_refuse_json_that_holds_nan_or_infinity(self) -> None:
-        for body in (b'[{"rating": NaN}]', b'[{"rating": Infinity}]', b'[{"rating": -Infinity}]'):
+        for body in (
+            b'[{"rating": NaN}]',
+            b'[{"rating": Infinity}]',
+            b'[{"rating": -Infinity}]',
+            b'[{"rating": 1e400}]',
+        ):
             with self.subTest(body=body):
                 self.assert_fails(Opener(Response(body)), "not JSON")
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import math
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -118,12 +119,13 @@ def calls_remaining(header: str | None) -> int | None:
 def _records(body: bytes, class_year: int) -> tuple[list[dict[str, Any]], str | None]:
     """Reads the records of an answer, or gives the reason that they cannot be read.
 
-    JSON can hold NaN and Infinity, but the JSON type of PostgreSQL refuses them, so an answer
-    that holds one is refused here.
+    JSON can hold NaN and Infinity, and a number such as 1e400 becomes Infinity. The JSON type of
+    PostgreSQL refuses them, so an answer that holds one is refused here. An answer that nests
+    too deep for the parser is refused too.
     """
     try:
-        records = json.loads(body, parse_constant=_refuse_constant)
-    except ValueError:
+        records = json.loads(body, parse_constant=_refuse_constant, parse_float=_finite_float)
+    except (ValueError, RecursionError):
         return [], f"CollegeFootballData gave an answer that is not JSON for class {class_year}"
     if not isinstance(records, list) or not all(isinstance(item, dict) for item in records):
         return [], (
@@ -135,3 +137,10 @@ def _records(body: bytes, class_year: int) -> tuple[list[dict[str, Any]], str | 
 
 def _refuse_constant(name: str) -> None:
     raise ValueError(f"the constant {name} is not allowed")
+
+
+def _finite_float(text: str) -> float:
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError(f"the number {text} is too large")
+    return value

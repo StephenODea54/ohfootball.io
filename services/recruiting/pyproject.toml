@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "Private weekly snapshots of the recruiting data of CollegeFootballData for ohfootball.io"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "psycopg[binary]>=3.2,<4",
+]
+
+[project.scripts]
+ohfootball-recruiting = "ohfootball_recruiting.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
