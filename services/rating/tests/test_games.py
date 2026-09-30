@@ -84,5 +84,33 @@ class ChronologicalTests(unittest.TestCase):
         self.assertEqual([item.game_key for item in ordered], ["a", "b"])
 
 
+class StateTests(unittest.TestCase):
+    def test_tells_a_game_between_ohio_teams_from_one_against_another_state(self) -> None:
+        cases = (
+            (("OH", "OH"), (True, False)),
+            (("OH", "WV"), (False, True)),
+            (("WV", "OH"), (False, True)),
+            (("WV", "PA"), (False, False)),
+        )
+        for (state_a, state_b), expected in cases:
+            with self.subTest(states=(state_a, state_b)):
+                record = Game(
+                    game_key="g",
+                    season=2025,
+                    game_date=date(2025, 8, 1),
+                    team_a_key="a",
+                    team_a_name="A",
+                    team_b_key="b",
+                    team_b_name="B",
+                    team_a_result="W",
+                    team_a_state=state_a,
+                    team_b_state=state_b,
+                )
+                self.assertEqual((record.is_ohio_game, record.is_out_of_state_game), expected)
+
+    def test_a_team_is_an_ohio_team_by_default(self) -> None:
+        self.assertTrue(game("W").is_ohio_game)
+
+
 if __name__ == "__main__":
     unittest.main()

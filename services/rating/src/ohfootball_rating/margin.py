@@ -4,18 +4,24 @@ Each team has one rating for each season. The rating of team A minus the rating 
 an edge for the home team, is the margin that the model expects. After a game, each rating moves
 toward the margin that the game had, with both margins kept inside a cap. A logistic curve then
 turns the expected margin into a win probability.
+
+A game against a team from another state moves the Ohio team by a share of its normal change, and
+it moves a rating that the model keeps for the other team from its games against Ohio teams. Such
+a game gets a prediction, but it never shapes a slope. The other team is never ranked, and its
+rating appears only in the predictions of its games.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from itertools import groupby
 from math import exp
 
 from .games import Game, chronological
+from .out_of_state import OHIO, ImpliedRatings, OpeningEstimates
 
 RatingKey = tuple[int, str]
 # The final rating of each season that a program played, by season.
@@ -44,6 +50,14 @@ class MarginConfig:
     slope_seasons: int = 10
     bucket_games: int = 6
     fallback_slope: float = 0.10
+    # The values for a game against a team from another state. The Ohio team moves by
+    # other_state_weight of its normal change. A new program from another state opens at a mean
+    # over other_state_window_seasons earlier seasons, shrunk with other_state_shrinkage games of
+    # the mean of the division, which needs other_state_min_games games.
+    other_state_weight: float = 0.5
+    other_state_shrinkage: float = 20.0
+    other_state_window_seasons: int = 10
+    other_state_min_games: int = 30
 
     def __post_init__(self) -> None:
         if self.home_edge < 0:
@@ -70,6 +84,14 @@ class MarginConfig:
             raise ValueError("bucket_games cannot be negative")
         if self.fallback_slope <= 0:
             raise ValueError("fallback_slope must be greater than zero")
+        if not 0.0 <= self.other_state_weight <= 1.0:
+            raise ValueError("other_state_weight must be between zero and one")
+        if self.other_state_shrinkage < 0:
+            raise ValueError("other_state_shrinkage cannot be negative")
+        if self.other_state_window_seasons < 1:
+            raise ValueError("other_state_window_seasons must be at least one")
+        if self.other_state_min_games < 1:
+            raise ValueError("other_state_min_games must be at least one")
 
     def clip_margin(self, margin: float) -> float:
         """Keep a margin inside the cap on both sides."""
@@ -106,6 +128,21 @@ class MarginPrediction:
     is_playoff_game: bool
     team_a_games_played: int
     team_b_games_played: int
+    # False for a game against a team from another state. Such a game never shapes a slope and
+    # is never scored.
+    is_ohio_game: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class OtherStateResult:
+    """What the backtest knows of the teams from other states. None of it is ranked. A rating here
+    appears only in the predictions of the games of the team."""
+
+    ratings: Mapping[RatingKey, float] = field(default_factory=dict)
+    program_history: ProgramHistory = field(default_factory=dict)
+    games_played: Mapping[RatingKey, int] = field(default_factory=dict)
+    openings: Mapping[int, OpeningEstimates] = field(default_factory=dict)
+    implied: ImpliedRatings = field(default_factory=ImpliedRatings)
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +153,9 @@ class MarginBacktestResult:
     games_played: Mapping[RatingKey, int]
     scored_games: Mapping[RatingKey, int]
     slopes: Mapping[int, Mapping[str, float]]
+    # The ratings, the history and the openings of the teams from other states. The other fields
+    # hold Ohio teams only.
+    other_state: OtherStateResult = field(default_factory=OtherStateResult)
 
 
 def win_probability(predicted_margin: float, slope: float) -> float:
@@ -232,11 +272,12 @@ def fit_slopes(
 ) -> dict[str, float]:
     """Fit one slope for each group on the seasons in the slope window before a season.
 
-    A season never uses its own games, so every probability in a backtest is out of sample.
+    A season never uses its own games, so every probability in a backtest is out of sample. A game
+    against a team from another state gets a probability from these slopes but never shapes them.
     """
     rows: defaultdict[str, list[tuple[float, float]]] = defaultdict(list)
     for prediction in predictions:
-        if prediction.actual_team_a_score is None:
+        if prediction.actual_team_a_score is None or not prediction.is_ohio_game:
             continue
         if season - config.slope_seasons <= prediction.season < season:
             rows[prediction.bucket].append(
@@ -269,93 +310,286 @@ def backtest(games: Iterable[Game], config: MarginConfig | None = None) -> Margi
     win by more than the cap that also wins by more than the cap is no surprise. Without the cap on
     the expected margin, such a team could only lose rating. The expected margin that gives the win
     probability is not clipped.
+
+    A game against a team from another state is replayed in _replay_other_state_game. Every game
+    must have at least one Ohio team.
     """
     config = config or MarginConfig()
-    ratings: dict[RatingKey, float] = {}
-    history: defaultdict[str, dict[int, float]] = defaultdict(dict)
-    games_played: defaultdict[RatingKey, int] = defaultdict(int)
-    scored_games: defaultdict[RatingKey, int] = defaultdict(int)
+    ledger = _Ledger()
     replayed: list[_Replayed] = []
 
     rateable = chronological(game for game in games if game.is_rateable)
-    for _, day_iterator in groupby(rateable, key=lambda game: (game.season, game.game_date)):
-        day = tuple(day_iterator)
-        opening: dict[RatingKey, float] = {}
-        programs: dict[RatingKey, str] = {}
-        changes: defaultdict[RatingKey, float] = defaultdict(float)
-        played_today: defaultdict[RatingKey, int] = defaultdict(int)
-        scored_today: defaultdict[RatingKey, int] = defaultdict(int)
-
-        for game in day:
-            team_a = (game.season, game.team_a_key)
-            team_b = (game.season, game.team_b_key)
-            for team, program, division in (
-                (team_a, game.team_a_program_id or game.team_a_key, game.team_a_division),
-                (team_b, game.team_b_program_id or game.team_b_key, game.team_b_division),
-            ):
-                programs[team] = program
-                if team not in ratings and team not in opening:
-                    opening[team] = opening_rating(
-                        season=game.season,
-                        program_id=program,
-                        division=division,
-                        program_history=history,
-                        config=config,
-                    )
-            rating_a = ratings[team_a] if team_a in ratings else opening[team_a]
-            rating_b = ratings[team_b] if team_b in ratings else opening[team_b]
-            predicted_margin = (
-                rating_a - rating_b + config.home_edge * (game.is_team_a_home - game.is_team_b_home)
-            )
-            replayed.append(
-                _Replayed(
-                    game=game,
-                    team_a_rating=rating_a,
-                    team_b_rating=rating_b,
-                    predicted_margin=predicted_margin,
-                    bucket=bucket(
-                        games_played[team_a],
-                        games_played[team_b],
-                        game.is_playoff_game,
-                        config,
-                    ),
-                    team_a_games_played=games_played[team_a],
-                    team_b_games_played=games_played[team_b],
-                )
-            )
-            if game.team_a_score is not None and game.team_b_score is not None:
-                surprise = config.clip_margin(
-                    game.team_a_score - game.team_b_score
-                ) - config.clip_margin(predicted_margin)
-                changes[team_a] += config.learning_weight(scored_games[team_a]) * surprise
-                changes[team_b] -= config.learning_weight(scored_games[team_b]) * surprise
-                scored_today[team_a] += 1
-                scored_today[team_b] += 1
+    for (season, _), day_iterator in groupby(
+        rateable, key=lambda game: (game.season, game.game_date)
+    ):
+        if season != ledger.season:
+            ledger.start_season(season, config)
+        day = _Day()
+        for game in day_iterator:
+            if game.is_ohio_game:
+                replayed.append(_replay_ohio_game(game, ledger, day, config))
+            elif game.is_out_of_state_game:
+                row = _replay_other_state_game(game, ledger, day, config)
+                if row is not None:
+                    replayed.append(row)
             else:
-                # A game without scores moves no rating, but its teams still get a rating and a
-                # season in the history of their programs.
-                changes.setdefault(team_a, 0.0)
-                changes.setdefault(team_b, 0.0)
-            played_today[team_a] += 1
-            played_today[team_b] += 1
-
-        for team, change in changes.items():
-            ratings[team] = (ratings[team] if team in ratings else opening[team]) + change
-            history[programs[team]][team[0]] = ratings[team]
-        for team, count in played_today.items():
-            games_played[team] += count
-        for team, count in scored_today.items():
-            scored_games[team] += count
+                raise ValueError(f"game {game.game_key} has no Ohio team")
+        day.apply(ledger)
 
     predictions, slopes = _with_probabilities(replayed, config)
     return MarginBacktestResult(
         predictions=predictions,
-        ratings=dict(ratings),
-        program_history={program: dict(seasons) for program, seasons in history.items()},
-        games_played=dict(games_played),
-        scored_games=dict(scored_games),
+        ratings=dict(ledger.ratings),
+        program_history={program: dict(seasons) for program, seasons in ledger.history.items()},
+        games_played=dict(ledger.games_played),
+        scored_games=dict(ledger.scored_games),
         slopes=slopes,
+        other_state=OtherStateResult(
+            ratings=dict(ledger.other_ratings),
+            program_history={
+                program: dict(seasons) for program, seasons in ledger.other_history.items()
+            },
+            games_played=dict(ledger.other_games_played),
+            openings=dict(ledger.openings),
+            implied=ledger.implied,
+        ),
     )
+
+
+@dataclass(slots=True)
+class _Ledger:
+    """The state of the replay between two dates."""
+
+    ratings: dict[RatingKey, float] = field(default_factory=dict)
+    history: defaultdict[str, dict[int, float]] = field(default_factory=lambda: defaultdict(dict))
+    games_played: defaultdict[RatingKey, int] = field(default_factory=lambda: defaultdict(int))
+    scored_games: defaultdict[RatingKey, int] = field(default_factory=lambda: defaultdict(int))
+    other_ratings: dict[RatingKey, float] = field(default_factory=dict)
+    other_history: defaultdict[str, dict[int, float]] = field(
+        default_factory=lambda: defaultdict(dict)
+    )
+    other_games_played: defaultdict[RatingKey, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
+    implied: ImpliedRatings = field(default_factory=ImpliedRatings)
+    openings: dict[int, OpeningEstimates] = field(default_factory=dict)
+    season: int | None = None
+
+    def start_season(self, season: int, config: MarginConfig) -> None:
+        """Fix the openings of new programs from other states for the whole season."""
+        self.season = season
+        self.openings[season] = self.implied.estimates(
+            season,
+            window_seasons=config.other_state_window_seasons,
+            min_games=config.other_state_min_games,
+            shrinkage=config.other_state_shrinkage,
+        )
+
+
+@dataclass(slots=True)
+class _Day:
+    """The changes of one date. They apply after every game of the date is replayed."""
+
+    opening: dict[RatingKey, float] = field(default_factory=dict)
+    programs: dict[RatingKey, str] = field(default_factory=dict)
+    changes: defaultdict[RatingKey, float] = field(default_factory=lambda: defaultdict(float))
+    played_today: defaultdict[RatingKey, int] = field(default_factory=lambda: defaultdict(int))
+    scored_today: defaultdict[RatingKey, int] = field(default_factory=lambda: defaultdict(int))
+    other_programs: dict[RatingKey, str] = field(default_factory=dict)
+    other_changes: defaultdict[RatingKey, float] = field(default_factory=lambda: defaultdict(float))
+    other_played_today: defaultdict[RatingKey, int] = field(
+        default_factory=lambda: defaultdict(int)
+    )
+
+    def apply(self, ledger: _Ledger) -> None:
+        for team, change in self.changes.items():
+            ledger.ratings[team] = (
+                ledger.ratings[team] if team in ledger.ratings else self.opening[team]
+            ) + change
+            ledger.history[self.programs[team]][team[0]] = ledger.ratings[team]
+        for team, count in self.played_today.items():
+            ledger.games_played[team] += count
+        for team, count in self.scored_today.items():
+            ledger.scored_games[team] += count
+        for team, change in self.other_changes.items():
+            ledger.other_ratings[team] += change
+        for team, count in self.other_played_today.items():
+            ledger.other_games_played[team] += count
+        for team in self.other_changes:
+            ledger.other_history[self.other_programs[team]][team[0]] = ledger.other_ratings[team]
+
+
+def _ohio_rating(
+    team: RatingKey,
+    program: str,
+    division: int | None,
+    ledger: _Ledger,
+    day: _Day,
+    config: MarginConfig,
+) -> float:
+    """Give the rating of an Ohio team at the start of the date, and open it in its first game."""
+    day.programs[team] = program
+    if team not in ledger.ratings and team not in day.opening:
+        day.opening[team] = opening_rating(
+            season=team[0],
+            program_id=program,
+            division=division,
+            program_history=ledger.history,
+            config=config,
+        )
+    return ledger.ratings[team] if team in ledger.ratings else day.opening[team]
+
+
+def _replay_ohio_game(game: Game, ledger: _Ledger, day: _Day, config: MarginConfig) -> _Replayed:
+    team_a = (game.season, game.team_a_key)
+    team_b = (game.season, game.team_b_key)
+    rating_a = _ohio_rating(
+        team_a, game.team_a_program_id or game.team_a_key, game.team_a_division, ledger, day, config
+    )
+    rating_b = _ohio_rating(
+        team_b, game.team_b_program_id or game.team_b_key, game.team_b_division, ledger, day, config
+    )
+    predicted_margin = (
+        rating_a - rating_b + config.home_edge * (game.is_team_a_home - game.is_team_b_home)
+    )
+    row = _Replayed(
+        game=game,
+        team_a_rating=rating_a,
+        team_b_rating=rating_b,
+        predicted_margin=predicted_margin,
+        bucket=bucket(
+            ledger.games_played[team_a],
+            ledger.games_played[team_b],
+            game.is_playoff_game,
+            config,
+        ),
+        team_a_games_played=ledger.games_played[team_a],
+        team_b_games_played=ledger.games_played[team_b],
+    )
+    if game.team_a_score is not None and game.team_b_score is not None:
+        surprise = config.clip_margin(game.team_a_score - game.team_b_score) - config.clip_margin(
+            predicted_margin
+        )
+        day.changes[team_a] += config.learning_weight(ledger.scored_games[team_a]) * surprise
+        day.changes[team_b] -= config.learning_weight(ledger.scored_games[team_b]) * surprise
+        day.scored_today[team_a] += 1
+        day.scored_today[team_b] += 1
+    else:
+        # A game without scores moves no rating, but its teams still get a rating and a season
+        # in the history of their programs.
+        day.changes.setdefault(team_a, 0.0)
+        day.changes.setdefault(team_b, 0.0)
+    day.played_today[team_a] += 1
+    day.played_today[team_b] += 1
+    return row
+
+
+def _replay_other_state_game(
+    game: Game, ledger: _Ledger, day: _Day, config: MarginConfig
+) -> _Replayed | None:
+    """Replay a game between an Ohio team and a team from another state.
+
+    The Ohio team moves by other_state_weight of its normal change, and the game counts as a game
+    played and scored for it. The other team moves by its full change against the same expected
+    margin. The game adds the rating that it implied for the other team to the openings of later
+    seasons. A game without both scores is left out.
+    """
+    if game.team_a_score is None or game.team_b_score is None:
+        return None
+    ohio_is_a = game.team_a_state == OHIO
+    if ohio_is_a:
+        ohio_key, ohio_program, ohio_division = (
+            game.team_a_key,
+            game.team_a_program_id or game.team_a_key,
+            game.team_a_division,
+        )
+        other_key, other_program, other_state = (
+            game.team_b_key,
+            game.team_b_program_id or game.team_b_key,
+            game.team_b_state,
+        )
+        ohio_home, other_home = game.is_team_a_home, game.is_team_b_home
+        margin = game.team_a_score - game.team_b_score
+    else:
+        ohio_key, ohio_program, ohio_division = (
+            game.team_b_key,
+            game.team_b_program_id or game.team_b_key,
+            game.team_b_division,
+        )
+        other_key, other_program, other_state = (
+            game.team_a_key,
+            game.team_a_program_id or game.team_a_key,
+            game.team_a_state,
+        )
+        ohio_home, other_home = game.is_team_b_home, game.is_team_a_home
+        margin = game.team_b_score - game.team_a_score
+    ohio = (game.season, ohio_key)
+    other = (game.season, other_key)
+    capped = config.clip_margin(margin)
+    edge = config.home_edge * (ohio_home - other_home)
+    ohio_rating = _ohio_rating(ohio, ohio_program, ohio_division, ledger, day, config)
+    if other not in ledger.other_ratings:
+        ledger.other_ratings[other] = _other_opening(
+            game.season,
+            other_program,
+            other_state,
+            ohio_division,
+            ledger.other_history,
+            ledger.openings[game.season],
+            config,
+        )
+        ledger.other_history[other_program][game.season] = ledger.other_ratings[other]
+    day.other_programs[other] = other_program
+    other_rating = ledger.other_ratings[other]
+    predicted = ohio_rating - other_rating + edge
+    if ohio_division is not None:
+        ledger.implied.record(game.season, other_state, ohio_division, ohio_rating + edge - capped)
+    surprise = capped - config.clip_margin(predicted)
+    ohio_played = ledger.games_played[ohio]
+    other_played = ledger.other_games_played[other]
+    day.changes[ohio] += (
+        config.other_state_weight * config.learning_weight(ledger.scored_games[ohio]) * surprise
+    )
+    day.scored_today[ohio] += 1
+    day.played_today[ohio] += 1
+    day.other_changes[other] -= config.learning_weight(other_played) * surprise
+    day.other_played_today[other] += 1
+
+    rating_a, rating_b = (ohio_rating, other_rating) if ohio_is_a else (other_rating, ohio_rating)
+    played_a, played_b = (ohio_played, other_played) if ohio_is_a else (other_played, ohio_played)
+    return _Replayed(
+        game=game,
+        team_a_rating=rating_a,
+        team_b_rating=rating_b,
+        predicted_margin=(
+            rating_a - rating_b + config.home_edge * (game.is_team_a_home - game.is_team_b_home)
+        ),
+        bucket=bucket(played_a, played_b, game.is_playoff_game, config),
+        team_a_games_played=played_a,
+        team_b_games_played=played_b,
+    )
+
+
+def _other_opening(
+    season: int,
+    program: str,
+    state: str,
+    ohio_division: int | None,
+    history: ProgramHistory,
+    openings: OpeningEstimates,
+    config: MarginConfig,
+) -> float:
+    """Give the rating a team from another state opens a season with.
+
+    A program with an earlier season against Ohio teams carries its rating by the same rule as an
+    Ohio program, without a division prior. A new program opens at the learned value for its state
+    and the division of its Ohio opponent.
+    """
+    if any(played < season for played in history.get(program, {})):
+        return opening_rating(
+            season=season, program_id=program, division=None, program_history=history, config=config
+        )
+    return openings.opening(state, ohio_division)
 
 
 def _with_probabilities(
@@ -390,39 +624,42 @@ def predict(
     """Predict games that the backtest did not rate, and change no rating.
 
     A team that has not played yet this season opens at the rating that its program history
-    gives. The slopes of a season come from the slope window before it, as in the backtest.
+    gives. The slopes of a season come from the slope window before it, as in the backtest. A game
+    against a team from another state gets a prediction too, from the rating that the backtest
+    keeps for that team, or from the rating it opens with.
     """
     config = config or MarginConfig()
     slopes: dict[int, Mapping[str, float]] = {}
     predictions: list[MarginPrediction] = []
     for game in chronological(games):
+        if not (game.is_ohio_game or game.is_out_of_state_game):
+            raise ValueError(f"game {game.game_key} has no Ohio team")
         if game.season not in slopes:
             if game.season in result.slopes:
                 slopes[game.season] = result.slopes[game.season]
             else:
                 slopes[game.season] = fit_slopes(result.predictions, game.season, config)
-        team_a = (game.season, game.team_a_key)
-        team_b = (game.season, game.team_b_key)
-        rating_a = result.ratings.get(team_a)
-        if rating_a is None:
-            rating_a = opening_rating(
-                season=game.season,
-                program_id=game.team_a_program_id or game.team_a_key,
-                division=game.team_a_division,
-                program_history=result.program_history,
-                config=config,
-            )
-        rating_b = result.ratings.get(team_b)
-        if rating_b is None:
-            rating_b = opening_rating(
-                season=game.season,
-                program_id=game.team_b_program_id or game.team_b_key,
-                division=game.team_b_division,
-                program_history=result.program_history,
-                config=config,
-            )
-        played_a = result.games_played.get(team_a, 0)
-        played_b = result.games_played.get(team_b, 0)
+        ohio_division = game.team_a_division if game.team_a_state == OHIO else game.team_b_division
+        rating_a, played_a = _pregame(
+            game.season,
+            game.team_a_key,
+            game.team_a_program_id or game.team_a_key,
+            game.team_a_state,
+            game.team_a_division,
+            ohio_division,
+            result,
+            config,
+        )
+        rating_b, played_b = _pregame(
+            game.season,
+            game.team_b_key,
+            game.team_b_program_id or game.team_b_key,
+            game.team_b_state,
+            game.team_b_division,
+            ohio_division,
+            result,
+            config,
+        )
         group = bucket(played_a, played_b, game.is_playoff_game, config)
         row = _Replayed(
             game=game,
@@ -438,6 +675,44 @@ def predict(
         slope = slopes[game.season].get(group, config.fallback_slope)
         predictions.append(_prediction(row, slope, is_played=False))
     return tuple(predictions)
+
+
+def _pregame(
+    season: int,
+    team_key: str,
+    program: str,
+    state: str,
+    division: int | None,
+    ohio_division: int | None,
+    result: MarginBacktestResult,
+    config: MarginConfig,
+) -> tuple[float, int]:
+    """Give the rating and the games played of one side of an upcoming game."""
+    key = (season, team_key)
+    if state == OHIO:
+        rating = result.ratings.get(key)
+        if rating is None:
+            rating = opening_rating(
+                season=season,
+                program_id=program,
+                division=division,
+                program_history=result.program_history,
+                config=config,
+            )
+        return rating, result.games_played.get(key, 0)
+    other = result.other_state
+    rating = other.ratings.get(key)
+    if rating is None:
+        openings = other.openings.get(season) or other.implied.estimates(
+            season,
+            window_seasons=config.other_state_window_seasons,
+            min_games=config.other_state_min_games,
+            shrinkage=config.other_state_shrinkage,
+        )
+        rating = _other_opening(
+            season, program, state, ohio_division, other.program_history, openings, config
+        )
+    return rating, other.games_played.get(key, 0)
 
 
 def _prediction(row: _Replayed, slope: float, *, is_played: bool) -> MarginPrediction:
@@ -466,4 +741,5 @@ def _prediction(row: _Replayed, slope: float, *, is_played: bool) -> MarginPredi
         is_playoff_game=game.is_playoff_game,
         team_a_games_played=row.team_a_games_played,
         team_b_games_played=row.team_b_games_played,
+        is_ohio_game=game.is_ohio_game,
     )

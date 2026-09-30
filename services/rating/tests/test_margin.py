@@ -40,6 +40,8 @@ def game(
     is_team_b_home: bool = False,
     is_playoff_game: bool = False,
     notes: str | None = None,
+    team_a_state: str = "OH",
+    team_b_state: str = "OH",
 ) -> Game:
     return Game(
         game_key=game_key,
@@ -60,6 +62,8 @@ def game(
         team_b_score=scores[1] if scores else None,
         notes=notes,
         is_playoff_game=is_playoff_game,
+        team_a_state=team_a_state,
+        team_b_state=team_b_state,
     )
 
 
@@ -152,6 +156,10 @@ class ConfigTests(unittest.TestCase):
             "slope_seasons": 0,
             "bucket_games": -1,
             "fallback_slope": 0.0,
+            "other_state_weight": 1.5,
+            "other_state_shrinkage": -1.0,
+            "other_state_window_seasons": 0,
+            "other_state_min_games": 0,
         }
         for field, value in cases.items():
             with self.subTest(field=field):
@@ -721,6 +729,452 @@ class PredictTests(unittest.TestCase):
         self.assertEqual(second.bucket, "games_0")
         self.assertEqual(second.slope, fit_slopes(result.predictions, 2013, CONFIG)["games_0"])
         self.assertNotEqual(second.slope, CONFIG.fallback_slope)
+
+
+DAY = date(2025, 8, 22)
+WEEK = timedelta(days=7)
+
+
+def other(game_key, game_date, ohio, team, result, *, scores=None, state="WV", **options):
+    """Give a game of an Ohio team, as team A, against a team from another state."""
+    return game(
+        game_key,
+        game_date,
+        ohio,
+        team,
+        result,
+        scores=scores,
+        team_b_state=state,
+        **options,
+    )
+
+
+class OtherStateTests(unittest.TestCase):
+    def test_a_game_gets_a_prediction_and_moves_the_ohio_team_by_half(self) -> None:
+        result = backtest(
+            [
+                other(
+                    "one",
+                    DAY,
+                    "a",
+                    "w",
+                    "W",
+                    scores=(20, 0),
+                    team_a_division=4,
+                    is_team_a_home=True,
+                )
+            ]
+        )
+
+        (only,) = result.predictions
+        self.assertFalse(only.is_ohio_game)
+        self.assertEqual((only.team_a_rating, only.team_b_rating), (0.0, 0.0))
+        self.assertEqual(only.predicted_margin, 1.5)
+        self.assertEqual(only.bucket, "games_0")
+        self.assertEqual((only.actual_margin, only.actual_team_a_score), (20, 1.0))
+        surprise = 20 - 1.5
+        self.assertAlmostEqual(
+            result.ratings[(2025, "a")], 0.5 * CONFIG.learning_weight(0) * surprise
+        )
+        self.assertAlmostEqual(
+            result.other_state.ratings[(2025, "w")], -CONFIG.learning_weight(0) * surprise
+        )
+        self.assertNotIn((2025, "w"), result.ratings)
+        self.assertNotIn("w", result.program_history)
+        self.assertEqual(set(result.other_state.program_history), {"w"})
+        self.assertEqual(result.games_played[(2025, "a")], 1)
+        self.assertEqual(result.scored_games[(2025, "a")], 1)
+        self.assertEqual(result.other_state.games_played[(2025, "w")], 1)
+        self.assertNotIn((2025, "w"), result.games_played)
+
+    def test_the_prediction_keeps_the_order_of_the_teams(self) -> None:
+        as_b = backtest(
+            [
+                game(
+                    "one",
+                    DAY,
+                    "w",
+                    "a",
+                    "L",
+                    scores=(0, 20),
+                    team_a_state="WV",
+                    team_b_division=4,
+                    is_team_b_home=True,
+                )
+            ]
+        )
+        as_a = backtest(
+            [
+                other(
+                    "one",
+                    DAY,
+                    "a",
+                    "w",
+                    "W",
+                    scores=(20, 0),
+                    team_a_division=4,
+                    is_team_a_home=True,
+                )
+            ]
+        )
+
+        (only,) = as_b.predictions
+        self.assertEqual(only.predicted_margin, -1.5)
+        self.assertEqual(only.team_b_rating, 0.0)
+        self.assertEqual(as_b.ratings, as_a.ratings)
+        self.assertEqual(as_b.other_state.ratings, as_a.other_state.ratings)
+
+    def test_a_game_counts_for_the_learning_weight_and_the_slope_group(self) -> None:
+        result = backtest(
+            [
+                other("one", DAY, "a", "w", "W", scores=(10, 0)),
+                other("two", DAY, "b", "v", "W", scores=(10, 0)),
+                game("three", DAY + WEEK, "a", "b", "W", scores=(10, 0)),
+            ]
+        )
+
+        third = result.predictions[-1]
+        self.assertEqual((third.team_a_games_played, third.team_b_games_played), (1, 1))
+        self.assertEqual(third.bucket, "games_1")
+        before = result.predictions[-1].team_a_rating
+        self.assertAlmostEqual(before, 0.5 * CONFIG.learning_weight(0) * 10)
+        surprise = 10 - (third.team_a_rating - third.team_b_rating)
+        self.assertAlmostEqual(
+            result.ratings[(2025, "a")], before + CONFIG.learning_weight(1) * surprise
+        )
+
+    def test_a_program_carries_its_rating_into_the_next_season(self) -> None:
+        result = backtest(
+            [
+                other(
+                    "one",
+                    date(2024, 8, 23),
+                    "a",
+                    "w24",
+                    "W",
+                    season=2024,
+                    scores=(21, 0),
+                    team_b_program_id="w",
+                ),
+                other("two", DAY, "a", "w25", "W", scores=(7, 0), team_b_program_id="w"),
+            ]
+        )
+
+        final_2024 = result.other_state.program_history["w"][2024]
+        self.assertAlmostEqual(result.predictions[1].team_b_rating, final_2024)
+        self.assertEqual(set(result.other_state.program_history["w"]), {2024, 2025})
+
+    def test_a_new_program_opens_at_the_learned_estimate(self) -> None:
+        config = MarginConfig(other_state_min_games=1, other_state_shrinkage=1.0)
+        result = backtest(
+            [
+                other(
+                    "one",
+                    date(2024, 8, 23),
+                    "a",
+                    "w1",
+                    "W",
+                    season=2024,
+                    scores=(10, 0),
+                    team_a_division=4,
+                    is_team_a_home=True,
+                ),
+                other(
+                    "two",
+                    date(2024, 8, 23),
+                    "b",
+                    "p1",
+                    "L",
+                    season=2024,
+                    scores=(0, 6),
+                    state="PA",
+                    team_a_division=4,
+                ),
+                other("three", DAY, "c", "w2", "W", scores=(3, 0), team_a_division=4),
+                other("four", DAY, "d", "k1", "W", scores=(3, 0), state="KY", team_a_division=4),
+                other("five", DAY, "e", "w3", "W", scores=(3, 0), team_a_division=3),
+            ],
+            config,
+        )
+
+        # The Ohio teams open at 0, so the games implied 0 + 1.5 - 10 for w1, at the home of a,
+        # and +6 for p1.
+        mean = (-8.5 + 6.0) / 2
+        openings = {p.game_key: p.team_b_rating for p in result.predictions if p.season == 2025}
+        self.assertEqual(openings["three"], (-8.5 + 1.0 * mean) / (1 + 1.0))
+        self.assertEqual(openings["four"], mean)
+        self.assertEqual(openings["five"], 0.0)
+        self.assertEqual(result.other_state.openings[2025].division_means, {4: mean})
+
+    def test_the_division_is_the_one_of_the_ohio_team_when_it_is_team_b(self) -> None:
+        config = MarginConfig(other_state_min_games=1)
+        result = backtest(
+            [
+                game(
+                    "one",
+                    DAY,
+                    "w",
+                    "a",
+                    "L",
+                    scores=(0, 10),
+                    team_a_state="WV",
+                    team_a_division=2,
+                    team_b_division=4,
+                )
+            ],
+            config,
+        )
+        estimates = result.other_state.implied.estimates(
+            2026, window_seasons=10, min_games=1, shrinkage=0.0
+        )
+
+        self.assertEqual(estimates.division_means, {4: -10.0})
+
+    def test_the_other_team_moves_by_its_own_learning_weight(self) -> None:
+        result = backtest(
+            [
+                other("one", DAY, "a", "w", "W", scores=(10, 0)),
+                other("two", DAY + WEEK, "b", "w", "W", scores=(10, 0)),
+            ]
+        )
+
+        first, second = result.predictions
+        change_one = -CONFIG.learning_weight(0) * (10 - first.predicted_margin)
+        change_two = -CONFIG.learning_weight(1) * (10 - second.predicted_margin)
+        self.assertAlmostEqual(second.team_b_rating, change_one)
+        self.assertAlmostEqual(result.other_state.ratings[(2025, "w")], change_one + change_two)
+
+    def test_the_group_of_such_a_game_reads_the_games_of_the_other_team(self) -> None:
+        result = backtest(
+            [
+                game("one", DAY, "a", "b", "W", scores=(10, 0)),
+                game("two", DAY + WEEK, "a", "c", "W", scores=(10, 0)),
+                game("three", DAY + 2 * WEEK, "a", "d", "W", scores=(10, 0)),
+                other("four", DAY + 3 * WEEK, "a", "w", "W", scores=(10, 0)),
+            ]
+        )
+
+        visit = result.predictions[-1]
+        self.assertEqual((visit.team_a_games_played, visit.team_b_games_played), (3, 0))
+        self.assertEqual(visit.bucket, "games_0")
+
+    def test_the_learned_opening_reads_only_earlier_seasons(self) -> None:
+        config = MarginConfig(other_state_min_games=1)
+        result = backtest(
+            [
+                other("one", DAY, "a", "w1", "W", scores=(10, 0), team_a_division=4),
+                other("two", DAY + WEEK, "b", "w2", "W", scores=(10, 0), team_a_division=4),
+            ],
+            config,
+        )
+
+        self.assertEqual(result.predictions[1].team_b_rating, 0.0)
+
+    def test_an_ohio_team_without_a_division_moves_and_implies_nothing(self) -> None:
+        config = MarginConfig(other_state_min_games=1)
+        result = backtest([other("one", DAY, "a", "w", "W", scores=(10, 0))], config)
+        estimates = result.other_state.implied.estimates(
+            2026, window_seasons=10, min_games=1, shrinkage=0.0
+        )
+
+        self.assertGreater(result.ratings[(2025, "a")], 0.0)
+        self.assertEqual(estimates.division_means, {})
+
+    def test_a_game_without_scores_is_left_out(self) -> None:
+        result = backtest([other("one", DAY, "a", "w", "W")])
+
+        self.assertEqual(result.predictions, ())
+        self.assertEqual(result.ratings, {})
+        self.assertEqual(result.other_state.ratings, {})
+        self.assertEqual(result.games_played, {})
+
+    def test_a_game_without_an_ohio_team_is_refused(self) -> None:
+        stray = game("one", DAY, "v", "w", "W", scores=(3, 0), team_a_state="PA", team_b_state="WV")
+
+        with self.assertRaisesRegex(ValueError, "has no Ohio team"):
+            backtest([stray])
+        with self.assertRaisesRegex(ValueError, "has no Ohio team"):
+            predict([stray], backtest([]))
+
+    def test_games_on_one_date_use_the_ratings_of_the_start_of_the_date(self) -> None:
+        result = backtest(
+            [
+                other("one", DAY, "a", "w", "W", scores=(30, 0)),
+                game("two", DAY, "a", "b", "W", scores=(30, 0)),
+                other("three", DAY, "c", "w", "W", scores=(30, 0)),
+            ]
+        )
+
+        by_key = {p.game_key: p for p in result.predictions}
+        self.assertEqual(by_key["one"].team_a_rating, 0.0)
+        self.assertEqual(by_key["two"].team_a_rating, 0.0)
+        self.assertEqual(by_key["three"].team_b_rating, 0.0)
+        self.assertEqual(result.other_state.games_played[(2025, "w")], 2)
+        self.assertEqual(result.games_played[(2025, "a")], 2)
+
+    def test_the_cap_applies_to_the_expected_margin_of_such_a_game(self) -> None:
+        config = MarginConfig(margin_cap=10.0)
+        result = backtest(
+            [other("one", DAY, "a", "w", "W", scores=(30, 0), team_a_division=1)], config
+        )
+
+        # a opens at 36, far more than the cap, and wins by more than the cap.
+        self.assertEqual(result.ratings[(2025, "a")], 36.0)
+        self.assertEqual(result.other_state.ratings[(2025, "w")], 0.0)
+
+    def test_an_ohio_and_an_other_state_program_with_one_id_keep_apart(self) -> None:
+        result = backtest(
+            [
+                other(
+                    "one",
+                    DAY,
+                    "a",
+                    "w",
+                    "W",
+                    scores=(20, 0),
+                    team_a_program_id="x",
+                    team_b_program_id="x",
+                ),
+            ]
+        )
+
+        self.assertEqual(set(result.program_history), {"x"})
+        self.assertEqual(set(result.other_state.program_history), {"x"})
+        self.assertGreater(result.program_history["x"][2025], 0.0)
+        self.assertLess(result.other_state.program_history["x"][2025], 0.0)
+
+    def test_predictions_get_a_slope_but_do_not_shape_the_slopes(self) -> None:
+        ohio = league(range(2000, 2013))
+        # A team that plays only teams from other states changes no rating of the league.
+        visits = [
+            other(
+                f"{season}-z",
+                date(season, 8, 29),
+                "z",
+                f"w{season}",
+                "W",
+                season=season,
+                scores=(28, 7),
+                team_b_program_id="w",
+            )
+            for season in range(2000, 2013)
+        ]
+        with_visits = backtest(ohio + visits)
+        without = backtest(ohio)
+
+        self.assertEqual(with_visits.slopes, without.slopes)
+        for prediction in with_visits.predictions:
+            if not prediction.is_ohio_game:
+                slopes = with_visits.slopes[prediction.season]
+                self.assertEqual(
+                    prediction.slope, slopes.get(prediction.bucket, CONFIG.fallback_slope)
+                )
+
+    def test_fit_slopes_leaves_out_a_game_against_another_state(self) -> None:
+        rows = [
+            prediction(2024, margin, 1.0 if margin > 0 else 0.0, "games_0")
+            for margin in (-20, -8, -3, 2, 5, 12, 25)
+        ]
+        stray = replace(prediction(2024, -30, 1.0, "games_0"), is_ohio_game=False)
+
+        self.assertEqual(fit_slopes(rows + [stray], 2025, CONFIG), fit_slopes(rows, 2025, CONFIG))
+
+    def test_every_scored_game_of_an_ohio_team_has_a_prediction(self) -> None:
+        games = league(range(2020, 2023)) + [
+            other(f"{season}-x", date(season, 9, 1), "a", "w", "W", season=season, scores=(14, 7))
+            for season in range(2020, 2023)
+        ]
+        predicted = {p.game_key for p in backtest(games).predictions}
+
+        self.assertTrue({g.game_key for g in games if g.team_a_score is not None} <= predicted)
+
+
+class OtherStatePredictTests(unittest.TestCase):
+    def test_uses_the_rating_of_the_team_from_the_other_state(self) -> None:
+        result = backtest([other("one", DAY, "a", "w", "W", scores=(20, 0))])
+        (upcoming,) = predict([other("two", DAY + WEEK, "a", "w", "unknown")], result)
+
+        self.assertFalse(upcoming.is_ohio_game)
+        self.assertEqual(upcoming.team_b_rating, result.other_state.ratings[(2025, "w")])
+        self.assertEqual(upcoming.team_a_rating, result.ratings[(2025, "a")])
+        self.assertEqual((upcoming.team_a_games_played, upcoming.team_b_games_played), (1, 1))
+
+    def test_a_new_program_opens_from_the_estimates_of_its_season(self) -> None:
+        config = MarginConfig(other_state_min_games=1)
+        result = backtest(
+            [other("one", DAY, "a", "w", "W", season=2025, scores=(10, 0), team_a_division=4)],
+            config,
+        )
+        this_season, next_season = predict(
+            [
+                other("two", DAY + WEEK, "b", "v", "unknown", team_a_division=4),
+                other(
+                    "three", date(2026, 8, 28), "b", "u", "unknown", season=2026, team_a_division=4
+                ),
+            ],
+            result,
+            config,
+        )
+
+        self.assertEqual(this_season.team_b_rating, 0.0)
+        self.assertEqual(next_season.team_b_rating, -10.0)
+
+    def test_a_new_program_as_team_a_opens_for_the_division_of_the_ohio_team(self) -> None:
+        config = MarginConfig(other_state_min_games=1, other_state_shrinkage=0.0)
+        result = backtest(
+            [
+                other(
+                    "one",
+                    date(2024, 8, 23),
+                    "a",
+                    "w",
+                    "W",
+                    season=2024,
+                    scores=(10, 0),
+                    team_a_division=4,
+                )
+            ],
+            config,
+        )
+        (upcoming,) = predict(
+            [
+                game(
+                    "two",
+                    DAY,
+                    "v",
+                    "b",
+                    "unknown",
+                    team_a_state="WV",
+                    team_a_division=2,
+                    team_b_division=4,
+                )
+            ],
+            result,
+            config,
+        )
+
+        self.assertEqual(upcoming.team_a_rating, -10.0)
+
+    def test_a_returning_program_opens_from_its_history(self) -> None:
+        result = backtest([other("one", DAY, "a", "w", "W", scores=(20, 0), team_b_program_id="w")])
+        (upcoming,) = predict(
+            [
+                other(
+                    "two",
+                    date(2026, 8, 28),
+                    "a",
+                    "w26",
+                    "unknown",
+                    season=2026,
+                    team_b_program_id="w",
+                )
+            ],
+            result,
+        )
+
+        self.assertAlmostEqual(
+            upcoming.team_b_rating, result.other_state.program_history["w"][2025]
+        )
 
 
 if __name__ == "__main__":

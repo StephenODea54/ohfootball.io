@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from ohfootball_rating import cli
 from ohfootball_rating.games import Game
+from ohfootball_rating.margin import MarginConfig
 from ohfootball_rating.publisher import TeamSeason
 
 
@@ -21,6 +22,7 @@ def game(
     team_b: str,
     result: str = "W",
     scores: tuple[int, int] | None = (21, 7),
+    team_b_state: str = "OH",
 ) -> Game:
     return Game(
         game_key=f"{season}-{day.isoformat()}-{team_a}-{team_b}",
@@ -37,6 +39,7 @@ def game(
         team_b_division=1,
         team_a_score=scores[0] if scores else None,
         team_b_score=scores[1] if scores else None,
+        team_b_state=team_b_state,
     )
 
 
@@ -184,6 +187,57 @@ class PublishCommandTests(unittest.TestCase):
 
         dates = {row.game_key: row.as_of_date for row in self.predictions}
         self.assertEqual(dates["2026-2026-08-28-a-b"], as_of)
+
+    def test_every_game_that_moves_a_rating_has_a_prediction_dated_its_day(self) -> None:
+        as_of = date(2026, 8, 30)
+        self.games = self.games + (
+            game(2026, date(2026, 8, 21), "a", "w", team_b_state="WV"),
+            game(1985, date(1985, 9, 13), "b", "w", team_b_state="WV"),
+        )
+        self.run_publish(as_of)
+
+        dates = {row.game_key: row.as_of_date for row in self.predictions}
+        for played in self.games:
+            if played.team_a_score is not None and played.game_date < as_of:
+                with self.subTest(game=played.game_key):
+                    self.assertEqual(dates[played.game_key], played.game_date)
+
+    def test_an_upcoming_game_against_another_state_is_predicted(self) -> None:
+        as_of = date(2026, 8, 30)
+        self.games = self.games + (
+            game(2026, date(2026, 8, 21), "a", "w", team_b_state="WV"),
+            game(
+                2026, date(2026, 9, 4), "a", "w", result="unknown", scores=None, team_b_state="WV"
+            ),
+        )
+        summary = self.run_publish(as_of)
+
+        dates = {row.game_key: row.as_of_date for row in self.predictions}
+        self.assertEqual(dates["2026-2026-09-04-a-w"], as_of)
+        self.assertEqual(summary["upcoming_predictions"], 1)
+
+    def test_no_snapshot_holds_a_team_from_another_state(self) -> None:
+        self.games = self.games + (game(2026, date(2026, 8, 21), "a", "w", team_b_state="WV"),)
+        summary = self.run_publish(date(2026, 8, 30))
+
+        self.assertNotIn("w", {row.team_key for row in self.snapshots})
+        self.assertEqual(summary["published_ratings"], 9)
+
+    def test_the_ohio_side_of_such_a_game_holds_the_rating_of_that_day(self) -> None:
+        self.games = self.games + (game(2026, date(2026, 8, 21), "a", "w", team_b_state="WV"),)
+        self.run_publish(date(2026, 8, 30))
+
+        by_key = {row.game_key: row for row in self.predictions}
+        visit, home = by_key["2026-2026-08-21-a-w"], by_key["2026-2026-08-28-a-b"]
+        # a played w first, so it went into its game with b a week later with the rating that
+        # game gave it: half of a normal change toward the margin of 14.
+        config = MarginConfig()
+        change = (
+            config.other_state_weight
+            * config.learning_weight(0)
+            * (14 - config.clip_margin(visit.predicted_margin))
+        )
+        self.assertAlmostEqual(home.team_a_rating, visit.team_a_rating + change)
 
     def test_leaves_out_a_season_after_the_one_in_progress(self) -> None:
         self.games = self.games + (game(2030, date(2030, 9, 6), "a", "b"),)

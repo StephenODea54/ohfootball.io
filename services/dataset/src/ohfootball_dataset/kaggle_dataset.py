@@ -78,8 +78,10 @@ The record covers games played by Ohio teams. An opponent from another state app
 games by state is not a count of Ohio teams.
 
 The ratings are margin ratings in points in `fct_team_ratings`, and the ratings in
-`fct_game_predictions` use the same scale. The versions of the dataset published before this
-rating held Elo ratings in a file of their own, and they keep those files.
+`fct_game_predictions` use the same scale. A game against a team from another state has a
+prediction too. The rating of that team comes only from its games against Ohio teams, and no such
+team is in `fct_team_ratings`. The versions of the dataset published before this rating held Elo
+ratings in a file of their own, and they keep those files.
 """.strip()
 
 # The limits that Kaggle puts on the metadata. The checks here stop a value outside them before a

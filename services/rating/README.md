@@ -38,8 +38,8 @@ that gives the win probability is not clipped.
 
 All games on one date use the ratings of the start of that date, because kickoff times are not
 known. A game without both scores gets a prediction but moves no rating. Forfeits, canceled games
-and games without a result do not count. Both teams must have `state_code = 'OH'`, so a game
-against a team from another state is left out.
+and games without a result do not count. A game needs at least one Ohio team. A game against a
+team from another state follows the rules under "Games against a team from another state" below.
 
 ### Where a season starts
 
@@ -63,6 +63,35 @@ have ratings above the priors, so a new division 4 program starts about 25 point
 team, and each division moves that start by 12 points. The size of that gap depends on a replay
 of the whole record from 1972, so the rating must always be calculated from the first season.
 
+### Games against a team from another state
+
+A team from another state gets a rating of its own, by season, from its games against Ohio teams.
+It carries that rating from one season to the next by the same rule as an Ohio program, by its
+own `source_id`, without a division prior. In such a game the Ohio team moves by 0.5 of its normal
+change, and the other team moves by its full change against the same expected margin. The game
+counts as a game played and a scored game of the Ohio team. A game without both scores is left
+out.
+
+A program from another state with no earlier season against Ohio teams opens at a learned value.
+Each game against another state implies a rating for the opponent:
+
+```text
+implied  = pregame Ohio rating + home term - capped margin
+estimate = (sum of implied of the state and division + 20 * division mean)
+           / (games of the state and division + 20)
+```
+
+The division is the division of the Ohio team. The division mean is the mean implied rating of the
+ten seasons before the season, when it holds at least 30 games. A new program opens at the
+estimate of its state and the division of its first Ohio opponent, else at the division mean,
+else at 0. The state is the `state_code` of the team, else the two letters in brackets at the end
+of its name, such as `Crum (WV)`, else unknown, and unknown is a state of its own.
+
+Such a game gets a prediction like every other game, with the rating of each team on its side and
+a win probability from the slope of its group. It never shapes a slope, and the `evaluate`
+command never scores it. A team from another state is never ranked and is never in
+`fct_team_ratings`. Its rating appears only in the predictions of its games.
+
 ### From margin to probability
 
 A logistic curve turns the expected margin into a win probability:
@@ -80,7 +109,7 @@ season, so the model is less sure of a margin in the first weeks:
 
 | Group | 0 | 1 | 2 | 3 | 4 | 5 | 6+ | Playoff |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Slope for 2026 | 0.072 | 0.095 | 0.104 | 0.121 | 0.125 | 0.126 | 0.131 | 0.137 |
+| Slope for 2026 | 0.071 | 0.094 | 0.106 | 0.119 | 0.126 | 0.124 | 0.132 | 0.138 |
 
 ### Parameters
 
@@ -94,6 +123,10 @@ season, so the model is less sure of a margin in the first weeks:
 | Earlier seasons | 0.2 | The share of the mean of up to eight seasons before that one |
 | Slope window | 10 seasons | The seasons that each slope is fit on |
 | Fallback slope | 0.10 | The slope of a group without games in the window |
+| Other-state weight | 0.5 | The share of its normal change that an Ohio team moves by in a game against another state |
+| Other-state shrinkage | 20 games | How far the estimate of a state moves toward the mean of its division |
+| Other-state window | 10 seasons | The seasons that the opening of a new program from another state reads |
+| Other-state minimum | 30 games | The fewest games that give a division mean |
 
 The values were chosen by a grid search on the seasons 2000 through 2011, which is not part of this
 repository. The same values are the best on 2000 through 2023. About 1.3% of games have a margin
@@ -103,6 +136,14 @@ as well, the log loss of 2000 through 2023 goes from 0.4041 to 0.4036 and the Br
 0.1318 to 0.1317, and the log loss of the 2024-2025 holdout goes from 0.3695 to 0.3692. The update
 with both caps is better in 11 of the 12 two-season windows.
 
+The games against teams from other states lower the log loss of 2000 through 2023 from 0.4036 to
+0.4030 and the Brier score from 0.1317 to 0.1314. The log loss of the 2024-2025 holdout goes from
+0.3692 to 0.3686. They help most in the games of a team that already played another state that
+season: from 2004 through 2023 the log loss of those games goes from 0.3724 to 0.3671, and in the
+holdout from 0.3264 to 0.3219. The rating with these games is better in 11 of the 12 two-season
+windows. A share of 0.5 for the Ohio team was better than 1.0 and than a fixed opponent rating for
+each state and division.
+
 ## Evidence
 
 The `evaluate` command gives every number below. It replays the record from 1972, scores each
@@ -111,20 +152,20 @@ value saw the holdout. The numbers come from the public dataset export of 2026-0
 
 | Seasons | Games | Log loss | Brier score | Winner picked |
 | --- | ---: | ---: | ---: | ---: |
-| 2000-2001 | 7,270 | 0.4224 | 0.1383 | 79.5% |
-| 2002-2003 | 7,297 | 0.4277 | 0.1409 | 79.0% |
-| 2004-2005 | 7,299 | 0.4316 | 0.1418 | 79.1% |
-| 2006-2007 | 7,352 | 0.4088 | 0.1333 | 80.3% |
-| 2008-2009 | 7,380 | 0.4031 | 0.1314 | 80.6% |
-| 2010-2011 | 7,366 | 0.3961 | 0.1288 | 81.0% |
-| 2012-2013 | 7,415 | 0.3988 | 0.1304 | 81.1% |
-| 2014-2015 | 7,448 | 0.4060 | 0.1336 | 79.9% |
-| 2016-2017 | 7,433 | 0.3870 | 0.1257 | 81.7% |
-| 2018-2019 | 7,389 | 0.3982 | 0.1292 | 81.3% |
-| 2020-2021 | 6,680 | 0.3969 | 0.1277 | 81.8% |
-| 2022-2023 | 7,726 | 0.3690 | 0.1194 | 82.8% |
-| **2000-2023** | **88,055** | **0.4036** | **0.1317** | **80.7%** |
-| **2024-2025 holdout** | **7,608** | **0.3692** | **0.1194** | **82.2%** |
+| 2000-2001 | 7,270 | 0.4209 | 0.1378 | 79.5% |
+| 2002-2003 | 7,297 | 0.4270 | 0.1406 | 78.9% |
+| 2004-2005 | 7,299 | 0.4310 | 0.1416 | 79.1% |
+| 2006-2007 | 7,352 | 0.4080 | 0.1329 | 80.3% |
+| 2008-2009 | 7,380 | 0.4028 | 0.1312 | 80.7% |
+| 2010-2011 | 7,366 | 0.3949 | 0.1284 | 81.2% |
+| 2012-2013 | 7,415 | 0.3981 | 0.1301 | 81.0% |
+| 2014-2015 | 7,448 | 0.4050 | 0.1332 | 80.1% |
+| 2016-2017 | 7,433 | 0.3870 | 0.1257 | 81.8% |
+| 2018-2019 | 7,389 | 0.3979 | 0.1291 | 81.3% |
+| 2020-2021 | 6,680 | 0.3969 | 0.1278 | 81.9% |
+| 2022-2023 | 7,726 | 0.3688 | 0.1192 | 82.9% |
+| **2000-2023** | **88,055** | **0.4030** | **0.1314** | **80.7%** |
+| **2024-2025 holdout** | **7,608** | **0.3686** | **0.1192** | **82.3%** |
 
 The Elo rating that this model replaced scored a log loss of 0.4248 and picked 79.5% of winners
 on the same 2024-2025 holdout, as recorded on 2026-08-09.
@@ -167,7 +208,8 @@ prediction dated the day of the game. A run with an older `--as-of-date` dates t
 the later games that day, so until the next run with the current date, the newer snapshots of the
 season show no movement.
 
-The command also replaces every row of `ohfootball_marts.fct_game_predictions`. A game played
+The command also replaces every row of `ohfootball_marts.fct_game_predictions`. It holds every
+game of an Ohio team, and so also every game against a team from another state. A game played
 before `--as-of-date` gets the prediction that the backtest made before its result was known,
 dated the day of the game. A game of the season in progress that was not played before that day
 gets a prediction from the current ratings, dated the day of the run. A game of a past season
@@ -188,7 +230,9 @@ PYTHONPATH=services/rating/src python3 -m ohfootball_rating.cli evaluate --expor
 
 The dataset export writes `dim_teams.csv` and `fct_games.csv`, and the public dataset holds the
 same files. Use `--windows`, `--window-size` and `--holdout` to score other seasons, and
-`--as-of-date` to leave out games on or after a date.
+`--as-of-date` to leave out games on or after a date. The report scores games between two Ohio
+teams only. `games` counts them, and `other_state_games` counts the predictions of games against
+another state.
 
 Run `make coverage` in `services/rating` to see the line and branch coverage of the unit tests.
 
@@ -196,8 +240,9 @@ Run `make coverage` in `services/rating` to see the line and branch coverage of 
 
 - It reads only scores, dates, home teams, divisions and the playoff flag. It knows nothing of
   rosters, injuries, coaching changes or weather.
-- A game against a team from another state is left out, so a team that plays several of them has
-  fewer games behind its rating.
+- It knows a team from another state only from that team's games against Ohio teams, so the
+  rating of such a team is rough, and a game against it moves the Ohio team by half of a normal
+  change.
 - A new program starts below most teams, and it takes a few games to find its level.
 - An upcoming game uses the games played at the day of the run to choose its slope group. A game
   two or more weeks away therefore gets a slope that is a little too low.
@@ -214,4 +259,5 @@ game then says how much better one team is, not only which team won. On the same
 margin rating scores 0.3695.
 
 The first margin rating capped only the actual margin in the update. With the cap on the expected
-margin too, the holdout log loss went from 0.3695 to 0.3692.
+margin too, the holdout log loss went from 0.3695 to 0.3692. The first margin rating also left out
+every game against a team from another state. With those games, it went to 0.3686.

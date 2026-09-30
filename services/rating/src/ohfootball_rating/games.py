@@ -1,4 +1,4 @@
-"""The game record and the one rule that decides if a game can change ratings."""
+"""The game record, the state of each team, and the rule that decides if a game changes ratings."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
+
+from .out_of_state import OHIO
 
 Result = Literal["W", "L", "T", "C", "unknown"]
 
@@ -39,6 +41,19 @@ class Game:
     notes: str | None = None
     # The margin rating uses this flag only to choose the slope group of a playoff game.
     is_playoff_game: bool = False
+    # The two-letter state of each team, or UNK. See out_of_state.state_label.
+    team_a_state: str = OHIO
+    team_b_state: str = OHIO
+
+    @property
+    def is_ohio_game(self) -> bool:
+        """Tell if both teams are Ohio teams. Only such a game shapes the slopes and is scored."""
+        return self.team_a_state == OHIO and self.team_b_state == OHIO
+
+    @property
+    def is_out_of_state_game(self) -> bool:
+        """Tell if exactly one team is an Ohio team."""
+        return (self.team_a_state == OHIO) != (self.team_b_state == OHIO)
 
     @property
     def is_forfeit(self) -> bool:
