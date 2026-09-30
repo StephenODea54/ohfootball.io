@@ -39,7 +39,7 @@ const parameters = [
     id: "margin-cap",
     name: "Margin cap",
     value: MARGIN_CAP.toString(),
-    note: `The largest margin that a game counts. A bigger win counts as ${MARGIN_CAP} points.`,
+    note: `The largest margin that a game counts, for the final and for the expected margin. A bigger margin counts as ${MARGIN_CAP} points.`,
   },
   {
     id: "division-step",

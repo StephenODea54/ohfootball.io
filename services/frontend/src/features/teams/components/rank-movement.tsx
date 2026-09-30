@@ -11,9 +11,9 @@ const tones: Record<RankDirection, string> = {
 }
 
 /**
- * The move of a team in the ranks since the previous update, for example ↑3. The arrow and the
+ * The move of a team in the ranks in the week before its rating, for example ↑3. The arrow and the
  * color show the direction. A screen reader hears the same fact in words, and a pointer that rests
- * on it shows the full sentence. Nothing shows when the season has no earlier update.
+ * on it shows the full sentence. Nothing shows when the API gives no previous rank.
  */
 export function RankMovement({
   rating,

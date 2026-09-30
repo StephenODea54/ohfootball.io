@@ -16,7 +16,7 @@ import { Text, TextLink } from "@/components/ui/text"
 const limits = [
   {
     title: "Running up the score counts, up to a point",
-    body: "A forty point win moves a rating more than a one point win. A margin larger than 56 points counts as 56, so one wild score cannot take over a season.",
+    body: "A forty point win moves a rating more than a one point win. A margin larger than 56 points counts as 56, so one wild score cannot take over a season. The expected margin is held to 56 as well, so a heavy favorite that wins big is not marked down.",
   },
   {
     title: "Schedules are regional",
@@ -157,11 +157,11 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
               After the game, each rating moves by a share of the surprise, the gap between the
-              actual margin and the expected one:
+              actual margin and the expected one. Both margins are held to 56 points first:
             </Text>
             <Formula
               className="mt-4"
-              label="The new R sub a equals R sub a plus k of n times the actual margin minus m. k of n equals 1.65 divided by n plus 5."
+              label="The new R sub a equals R sub a plus k of n times the actual margin minus m, with both margins held to 56 points. k of n equals 1.65 divided by n plus 5."
             >
               <FormulaLine>
                 <Var prime sub="a">

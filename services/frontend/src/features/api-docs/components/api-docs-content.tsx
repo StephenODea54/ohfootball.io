@@ -171,9 +171,9 @@ export function ApiDocsContent() {
               {topTenQuery}
             </CodeBlock>
             <Text className="mt-4 text-base/7">
-              <Code>previousRank</Code> is the rank of the team at the update before that one in the
-              same season. It is null when the season has no earlier update, or when the team had no
-              rating at it.
+              <Code>previousRank</Code> is the rank of the team one week earlier. Subtract{" "}
+              <Code>rank</Code> from it to see how far the team moved: a positive number means it
+              moved up.
             </Text>
             <Text className="mt-4 text-base/7">Or send the same query with curl:</Text>
             <CodeBlock

@@ -17,7 +17,7 @@ export interface TeamRating {
   season: number
   value: number
   rank: number
-  /** The rank in the snapshot before this one in the same season. Null when there is none. */
+  /** The rank one week before asOf. The API gives it for every rating. */
   previousRank: number | null
   asOf: string
 }

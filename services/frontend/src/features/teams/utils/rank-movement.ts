@@ -17,7 +17,7 @@ export interface RankMovement {
 
 /**
  * How far a team moved in the ranks since the previous update. A lower rank is better, so a team
- * that goes from #15 to #12 moves up 3 places. Returns null when the season has no earlier update
+ * that goes from #15 to #12 moves up 3 places. Returns null when the API gives no previous rank
  * for the team.
  */
 export function rankMovement(
@@ -41,5 +41,5 @@ export function rankMovement(
 }
 
 function withTitle(movement: Omit<RankMovement, "title">): RankMovement {
-  return { ...movement, title: `${movement.label} since the last update` }
+  return { ...movement, title: `${movement.label} in the last week` }
 }

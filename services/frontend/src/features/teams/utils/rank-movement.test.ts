@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { rankMovement } from "@/features/teams/utils/rank-movement"
 
 describe("rankMovement", () => {
-  it("returns null when the season has no earlier update", () => {
+  it("returns null when the API gives no previous rank", () => {
     expect(rankMovement({ rank: 12, previousRank: null })).toBeNull()
   })
 
@@ -17,7 +17,7 @@ describe("rankMovement", () => {
       places: 3,
       text: "↑3",
       label: "Up 3 places",
-      title: "Up 3 places since the last update",
+      title: "Up 3 places in the last week",
     })
   })
 
@@ -27,7 +27,7 @@ describe("rankMovement", () => {
       places: 2,
       text: "↓2",
       label: "Down 2 places",
-      title: "Down 2 places since the last update",
+      title: "Down 2 places in the last week",
     })
   })
 
@@ -42,7 +42,7 @@ describe("rankMovement", () => {
       places: 0,
       text: "—",
       label: "No change",
-      title: "No change since the last update",
+      title: "No change in the last week",
     })
   })
 })
