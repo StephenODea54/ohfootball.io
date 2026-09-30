@@ -1,6 +1,13 @@
 "use client"
 
-import { GridList, GridListItem } from "@/components/ui/grid-list"
+import { twJoin } from "tailwind-merge"
+import {
+  GridList,
+  GridListDescription,
+  GridListItem,
+  GridListLabel,
+} from "@/components/ui/grid-list"
+import { formatRank, formatRating, ratingTone } from "@/features/teams/utils/format"
 import { openTeam } from "@/features/teams/utils/open-team"
 import { teamSwatches } from "@/features/teams/utils/team-colors"
 import type { TeamSummary } from "@/types/api"
@@ -14,6 +21,9 @@ interface TeamColorGridProps {
  * A grid of school cards. The card itself stays in the site palette. Each school's own colors sit
  * in two small swatches along the bottom, which is enough to recognize a school without letting
  * seven hundred unrelated colors take over the page.
+ *
+ * Each card shows the rank and the rating of the school above its name, so the order of the grid
+ * is never the only sign of how good a school is. The rank is the rank across the whole state.
  */
 export function TeamColorGrid({ label, teams }: TeamColorGridProps) {
   return (
@@ -41,7 +51,31 @@ export function TeamColorGrid({ label, teams }: TeamColorGridProps) {
             id={team.id}
             textValue={team.name}
           >
-            <p className="font-semibold text-base/6 text-fg">{team.name}</p>
+            {/* React Aria names the row with the text value and this description, so a screen
+                reader hears the rank and the rating with the name of the school. */}
+            <GridListDescription className="mb-2 flex w-full items-baseline justify-between gap-3 text-sm/5">
+              {team.rating ? (
+                <>
+                  <span className="font-semibold text-fg tabular-nums">
+                    <span className="sr-only">Rank </span>
+                    {formatRank(team.rating.rank)}
+                  </span>
+                  <span className="tabular-nums">
+                    <span className="me-1.5 font-medium text-muted-fg text-xs/5 uppercase tracking-wide">
+                      Rating
+                    </span>
+                    <span
+                      className={twJoin("font-semibold text-base/5", ratingTone(team.rating.value))}
+                    >
+                      {formatRating(team.rating.value)}
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <span>Unrated</span>
+              )}
+            </GridListDescription>
+            <GridListLabel className="font-semibold text-base/6 text-fg">{team.name}</GridListLabel>
             <p className="text-muted-fg text-sm/5">{team.mascot ?? "—"}</p>
 
             {swatches.length > 0 && (
