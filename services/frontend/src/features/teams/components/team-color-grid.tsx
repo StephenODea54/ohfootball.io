@@ -7,6 +7,7 @@ import {
   GridListItem,
   GridListLabel,
 } from "@/components/ui/grid-list"
+import { TeamLogo } from "@/features/teams/components/team-logo"
 import { formatRank, formatRating, ratingTone } from "@/features/teams/utils/format"
 import { openTeam } from "@/features/teams/utils/open-team"
 import { teamSwatches } from "@/features/teams/utils/team-colors"
@@ -75,8 +76,15 @@ export function TeamColorGrid({ label, teams }: TeamColorGridProps) {
                 <span>Unrated</span>
               )}
             </GridListDescription>
-            <GridListLabel className="font-semibold text-base/6 text-fg">{team.name}</GridListLabel>
-            <p className="text-muted-fg text-sm/5">{team.mascot ?? "—"}</p>
+            <div className="flex w-full items-center gap-3">
+              <TeamLogo team={team} size="sm" />
+              <div className="min-w-0">
+                <GridListLabel className="font-semibold text-base/6 text-fg">
+                  {team.name}
+                </GridListLabel>
+                <p className="text-muted-fg text-sm/5">{team.mascot ?? "—"}</p>
+              </div>
+            </div>
 
             {swatches.length > 0 && (
               <div className="mt-3 flex gap-1.5" aria-hidden="true">

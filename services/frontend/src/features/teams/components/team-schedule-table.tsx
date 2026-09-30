@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { TeamLogo } from "@/features/teams/components/team-logo"
 import {
   formatMargin,
   formatRank,
@@ -21,12 +22,16 @@ import {
   winPercent,
 } from "@/features/teams/utils/format"
 import type { LinkedGame } from "@/features/teams/utils/opponent-links"
+import type { LogoGame } from "@/features/teams/utils/opponent-logos"
 import type { OpponentStanding, StandingGame } from "@/features/teams/utils/opponent-standings"
 import type { Game } from "@/types/api"
 import { formatDayAndMonth } from "@/utils/format"
 
-/** A row of the schedule: the game, the link to the opponent, and the standing of the opponent. */
-export type ScheduleGame = StandingGame<LinkedGame>
+/**
+ * A row of the schedule: the game, the link to the opponent, the standing of the opponent, and the
+ * number of the opponent for its logo.
+ */
+export type ScheduleGame = LogoGame<StandingGame<LinkedGame>>
 
 /**
  * Every game a school plays in a season, with the prediction made for it and the current rank and
@@ -60,27 +65,33 @@ export function TeamScheduleTable({ team }: { team: { name: string; schedule: Sc
                   <TableCell className="font-semibold text-muted-fg">{game.week}</TableCell>
                   <TableCell className="text-muted-fg">{formatDayAndMonth(game.date)}</TableCell>
                   <TableCell>
-                    <div>
-                      <p>
-                        {/* JSX drops the line break between the label and the name, so the
+                    <div className="flex items-center gap-2.5">
+                      <TeamLogo
+                        team={{ sourceId: game.opponentSourceId, name: game.opponentName }}
+                        size="xs"
+                      />
+                      <div>
+                        <p>
+                          {/* JSX drops the line break between the label and the name, so the
                           gap must be a margin. */}
-                        <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
-                        {game.opponentHref ? (
-                          <Link
-                            href={game.opponentHref}
-                            className="font-medium text-fg hover:text-primary-subtle-fg"
-                          >
-                            {game.opponentName}
-                          </Link>
-                        ) : (
-                          <span className="font-medium text-fg">{game.opponentName}</span>
-                        )}
-                      </p>
-                      {game.opponentStanding && (
-                        <p className="text-muted-fg text-xs/5 sm:hidden">
-                          {standingLabel(game.opponentStanding)}
+                          <span className="me-1 text-muted-fg">{locationLabel(game)}</span>
+                          {game.opponentHref ? (
+                            <Link
+                              href={game.opponentHref}
+                              className="font-medium text-fg hover:text-primary-subtle-fg"
+                            >
+                              {game.opponentName}
+                            </Link>
+                          ) : (
+                            <span className="font-medium text-fg">{game.opponentName}</span>
+                          )}
                         </p>
-                      )}
+                        {game.opponentStanding && (
+                          <p className="text-muted-fg text-xs/5 sm:hidden">
+                            {standingLabel(game.opponentStanding)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-end text-muted-fg max-sm:hidden">

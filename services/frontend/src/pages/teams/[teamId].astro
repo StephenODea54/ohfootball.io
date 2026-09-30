@@ -13,6 +13,7 @@ import { RatingHistoryChart } from "@/features/teams/components/rating-history-c
 import { TeamHeader } from "@/features/teams/components/team-header"
 import { TeamScheduleTable } from "@/features/teams/components/team-schedule-table"
 import { linkOpponents } from "@/features/teams/utils/opponent-links"
+import { addOpponentSourceIds } from "@/features/teams/utils/opponent-logos"
 import { addOpponentStandings } from "@/features/teams/utils/opponent-standings"
 import { teamPageHead } from "@/features/teams/utils/team-seo"
 import { siteUrl } from "@/utils/seo"
@@ -36,11 +37,14 @@ const { season, pageTeamIds } = Astro.props as InferGetStaticPropsType<typeof ge
 const [team, teams] = await Promise.all([getTeam(teamId, season), getTeams()])
 
 // The chart and the schedule run in the browser, so each is sent only the data it draws. Each
-// opponent gets its current rank and rating from the list of teams.
+// opponent gets its current rank and rating, and its number for the logo, from the list of teams.
 const history = { season: team.season, rating: team.rating, ratingHistory: team.ratingHistory }
 const schedule = {
   name: team.name,
-  schedule: addOpponentStandings(linkOpponents(team.schedule, new Set(pageTeamIds)), teams),
+  schedule: addOpponentSourceIds(
+    addOpponentStandings(linkOpponents(team.schedule, new Set(pageTeamIds)), teams),
+    teams,
+  ),
 }
 const head = teamPageHead(team, siteUrl(Astro.site), Astro.url.pathname)
 ---

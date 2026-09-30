@@ -17,6 +17,7 @@ import { Text } from "@/components/ui/text"
 import { paths } from "@/config/paths"
 import { RankMovement } from "@/features/teams/components/rank-movement"
 import { TeamFilterControls } from "@/features/teams/components/team-filter-controls"
+import { TeamLogo } from "@/features/teams/components/team-logo"
 import {
   EMPTY_TEAM_FILTERS,
   filterTeams,
@@ -75,14 +76,17 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
                         <RankMovement rating={team.rating} className="ms-2" />
                       </TableCell>
                       <TableCell>
-                        <div className="py-1">
-                          <Link
-                            href={paths.team.getHref(team.id)}
-                            className="font-semibold text-base/6 text-fg hover:text-primary-subtle-fg"
-                          >
-                            {team.name}
-                          </Link>
-                          <p className="text-muted-fg text-sm/5">{teamMeta(team)}</p>
+                        <div className="flex items-center gap-3 py-1">
+                          <TeamLogo team={team} size="sm" />
+                          <div className="min-w-0">
+                            <Link
+                              href={paths.team.getHref(team.id)}
+                              className="font-semibold text-base/6 text-fg hover:text-primary-subtle-fg"
+                            >
+                              {team.name}
+                            </Link>
+                            <p className="text-muted-fg text-sm/5">{teamMeta(team)}</p>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-end font-medium text-fg">
