@@ -276,8 +276,9 @@ read the API fails, and Pages keeps the site it served before.
 never calls the API. The API sends no CORS headers, so no page on another origin can read it. No
 script holds the address of the API, no page except the API page `/api` names it, and no file holds
 its key. `make pages` stops the upload when a file does. The addresses that Pages gives the project, such as `ohfootball.pages.dev`, show the same
-pages as `ohfootball.io`. So does `www.ohfootball.io`. Each page has a canonical link to its address on
-`ohfootball.io`, so search engines index that copy only.
+pages as `ohfootball.io`. Each page has a canonical link to its address on `ohfootball.io`, so
+search engines index that copy only. A Redirect Rule of the zone sends `www.ohfootball.io` to
+`ohfootball.io` with a 301.
 
 **The build key is set on both sides.** The build makes about 700 requests in less than a minute,
 which is more than the rate limits allow. It sends the GitHub secret `GRAPHQL_API_KEY` as a bearer
@@ -424,7 +425,10 @@ project of their own. Do these steps in this order.
    Delete the wildcard and `www` records that point at the host too, unless something on the host
    uses them. Then, in the Pages project, open Custom domains, select Set up a domain, and enter
    `ohfootball.io`. Cloudflare adds the DNS record and the certificate. To serve `www` as well,
-   add `www.ohfootball.io` as a second custom domain.
+   add `www.ohfootball.io` as a second custom domain. Then, in Rules of the zone, add a Redirect
+   Rule. It matches when the hostname equals `www.ohfootball.io`. It sends the request to the
+   dynamic target `concat("https://ohfootball.io", http.request.uri.path)` with the status 301,
+   and it keeps the query string.
 10. In R2 of the Cloudflare account, create the bucket `ohfootball-data`. In the settings of the
     bucket, under Custom Domains, add `data.ohfootball.io`. Cloudflare adds the DNS record and the
     certificate. Leave the `r2.dev` address off. Then, under Manage API tokens, create a token with
