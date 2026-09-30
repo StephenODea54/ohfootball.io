@@ -7,6 +7,8 @@
   `data.ohfootball.io`.
 - `rating`: The margin rating. It is evaluated here, and it publishes the ratings and the
   predictions to the marts.
+- `recruiting`: The weekly snapshot of the recruiting data of CollegeFootballData for the Ohio
+  players who are still in high school. It writes a private schema that nothing publishes.
 - `frontend`: The site. Astro draws every page at build time from the API, and Cloudflare Pages
   serves the files.
 - `scraper`: The two scrapers. `joe-eitel` reads joeeitel.com each week. `ohhsfbdb` reads the

@@ -3,7 +3,7 @@
 	site-lint site-fmt doctor \
 	dbt dbt-debug dbt-parse dbt-run dbt-test dbt-build dbt-docs-generate dbt-docs-serve \
 	rating-build rating-test rating-evaluate \
-	dataset-build dataset-test dataset-export \
+	dataset-build dataset-test dataset-export recruiting-test \
 	pipeline pipeline-build pipeline-test postgres-test site-test site-check
 
 DBT := docker compose run --rm dbt
@@ -26,6 +26,7 @@ test:
 	$(MAKE) -C services/api test
 	$(MAKE) -C services/rating test
 	$(MAKE) -C services/dataset test
+	$(MAKE) -C services/recruiting test
 	$(MAKE) pipeline-test
 	$(MAKE) site-test
 	$(MAKE) site-check
@@ -36,6 +37,7 @@ vet:
 	$(MAKE) -C services/api vet
 	$(MAKE) -C services/rating vet
 	$(MAKE) -C services/dataset vet
+	$(MAKE) -C services/recruiting vet
 	python3 -m compileall -q infra/pipeline/tests infra/postgres services/frontend/tests
 
 # Installs the tools that make lint and make fmt run for the Python and the SQL.
@@ -201,6 +203,9 @@ dataset-build:
 
 dataset-test:
 	$(MAKE) -C services/dataset test
+
+recruiting-test:
+	$(MAKE) -C services/recruiting test
 
 # Writes the files a publication would send, and sends nothing. The files land in
 # services/dataset/export, which Git ignores.

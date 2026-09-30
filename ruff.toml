@@ -5,7 +5,12 @@ line-length = 100
 
 # The first party packages. The import order rule reads this to put their imports after the
 # standard library and the third party packages.
-src = ["services/rating/src", "services/dataset/src", "infra/postgres"]
+src = [
+    "services/rating/src",
+    "services/dataset/src",
+    "services/recruiting/src",
+    "infra/postgres",
+]
 
 [lint]
 # The default rules, the import order, the upgrades that Python 3.12 allows, the bugbear checks

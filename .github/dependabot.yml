@@ -18,6 +18,7 @@ updates:
     directories:
       - /services/dataset
       - /services/rating
+      - /services/recruiting
     schedule:
       interval: weekly
     groups:
