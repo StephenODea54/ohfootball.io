@@ -7,6 +7,7 @@ describe("the navigation bar", () => {
       "Home",
       "About",
       "Leaderboard",
+      "Compare",
       "Methodology",
       "Accuracy",
       "Data",
@@ -19,6 +20,13 @@ describe("the navigation bar", () => {
     expect(isCurrentPage("/", "/")).toBe(true)
     expect(isCurrentPage("/", "/teams/abc")).toBe(true)
     expect(isCurrentPage("/", "/data")).toBe(false)
+  })
+
+  it("marks Compare on the compare page", () => {
+    expect(isCurrentPage("/compare", "/compare")).toBe(true)
+    expect(isCurrentPage("/compare", "/comparisons")).toBe(false)
+    expect(isCurrentPage("/", "/compare")).toBe(false)
+    expect(navItems.find((item) => item.label === "Compare")?.getHref()).toBe("/compare")
   })
 
   it("marks any other page only on its own address", () => {

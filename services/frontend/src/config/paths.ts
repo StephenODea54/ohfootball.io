@@ -38,6 +38,23 @@ export const paths = {
     path: "/teams/[teamId]",
     getHref: (teamId: string) => `/teams/${teamId}`,
   },
+  // The page that compares two schools. The pair is in the query string, a before b. A side with
+  // no school is left out, so one pair has one address.
+  compare: {
+    path: "/compare",
+    getHref: (pair?: { a?: string | null; b?: string | null }) => {
+      const search = new URLSearchParams()
+      if (pair?.a) search.set("a", pair.a)
+      if (pair?.b) search.set("b", pair.b)
+      const query = search.toString()
+      return query ? `/compare?${query}` : "/compare"
+    },
+  },
+  // The history file of one program. It is not a page, so the sitemap leaves it out.
+  program: {
+    path: "/programs/[sourceId].json",
+    getHref: (sourceId: string) => `/programs/${sourceId}.json`,
+  },
 } as const
 
 /** The places outside the site that the footer and the About and Methodology pages link to. */

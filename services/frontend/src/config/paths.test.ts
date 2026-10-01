@@ -10,6 +10,15 @@ it("builds every address without a season", () => {
   expect(paths.data.getHref()).toBe("/data")
   expect(paths.api.getHref()).toBe("/api")
   expect(paths.team.getHref("abc")).toBe("/teams/abc")
+  expect(paths.program.getHref("1624")).toBe("/programs/1624.json")
+})
+
+it("writes one address for each pair of the compare page", () => {
+  expect(paths.compare.getHref()).toBe("/compare")
+  expect(paths.compare.getHref({ a: null, b: "" })).toBe("/compare")
+  expect(paths.compare.getHref({ a: "1624" })).toBe("/compare?a=1624")
+  expect(paths.compare.getHref({ b: "306", a: "1624" })).toBe("/compare?a=1624&b=306")
+  expect(paths.compare.getHref({ a: null, b: "306" })).toBe("/compare?b=306")
 })
 
 it("links to the project and the score sources outside the site", () => {

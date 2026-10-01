@@ -96,6 +96,16 @@ class TheOutputOfTheBuild(unittest.TestCase):
         self.assertEqual((output / "404.html").read_text(), NOT_FOUND)
         self.assertIn("3 pages", finished.stdout)
 
+    def test_passes_with_the_history_files_beside_the_pages(self) -> None:
+        output = build(self.directory, "leaderboard.html", "compare.html")
+        (output / "programs").mkdir()
+        (output / "programs" / "1624.json").write_text('{"sourceId":"1624","seasons":[]}')
+
+        finished = pages(output)
+
+        self.assertEqual(finished.returncode, 0, finished.stderr)
+        self.assertIn("3 pages", finished.stdout)
+
     def test_answers_a_missing_asset_without_the_application(self) -> None:
         output = build(self.directory, "leaderboard.html")
 

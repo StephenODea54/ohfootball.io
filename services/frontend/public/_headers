@@ -17,6 +17,10 @@
 /logos/*
   Cache-Control: public, max-age=604800
 
+# A history file under /programs/ has the name of its school and not a hash, and each weekly run
+# writes it again. So it keeps the Pages default, and a browser asks for the newest copy. No rule
+# here sets it.
+
 # The address that Pages gives the project is a second copy of the site. Search engines are told
 # to leave it out.
 https://:project.pages.dev/*

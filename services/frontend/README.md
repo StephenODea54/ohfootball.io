@@ -6,8 +6,8 @@ components.
 Every page is drawn from the API when the site is built. The deployed site is files that
 Cloudflare Pages serves, and nothing runs to answer a visitor. The browser never calls the API.
 Only a few parts of a page run in the browser: the navigation bar, the team finder on the home
-page, the leaderboard table, the rating chart and the program history of a team, and the charts
-and tables of the Accuracy page.
+page, the leaderboard table, the rating chart and the program history of a team, the charts and
+tables of the Accuracy page, and the compare page.
 
 The site shows the teams of the current season only. Each team of that season has its own page.
 The Accuracy page scores every season.
@@ -34,6 +34,37 @@ file are described in the `README.md` of the zip, so the page does not list them
 date and no row count, because the site is built before the weekly run uploads the zip. Its content
 runs no script. `src/features/data/data.ts` holds the addresses, and only that page imports it.
 
+## The compare page
+
+The page `/compare` shows two schools on one chart, season by season, with a table of the same
+data and the record of the two schools against each other. The pair is in the query string, as
+`/compare?a=1624&b=306`. Each side is the `sourceId` of a school, which stays the same from one
+season to the next, so a shared link keeps working after the weekly build. A side is read only when
+it is a number of up to 20 digits and names a school that has a page. The page says which ids it
+left out. When a school is chosen, the page writes the new pair into the address with
+`history.replaceState`, so the back button leaves the page in one step. Search engines see one
+address, because the canonical link of every pair is `/compare`.
+
+The page holds the list of schools. It holds no rating. When a school is chosen, the browser loads
+the history file of the school from the site, such as `/programs/1624.json`. The build writes one
+history file for every team that has a page, from the `program` query of the API. A file holds the
+rating of the school at the end of each season, and its games against Ohio teams. The point of the
+season in progress is its newest weekly rating, so the page labels it "so far". A history file is
+not a page, so the sitemap leaves it out, and `make pages` does not count it. A school whose
+`sourceId` is not safe in a file name gets no file, and the build writes a warning.
+
+A team page links to the compare page with the school as the first side. It also links to each of
+its rivalries in `src/features/compare/rivalries.ts`, such as `/compare?a=1258&b=1552` for Piqua and
+Troy. To add a rivalry, add a pair of `sourceId` values. A team page shows the link of a rivalry
+only when both schools have a page. A comparison has no address of its own other than the query
+string.
+
+`PRERENDER_TEAM_LIMIT` also limits the history files and the list of schools on the compare page.
+A small limit can hide a rivalry link.
+
+Two schools that merged have different `sourceId` values, and the page does not join them. A school
+that did not play the current season has no page and no history file, so it cannot be compared.
+
 ## Settings
 
 Copy `.env.example` to `.env` and set the values. An empty value is the same as no value.
@@ -42,7 +73,7 @@ Copy `.env.example` to `.env` and set the values. An empty value is the same as 
 | --- | --- | --- |
 | `GRAPHQL_URL` | the build and the development server | The address of the GraphQL API. No page or script holds it. |
 | `GRAPHQL_API_KEY` | the build and the development server | A secret. The build key, sent as a bearer token. It must equal `SITE_BUILD_KEY` of the API, which then lets the build skip the contact rule and the rate limits. Without it, a full build gets 429. |
-| `PRERENDER_TEAM_LIMIT` | the build | The largest number of team pages to draw. Use it to keep a local build short. Leave it unset for a build that is published. |
+| `PRERENDER_TEAM_LIMIT` | the build | The largest number of team pages and history files to draw. Use it to keep a local build short. Leave it unset for a build that is published. |
 | `REGISTRY_TOKEN` | the shadcn command line | The token of the Intent UI registry. Only the command that adds a component reads it. |
 
 ## Work on the site

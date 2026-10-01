@@ -1,14 +1,16 @@
 ---
 import type { GetStaticPaths, InferGetStaticPropsType } from "astro"
-import { PRERENDER_TEAM_LIMIT } from "astro:env/server"
 import SiteLayout from "@/layouts/site-layout.astro"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Link } from "@/components/ui/link"
 import { paths } from "@/config/paths"
+import { rivalriesOf, rivalryName } from "@/features/compare/rivalries"
+import { isSafeSourceId } from "@/features/compare/utils/program-history"
 import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
 import { getTeam } from "@/features/teams/api/get-team"
 import { getTeams } from "@/features/teams/api/get-teams"
+import { prerenderedTeams } from "@/features/teams/api/prerendered-teams"
 import { ProgramHistory } from "@/features/teams/components/program-history"
 import { RatingHistoryChart } from "@/features/teams/components/rating-history-chart"
 import { TeamHeader } from "@/features/teams/components/team-header"
@@ -17,7 +19,6 @@ import { linkOpponents } from "@/features/teams/utils/opponent-links"
 import { addOpponentSourceIds } from "@/features/teams/utils/opponent-logos"
 import { addOpponentStandings } from "@/features/teams/utils/opponent-standings"
 import { toSeasonRows } from "@/features/teams/utils/program-history"
-import { drawnTeamIds } from "@/features/teams/utils/team-limit"
 import { teamPageHead } from "@/features/teams/utils/team-seo"
 import { siteUrl } from "@/utils/seo"
 
@@ -26,9 +27,9 @@ import { siteUrl } from "@/utils/seo"
  * did not play the current season has no page, and Pages answers its address with 404.html.
  */
 export const getStaticPaths = (async () => {
-  const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
+  const [season, teams] = await Promise.all([getCurrentSeason(), prerenderedTeams()])
 
-  const drawn = drawnTeamIds(teams, PRERENDER_TEAM_LIMIT)
+  const drawn = teams.map((team) => team.id)
   // Each page is sent the ids of all pages, so its schedule links only to opponents with a page.
   return drawn.map((teamId) => ({ params: { teamId }, props: { season, pageTeamIds: drawn } }))
 }) satisfies GetStaticPaths
@@ -51,6 +52,21 @@ const schedule = {
 }
 const programHistory = { name: team.name, rows: toSeasonRows(team) }
 const head = teamPageHead(team, siteUrl(Astro.site), Astro.url.pathname)
+// The compare page loads the history file of each school, and only a school with a page has one.
+// So a rivalry link shows only when both schools have a page.
+const drawnIds = new Set(pageTeamIds)
+const rivalryLinks = rivalriesOf(team.sourceId).flatMap((rivalry) => {
+  const otherId = rivalry.a === team.sourceId ? rivalry.b : rivalry.a
+  const other = teams.find((entry) => entry.sourceId === otherId && drawnIds.has(entry.id))
+  if (!other || !drawnIds.has(team.id)) return []
+  const [first, second] = rivalry.a === team.sourceId ? [team, other] : [other, team]
+  return [
+    {
+      href: paths.compare.getHref({ a: first.sourceId, b: second.sourceId }),
+      label: rivalryName(first, second),
+    },
+  ]
+})
 ---
 
 <SiteLayout
@@ -71,10 +87,31 @@ const head = teamPageHead(team, siteUrl(Astro.site), Astro.url.pathname)
       <TeamHeader team={team} />
 
       <section class="mt-10" aria-labelledby="rating-history-heading">
-        <Heading id="rating-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
-          Rating By Season
-        </Heading>
+        <div class="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <Heading id="rating-history-heading" level={2} className="text-lg/7 sm:text-lg/7">
+            Rating By Season
+          </Heading>
+          {isSafeSourceId(team.sourceId) && (
+            <Link
+              href={paths.compare.getHref({ a: team.sourceId })}
+              className="text-sm/6 text-primary-subtle-fg hover:underline"
+            >
+              Compare with another school
+            </Link>
+          )}
+        </div>
         <RatingHistoryChart client:visible team={ratingChart} />
+        {rivalryLinks.length > 0 && (
+          <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm/6" aria-label="Rivalries">
+            {rivalryLinks.map((rivalry) => (
+              <li>
+                <Link href={rivalry.href} className="text-primary-subtle-fg hover:underline">
+                  {rivalry.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section class="mt-10" aria-labelledby="schedule-heading">

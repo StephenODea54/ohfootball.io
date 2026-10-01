@@ -1,0 +1,31 @@
+---
+import SiteLayout from "@/layouts/site-layout.astro"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { CompareView } from "@/features/compare/components/compare-view"
+import { comparePageHead } from "@/features/compare/utils/compare-seo"
+import { safePrograms, toProgramOption } from "@/features/compare/utils/program-history"
+import { RatingNote } from "@/features/methodology/components/rating-note"
+import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
+import { prerenderedTeams } from "@/features/teams/api/prerendered-teams"
+import { siteUrl } from "@/utils/seo"
+
+// The page holds no pair. The pair is in the query string, and only the browser reads it. So
+// every pair has this one address for search engines.
+const [season, teams] = await Promise.all([getCurrentSeason(), prerenderedTeams()])
+const programs = safePrograms(teams).map(toProgramOption)
+const head = comparePageHead(siteUrl(Astro.site))
+---
+
+<SiteLayout title={head.title} description={head.description} jsonLd={head.jsonLd}>
+  <main>
+    <Container className="max-w-6xl py-10 sm:py-14 lg:py-16">
+      <header class="max-w-4xl">
+        <Heading className="text-4xl/none sm:text-5xl/none">Compare Schools</Heading>
+        <RatingNote className="mt-3 max-w-3xl" />
+      </header>
+
+      <CompareView client:load season={season} programs={programs} />
+    </Container>
+  </main>
+</SiteLayout>

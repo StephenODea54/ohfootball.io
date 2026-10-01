@@ -256,7 +256,12 @@ not play the current season is not written.
 | a missing file under `/assets/` | one line of plain text, with 404 |
 
 The site shows only the current season. An old address with `?season=` in its search gets the page
-of the current season, because no page reads the search.
+of the current season, because no page reads a season from the search.
+
+The compare page `/compare` is one file for every pair of schools. The pair is in the search, such
+as `/compare?a=1624&b=306`, and a script reads it in the browser. The script then loads the history
+file of each school, such as `/programs/1624.json`, from the site. A history file is not a page, so
+the sitemap leaves it out.
 
 A file under `/assets/` carries a hash of its content in its name, so Pages sends it with
 `Cache-Control: public, max-age=31536000, immutable`. A page gets the Pages default,
@@ -295,10 +300,11 @@ pages as `ohfootball.io`. Each page has a canonical link to its address on `ohfo
 search engines index that copy only. A Redirect Rule of the zone sends `www.ohfootball.io` to
 `ohfootball.io` with a 301.
 
-**The build key is set on both sides.** The build makes about 700 requests in less than a minute,
-which is more than the rate limits allow. It sends the GitHub secret `GRAPHQL_API_KEY` as a bearer
-token, and the API lets a request skip the contact rule and the rate limits when the token equals
-its setting `SITE_BUILD_KEY`. The two values must be the same. When they differ, the build gets
+**The build key is set on both sides.** The build makes about 1,400 requests in a few minutes,
+one for the team and one for the program of each school. That is more than the rate limits
+allow. It sends the GitHub secret `GRAPHQL_API_KEY` as a bearer token, and the API lets a
+request skip the contact rule and the rate limits when the token equals its setting
+`SITE_BUILD_KEY`. The two values must be the same. When they differ, the build gets
 429 and fails, and Pages keeps the site it served before. A push to main deploys the API and
 builds the site at the same time, so set both values before the push that first deploys an API
 with the rate limits. To change the key later, set the new value in both places, then deploy the

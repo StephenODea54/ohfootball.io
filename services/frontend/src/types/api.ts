@@ -192,3 +192,27 @@ export interface ModelAccuracy {
   worstWeeks: SeasonWeekAccuracy[]
   current: SeasonReport
 }
+
+/**
+ * One game of a program, from the side of the program. The API lists only a game against an Ohio
+ * team with a result of win, loss, or tie and both scores. The API also gives the name of the
+ * opponent and the place of the game, but the site does not ask for them.
+ */
+export interface ProgramGame {
+  season: number
+  date: string
+  /** The source identifier of the opponent. It stays the same across seasons. */
+  opponentSourceId: string
+  result: GameResult
+  teamScore: number
+  opponentScore: number
+  playoff: boolean
+}
+
+/** A school across every season, keyed by its source identifier. */
+export interface Program {
+  sourceId: string
+  /** The site does not ask for the previous rank of a program. */
+  ratingHistory: Omit<TeamRating, "previousRank">[]
+  games: ProgramGame[]
+}

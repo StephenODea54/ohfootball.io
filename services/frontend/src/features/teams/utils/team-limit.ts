@@ -15,12 +15,3 @@ export function assertBelowTeamLimit(season: number, count: number) {
     )
   }
 }
-
-/**
- * The ids of the teams whose pages the build draws, each one time, in the order of the list. A
- * build on a laptop can draw only the first few pages, so a link to a team must check this list.
- */
-export function drawnTeamIds(teams: readonly { id: string }[], limit?: number): string[] {
-  const ids = [...new Set(teams.map((team) => team.id))]
-  return limit ? ids.slice(0, limit) : ids
-}
