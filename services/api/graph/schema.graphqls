@@ -51,6 +51,28 @@ type TeamRating {
   asOf: String!
 }
 
+"""
+One season of a program, as it stands at the end of that season. The season in progress shows its
+latest snapshot. The rating and the rank compare only with the other teams of the same season.
+"""
+type ProgramSeason {
+  season: Int!
+  """
+  The games of the season with a result of win, loss, or tie.
+  """
+  record: Record!
+  """
+  The playoff games of the season with a result of win, loss, or tie.
+  """
+  playoffRecord: Record!
+  """
+  The rating in the last snapshot of the season. For a past season this is the snapshot of 31
+  December. For the season in progress it is the latest snapshot. previousRank is null here. It is
+  null when the season has no snapshot.
+  """
+  rating: TeamRating
+}
+
 type GamePrediction {
   winProbability: Float!
   predictedResult: GameResult!
@@ -116,7 +138,18 @@ type Team {
   """
   outOfStateGamesPlayed: Int!
   rating: TeamRating
+  """
+  Every snapshot of every season the program played. Only the team query fills it. The teams query
+  answers an empty list.
+  """
   ratingHistory: [TeamRating!]!
+  """
+  Every season the program played as an Ohio team, oldest first, with the record and the
+  end-of-season rating of each. A season in which the source id is recorded in another state is
+  left out. Only the team query fills it. The teams query answers an empty list, as it does for
+  ratingHistory.
+  """
+  programHistory: [ProgramSeason!]!
   schedule: [Game!]!
 }
 

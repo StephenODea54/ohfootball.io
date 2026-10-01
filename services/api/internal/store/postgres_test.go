@@ -129,6 +129,21 @@ func TestScanTeamWithoutARating(t *testing.T) {
 	}
 }
 
+// The teams query does not read the history of each team, so it must answer an empty list and not
+// null.
+func TestScanTeamLeavesTheHistoriesEmpty(t *testing.T) {
+	team, err := scanTeam(teamRow(nil, nil, nil, nil, nil))
+	if err != nil {
+		t.Fatalf("scanTeam: %v", err)
+	}
+	if team.ProgramHistory == nil || len(team.ProgramHistory) != 0 {
+		t.Fatalf("program history = %v, want an empty list", team.ProgramHistory)
+	}
+	if team.RatingHistory == nil || len(team.RatingHistory) != 0 {
+		t.Fatalf("rating history = %v, want an empty list", team.RatingHistory)
+	}
+}
+
 func TestScanTeamReadsTheOutOfStateGamesPlayed(t *testing.T) {
 	team, err := scanTeam(teamRow(nil, nil, nil, nil, nil))
 	if err != nil {

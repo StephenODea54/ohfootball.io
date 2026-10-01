@@ -229,6 +229,69 @@ func TestATeamAnswersWithItsRatingHistoryAndPredictedMargins(t *testing.T) {
 	}
 }
 
+func TestTeamQueryAnswersTheProgramHistory(t *testing.T) {
+	team := &model.Team{
+		ID:       "massillon",
+		SourceID: "1624",
+		Record:   &model.Record{},
+		ProgramHistory: []*model.ProgramSeason{
+			{
+				Season:        2002,
+				Record:        &model.Record{Wins: 11, Losses: 3},
+				PlayoffRecord: &model.Record{Wins: 3, Losses: 1},
+				Rating: &model.TeamRating{
+					Season: 2002, Rating: 61.2, RelativeRating: 50.5, Rank: 1, AsOf: "2002-12-31",
+				},
+			},
+			{
+				Season:        2003,
+				Record:        &model.Record{Wins: 2},
+				PlayoffRecord: &model.Record{},
+			},
+		},
+	}
+	handler := newHandler(t, &fakeStore{team: team}, Options{})
+
+	recorder := post(t, handler, `{
+		team(id: "massillon") {
+			programHistory {
+				season
+				record { wins }
+				playoffRecord { losses }
+				rating { rank relativeRating asOf }
+			}
+		}
+	}`)
+	response := decode(t, recorder)
+	if _, found := response["errors"]; found {
+		t.Fatalf("response carried errors: %v", response["errors"])
+	}
+	data, _ := response["data"].(map[string]any)
+	got, _ := data["team"].(map[string]any)
+	history, _ := got["programHistory"].([]any)
+	if len(history) != 2 {
+		t.Fatalf("programHistory = %v, want 2 seasons", history)
+	}
+	rated := history[0].(map[string]any)
+	if rated["season"] != float64(2002) {
+		t.Fatalf("rated season = %v, want 2002", rated)
+	}
+	if wins := rated["record"].(map[string]any)["wins"]; wins != float64(11) {
+		t.Fatalf("record wins = %v, want 11", wins)
+	}
+	if losses := rated["playoffRecord"].(map[string]any)["losses"]; losses != float64(1) {
+		t.Fatalf("playoff losses = %v, want 1", losses)
+	}
+	rating := rated["rating"].(map[string]any)
+	if rating["rank"] != float64(1) || rating["relativeRating"] != 50.5 || rating["asOf"] != "2002-12-31" {
+		t.Fatalf("rating = %v, want rank 1 at 50.5 as of 2002-12-31", rating)
+	}
+	unrated := history[1].(map[string]any)
+	if value, found := unrated["rating"]; !found || value != nil {
+		t.Fatalf("unrated season rating = %v (present %t), want null", value, found)
+	}
+}
+
 func TestTheEloNamesAreGone(t *testing.T) {
 	handler := newHandler(t, &fakeStore{}, Options{})
 

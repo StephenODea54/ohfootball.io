@@ -164,8 +164,13 @@ func (store *Postgres) Team(ctx context.Context, id string, season *int) (*model
 	if err != nil {
 		return nil, err
 	}
+	programHistory, err := store.programHistory(ctx, sourceID)
+	if err != nil {
+		return nil, err
+	}
 	team.RatingHistory = history
 	team.Schedule = schedule
+	team.ProgramHistory = programHistory
 	return team, nil
 }
 
@@ -250,6 +255,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	team.Record = &model.Record{Wins: int(wins), Losses: int(losses), Ties: int(ties)}
 	team.OutOfStateGamesPlayed = int(outOfStateGamesPlayed)
 	team.RatingHistory = []*model.TeamRating{}
+	team.ProgramHistory = []*model.ProgramSeason{}
 	team.Schedule = []*model.Game{}
 	if rating.Valid && relativeRating.Valid && ratingRank.Valid && asOf.Valid {
 		team.Rating = &model.TeamRating{

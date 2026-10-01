@@ -25,6 +25,7 @@ const (
   name
   mascot
   city
+  county
   division
   region
   primaryColor
@@ -53,6 +54,12 @@ const (
       playoff
       notes
       prediction { winProbability predictedMargin asOf }
+    }
+    programHistory {
+      season
+      record { wins losses ties }
+      playoffRecord { wins losses ties }
+      rating { value: relativeRating rank }
     }
   }
 }`

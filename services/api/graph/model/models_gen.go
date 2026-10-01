@@ -36,6 +36,20 @@ type GamePrediction struct {
 	AsOf string `json:"asOf"`
 }
 
+// One season of a program, as it stands at the end of that season. The season in progress shows its
+// latest snapshot. The rating and the rank compare only with the other teams of the same season.
+type ProgramSeason struct {
+	Season int `json:"season"`
+	// The games of the season with a result of win, loss, or tie.
+	Record *Record `json:"record"`
+	// The playoff games of the season with a result of win, loss, or tie.
+	PlayoffRecord *Record `json:"playoffRecord"`
+	// The rating in the last snapshot of the season. For a past season this is the snapshot of 31
+	// December. For the season in progress it is the latest snapshot. previousRank is null here. It is
+	// null when the season has no snapshot.
+	Rating *TeamRating `json:"rating,omitempty"`
+}
+
 type Query struct {
 }
 
@@ -68,10 +82,17 @@ type Team struct {
 	// its rating. A game counts only when it has a result and both scores. A canceled game and a
 	// forfeit do not count. The number has a meaning only for an Ohio team, because the rating leaves
 	// out every game of a team from another state.
-	OutOfStateGamesPlayed int           `json:"outOfStateGamesPlayed"`
-	Rating                *TeamRating   `json:"rating,omitempty"`
-	RatingHistory         []*TeamRating `json:"ratingHistory"`
-	Schedule              []*Game       `json:"schedule"`
+	OutOfStateGamesPlayed int         `json:"outOfStateGamesPlayed"`
+	Rating                *TeamRating `json:"rating,omitempty"`
+	// Every snapshot of every season the program played. Only the team query fills it. The teams query
+	// answers an empty list.
+	RatingHistory []*TeamRating `json:"ratingHistory"`
+	// Every season the program played as an Ohio team, oldest first, with the record and the
+	// end-of-season rating of each. A season in which the source id is recorded in another state is
+	// left out. Only the team query fills it. The teams query answers an empty list, as it does for
+	// ratingHistory.
+	ProgramHistory []*ProgramSeason `json:"programHistory"`
+	Schedule       []*Game          `json:"schedule"`
 }
 
 // The margin rating of a team on one date. A rating is a number of points. The gap between two

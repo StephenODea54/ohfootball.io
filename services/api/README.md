@@ -37,6 +37,25 @@ loss, or tie and both scores. A canceled game and a forfeit do not count. An opp
 state, or with no current row in `dim_teams`, counts as out of state, because the rating also
 leaves out its games.
 
+## Program history
+
+The `team` query gives `programHistory`, one row for each season the program played as an Ohio
+team, oldest first. The source id follows the program from one season to the next. A season in
+which the source id is recorded in another state is left out, because it has no Ohio rating. Each
+row holds the record and the playoff record of the season. A game counts in a record only when it
+has a result of win, loss, or tie.
+
+The rating of a row comes from the end-of-season snapshot. This is the last snapshot of that
+season. For a past season it is the snapshot of 31 December. For the season in progress it is the
+latest weekly snapshot, so the row of that season equals the rating of the team. The rank counts
+every team in the snapshot, and two teams with the same rating share a rank. `previousRank` is
+always null in a row of the history. `rating` is null when the season has no snapshot.
+
+The rating job writes the 31 December snapshot of each past season again on each run. A past rank
+can therefore move by a place when the model or the data changes. The `teams` query answers an
+empty list for `programHistory` and for `ratingHistory`, because it does not read the history of
+each team.
+
 ## Rules for callers
 
 The API needs no sign-in. Each caller follows two rules.
@@ -56,8 +75,8 @@ A request without a contact gets 400 and a body in the form of a GraphQL error, 
 curl, such as `curl/8.7.1`, holds no contact. A browser does not let a page set `User-Agent`, so
 the playground at `/` fills its Headers pane with a `From` header. The caller writes a contact
 there. The `From` header works in a browser only in the playground, because the API sends no CORS
-headers and `From` is not a header that a page on another site may send without them. The API logs the contact and the address of each request that passes, and never the other
-headers.
+headers and `From` is not a header that a page on another site may send without them. The API
+logs the contact and the address of each request that passes, and never the other headers.
 
 A query that reads only the schema needs no contact, so the playground and the tools that read the
 schema, such as a code generator, work without one. The API reads the query from the `query`
@@ -83,7 +102,7 @@ Each query also has limits on its size. The API checks them before it validates 
   A larger query gets 422 and `FIELD_LIMIT_EXCEEDED`. The complexity limit of gqlgen does not
   count the fields of `__Schema`, so this limit is the one that holds for introspection. The
   introspection query of GraphiQL selects 217 fields, and each query of the site selects at most
-  42.
+  58.
 
 The complexity limit then runs, and a query over it gets 422 and `COMPLEXITY_LIMIT_EXCEEDED`.
 
