@@ -212,6 +212,28 @@ func TestBothTeamQueriesJoinTheOutOfStateGames(t *testing.T) {
 	}
 }
 
+// The count of games against other states follows the rating, which leaves out a game whose
+// opponent has no current row in dim_teams.
+func TestTheOutOfStateCountNeedsACurrentOpponent(t *testing.T) {
+	start := strings.Index(teamFacts, "out_of_state_games AS (")
+	end := strings.Index(teamFacts, "latest_snapshot AS (")
+	if start < 0 || end < start {
+		t.Fatal("teamFacts does not hold out_of_state_games before latest_snapshot")
+	}
+	count := teamFacts[start:end]
+	for _, rule := range []string{
+		"INNER JOIN ohfootball_marts.dim_teams AS opponent\n\t\t\tON opponent.team_key = game.opponent_key\n\t\t   AND opponent.is_current",
+		"opponent.state_code IS DISTINCT FROM 'OH'",
+	} {
+		if !strings.Contains(count, rule) {
+			t.Errorf("out_of_state_games does not hold %q", rule)
+		}
+	}
+	if strings.Contains(count, "LEFT JOIN") {
+		t.Error("out_of_state_games keeps a game without a current opponent")
+	}
+}
+
 func TestScanRatingReadsThePreviousRank(t *testing.T) {
 	asOf := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
 

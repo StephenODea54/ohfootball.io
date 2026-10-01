@@ -183,9 +183,18 @@ func scanScoredGame(row rowScanner) (*model.ScoredGame, error) {
 	return &game, nil
 }
 
+// ohioGameJoinsSQL keeps only the games between two current Ohio teams. The predictions also hold
+// the games against teams from other states, and the evaluate command of the rating service does
+// not score them.
+var ohioGameJoinsSQL = `
+		INNER JOIN ohfootball_marts.dim_teams AS team_a
+			ON team_a.team_key = game.team_a_key AND team_a.is_current AND team_a.state_code = 'OH'
+		INNER JOIN ohfootball_marts.dim_teams AS team_b
+			ON team_b.team_key = game.team_b_key AND team_b.is_current AND team_b.state_code = 'OH'`
+
 // scoredPredictionsCTE gives one row for each scored prediction. The rules are those of the
-// evaluate command of the rating service: a result of W, L, or T, no forfeit, and a prediction
-// made no later than the day of the game. Only a game between two Ohio teams has a prediction.
+// evaluate command of the rating service: a game between two Ohio teams, a result of W, L, or T,
+// no forfeit, and a prediction made no later than the day of the game.
 var scoredPredictionsCTE = `
 	WITH ` + seasonStartsCTE + `,
 	scored AS (
@@ -209,7 +218,7 @@ var scoredPredictionsCTE = `
 				ELSE game.team_b_score - game.team_a_score END AS final_margin
 		FROM ohfootball_marts.fct_game_predictions AS prediction
 		INNER JOIN ohfootball_marts.fct_games AS game
-			ON game.game_key = prediction.game_key AND game.is_current
+			ON game.game_key = prediction.game_key AND game.is_current` + ohioGameJoinsSQL + `
 		INNER JOIN ohfootball_marts.dim_dates AS date
 			ON date.date_key = game.game_date_key
 		INNER JOIN season_starts
@@ -266,13 +275,14 @@ var accuracyCellsSQL = scoredPredictionsCTE + `
 	ORDER BY season, week, is_playoff_game, bin
 `
 
-// accuracyPendingSQL counts the predicted games that have no result yet, by season and week.
+// accuracyPendingSQL counts the predicted games between two Ohio teams that have no result yet, by
+// season and week.
 var accuracyPendingSQL = `
 	WITH ` + seasonStartsCTE + `
 	SELECT game.season, ` + weekNumberSQL + ` AS week, COUNT(*)
 	FROM ohfootball_marts.fct_game_predictions AS prediction
 	INNER JOIN ohfootball_marts.fct_games AS game
-		ON game.game_key = prediction.game_key AND game.is_current
+		ON game.game_key = prediction.game_key AND game.is_current` + ohioGameJoinsSQL + `
 	INNER JOIN ohfootball_marts.dim_dates AS date
 		ON date.date_key = game.game_date_key
 	INNER JOIN season_starts

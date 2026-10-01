@@ -156,6 +156,28 @@ func TestAccuracyQueriesFollowTheRulesOfTheRatingService(t *testing.T) {
 	if !strings.Contains(accuracyPendingSQL, "COALESCE(game.team_a_result, 'unknown') = 'unknown'") {
 		t.Error("the pending query does not count only the games without a result")
 	}
+	// The predictions also hold the games against teams from other states. No query may score or
+	// count them.
+	for name, query := range map[string]string{
+		"cells": accuracyCellsSQL, "upsets": accuracyUpsetsSQL, "exact margins": accuracyExactMarginsSQL,
+		"pending": accuracyPendingSQL,
+	} {
+		if !strings.Contains(query, ohioGameJoinsSQL) {
+			t.Errorf("the %s query does not keep only the games between two Ohio teams", name)
+		}
+	}
+	// Each team has an inner join of its own. A left join would keep a game against another state.
+	if count := strings.Count(ohioGameJoinsSQL, "JOIN"); count != 2 {
+		t.Errorf("the joins of an Ohio game hold %d joins, want 2", count)
+	}
+	for _, team := range []string{"team_a", "team_b"} {
+		join := "INNER JOIN ohfootball_marts.dim_teams AS " + team + "\n\t\t\tON " + team +
+			".team_key = game." + team + "_key AND " + team + ".is_current AND " + team +
+			".state_code = 'OH'"
+		if strings.Count(ohioGameJoinsSQL, join) != 1 {
+			t.Errorf("the joins of an Ohio game do not hold %q", join)
+		}
+	}
 }
 
 // Every query that numbers weeks must read the one rule of week.go.

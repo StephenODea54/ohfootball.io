@@ -28,14 +28,19 @@ the rating of the snapshot when the team did not play. It needs no earlier snaps
 with no game in the week before it, such as one of 31 December, shows no movement. A client finds
 the movement of a team as `previousRank - rank`, so a positive number means the team moved up.
 
-## Games the rating leaves out
+## Games against other states
 
 Each team carries `outOfStateGamesPlayed`. It is the number of games this season that the team
-played against a team that is not recorded as an Ohio team. The rating counts only games between
-two Ohio teams, so it leaves these games out. A game counts here only when it has a result of win,
-loss, or tie and both scores. A canceled game and a forfeit do not count. An opponent with no
-state, or with no current row in `dim_teams`, counts as out of state, because the rating also
-leaves out its games.
+played against a team that is not recorded as an Ohio team. The rating counts such a game at a
+quarter of the weight of a game between two Ohio teams, and it knows the opponent only from its
+games against Ohio teams, so less stands behind the rating of a team with many of them. A game
+counts here only when it has a result of win, loss, or tie and both scores. A canceled game and a
+forfeit do not count. The opponent must have a current row in `dim_teams`, because the rating leaves
+out a game without one. An opponent with no state counts as out of state. A game against a team from
+another state has a prediction like any other game, unless it was played without both scores, and
+its `opponentRating` is the rating that the model keeps for the opponent. In the first game of a new
+program from another state against an Ohio team, `opponentRating` equals the rating of that Ohio
+team. An opponent from another state is never ranked.
 
 ## Program history
 
@@ -68,10 +73,11 @@ the range.
 
 The rules are those of the `evaluate` command of the rating service. A game counts when it has a
 result of win, loss, or tie, it is not a forfeit, and its prediction is from no later than the day
-of the game. Only a game between two Ohio teams has a prediction. A tie counts as half a win in the
-Brier score and the log loss. A tie is not part of the winner accuracy, and neither is a forecast
-of exactly 50%. `expectedCorrect` is the sum of the probability of the favorite over the decided
-games.
+of the game. The stored predictions also hold the games against teams from other states, but only a
+game between two current Ohio teams is scored or counted as pending. A tie counts as half a win in
+the Brier score and the log loss. A tie is not part of the winner accuracy, and neither is a
+forecast of exactly 50%. `expectedCorrect` is the sum of the probability of the favorite over the
+decided games.
 
 Weeks run from Wednesday to Tuesday. Week 1 is the first week of the season that holds at least 50
 current games in `fct_games` between two Ohio teams, whatever their result. A game before that week
