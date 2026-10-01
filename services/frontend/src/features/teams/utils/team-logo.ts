@@ -1,7 +1,7 @@
 import manifest from "@/features/teams/utils/logo-manifest.json"
 import { type LogoSize, logoFileName } from "@/features/teams/utils/logo-sizes"
 
-/** The teams that have a logo file. scripts/logos writes the list together with the files. */
+/** The teams that have a logo file in public/logos. */
 const TEAMS_WITH_A_LOGO: ReadonlySet<string> = new Set(manifest)
 
 /**

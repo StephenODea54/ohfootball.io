@@ -9,7 +9,6 @@
     "test": "vitest run",
     "build": "astro build",
     "preview": "astro preview",
-    "logos": "node scripts/logos/build-logos.ts",
     "lint": "biome ci . && prettier --check \"src/**/*.astro\"",
     "fmt": "biome check --write . && prettier --write \"src/**/*.astro\""
   },
@@ -42,7 +41,6 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "prettier": "3.9.9",
     "prettier-plugin-astro": "1.1.0",
-    "sharp": "0.35.5",
     "typescript": "^6.0.2",
     "vitest": "^5.0.2"
   },

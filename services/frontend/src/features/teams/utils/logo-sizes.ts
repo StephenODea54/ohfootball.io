@@ -2,8 +2,7 @@
  * The width and height in pixels of each logo file. Each file is two times the largest size that
  * the site shows it at, so that it stays sharp on a high-density screen.
  *
- * The script in scripts/logos writes one file of each size for each team. The site reads the same
- * values to select a file.
+ * public/logos holds one file of each size for each team that has a logo.
  */
 export const LOGO_SIZES = {
   /** For a logo in a row or on a card, shown at 40 pixels or less. */

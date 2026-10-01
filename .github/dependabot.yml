@@ -30,10 +30,6 @@ updates:
     directory: /services/frontend
     schedule:
       interval: weekly
-    # A new version of sharp can change the bytes of each team logo. Update it by hand, together
-    # with a new run of the logo script.
-    ignore:
-      - dependency-name: sharp
     groups:
       site:
         patterns: ["*"]

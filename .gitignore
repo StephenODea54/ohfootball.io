@@ -46,7 +46,7 @@
 !*.yaml
 !*.yml
 
-# The team logos that the site serves. scripts/logos in the frontend makes them.
+# The team logos that the site serves.
 !services/frontend/public/logos/*.webp
 
 # And files with no extension that a tool reads
