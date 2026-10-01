@@ -18,6 +18,7 @@ import {
   LEARNING_OFFSET,
   LEARNING_RATE,
   MARGIN_CAP,
+  OTHER_STATE_WEIGHT,
   SLOPE_SEASONS,
 } from "@/features/methodology/rating-model"
 
@@ -64,6 +65,12 @@ const parameters = [
     name: "Slope window",
     value: SLOPE_SEASONS.toString(),
     note: "The number of earlier seasons that each win probability slope is fit on.",
+  },
+  {
+    id: "other-state-weight",
+    name: "Out-of-state weight",
+    value: OTHER_STATE_WEIGHT.toString(),
+    note: "The share of its normal change that an Ohio team moves by in a game against an out-of-state team. The out-of-state team moves by its full change.",
   },
 ]
 

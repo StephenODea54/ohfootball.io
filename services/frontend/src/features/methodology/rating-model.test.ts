@@ -10,6 +10,7 @@ import {
   LEARNING_RATE,
   learningWeight,
   MARGIN_CAP,
+  OTHER_STATE_WEIGHT,
   RATING_SUMMARY,
   SLOPE_SEASONS,
 } from "@/features/methodology/rating-model"
@@ -42,6 +43,7 @@ describe("the values of the rating service", () => {
     ["division_step", `${DIVISION_STEP}.0`],
     ["carryover_last", `${CARRYOVER_LAST}`],
     ["carryover_older", `${CARRYOVER_OLDER}`],
+    ["other_state_weight", `${OTHER_STATE_WEIGHT}`],
   ])("use the same %s", (name, value) => {
     expect(margin).toContain(`${name}: float = ${value}`)
   })

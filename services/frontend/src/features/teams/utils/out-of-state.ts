@@ -12,11 +12,11 @@ export interface OutOfStateNote {
   text: string
 }
 
-/** Tells in one sentence how many games the rating leaves out. */
+/** Tells in one sentence how many games count at quarter weight in the rating. */
 export function outOfStateText(count: number): string {
   return count === 1
-    ? "1 game against an out-of-state team does not count toward this rating."
-    : `${count} games against out-of-state teams do not count toward this rating.`
+    ? "1 game against an out-of-state team counts at quarter weight in this rating."
+    : `${count} games against out-of-state teams count at quarter weight in this rating.`
 }
 
 /**
@@ -30,7 +30,7 @@ export function outOfStateNote(
   if (!Number.isFinite(count) || count < OUT_OF_STATE_MARK_AT) return null
   return {
     count,
-    label: `${count} out-of-state games not in this rating`,
+    label: `${count} out-of-state games at quarter weight`,
     text: outOfStateText(count),
   }
 }
@@ -43,4 +43,4 @@ export function hasOutOfStateNote(
 }
 
 /** The line under a list of schools that tells what the mark means. */
-export const OUT_OF_STATE_LEGEND = `Marks a school with ${OUT_OF_STATE_MARK_AT} or more games against out-of-state teams this season. Those games do not count toward its rating.`
+export const OUT_OF_STATE_LEGEND = `Marks a school with ${OUT_OF_STATE_MARK_AT} or more games against out-of-state teams this season. Those games count at quarter weight, so less stands behind its rating.`

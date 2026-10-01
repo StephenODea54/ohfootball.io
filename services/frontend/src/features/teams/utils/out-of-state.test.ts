@@ -14,8 +14,8 @@ describe("outOfStateNote", () => {
     expect(OUT_OF_STATE_MARK_AT).toBe(2)
     expect(outOfStateNote(team(2))).toEqual({
       count: 2,
-      label: "2 out-of-state games not in this rating",
-      text: "2 games against out-of-state teams do not count toward this rating.",
+      label: "2 out-of-state games at quarter weight",
+      text: "2 games against out-of-state teams count at quarter weight in this rating.",
     })
   })
 
@@ -37,13 +37,13 @@ describe("outOfStateNote", () => {
 describe("outOfStateText", () => {
   it("uses the singular for one game", () => {
     expect(outOfStateText(1)).toBe(
-      "1 game against an out-of-state team does not count toward this rating.",
+      "1 game against an out-of-state team counts at quarter weight in this rating.",
     )
   })
 
   it("uses the plural for more games", () => {
     expect(outOfStateText(3)).toBe(
-      "3 games against out-of-state teams do not count toward this rating.",
+      "3 games against out-of-state teams count at quarter weight in this rating.",
     )
   })
 })
@@ -62,5 +62,6 @@ describe("hasOutOfStateNote", () => {
 describe("OUT_OF_STATE_LEGEND", () => {
   it("names the threshold", () => {
     expect(OUT_OF_STATE_LEGEND).toContain("2 or more games against out-of-state teams")
+    expect(OUT_OF_STATE_LEGEND).toContain("count at quarter weight")
   })
 })

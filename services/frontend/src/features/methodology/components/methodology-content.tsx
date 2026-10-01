@@ -23,8 +23,8 @@ const limits = [
     body: "Most teams play a narrow local schedule. A team that dominates a weak area can carry a higher rating than it deserves until it plays outside that area, which often means the playoffs.",
   },
   {
-    title: "Out-of-state opponents are invisible",
-    body: "Only games between rated Ohio teams update ratings. A game against an out-of-state program is skipped, so it neither helps nor hurts. The leaderboard and the home page mark a school with two or more of these games this season.",
+    title: "Out-of-state opponents are known only a little",
+    body: "A game against an out-of-state program counts at quarter weight, and the opponent is rated only from its games against Ohio teams. A new out-of-state program starts at the rating of the Ohio team it first plays, because teams mostly play teams of their own level. Such an opponent is never ranked. The leaderboard marks a school with two or more of these games this season, because less stands behind its rating.",
   },
   {
     title: "New schools start below the field",
@@ -286,10 +286,12 @@ export function MethodologyContent({ children }: MethodologyContentProps) {
               What Counts
             </Heading>
             <Text className="mt-3 text-base/7 sm:text-base/7">
-              Every game with both scores moves ratings, and a tie is a margin of 0. A game without
-              a score gets a prediction but moves no rating. A forfeit never moves a rating, because
-              no team played the game. Cancellations are excluded for the same reason. Upcoming
-              games get a prediction but never change a rating.
+              Every game with both scores moves ratings, and a tie is a margin of 0. A game between
+              two Ohio teams without a score gets a prediction but moves no rating. A game against
+              an out-of-state team that was played without both scores is left out and gets no
+              prediction. A forfeit never moves a rating, because no team played the game.
+              Cancellations are excluded for the same reason. Upcoming games get a prediction but
+              never change a rating.
             </Text>
           </section>
 

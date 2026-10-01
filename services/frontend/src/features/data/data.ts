@@ -37,7 +37,7 @@ export const files = [
   },
   {
     name: "fct_game_predictions.csv",
-    holds: "The expected margin and the win probability of each game between two Ohio teams.",
+    holds: "The expected margin and the win probability of each game of an Ohio team.",
   },
 ] as const
 

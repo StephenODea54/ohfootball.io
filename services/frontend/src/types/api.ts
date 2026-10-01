@@ -80,7 +80,7 @@ export interface Team {
   record: TeamRecord
   /**
    * The number of games this season that the team played against an out-of-state team. The rating
-   * leaves these games out.
+   * counts these games at quarter weight.
    */
   outOfStateGamesPlayed: number
   rating: TeamRating | null

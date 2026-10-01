@@ -31,6 +31,9 @@ export const HISTORY_SEASONS = 8
 /** The number of earlier seasons that each win probability slope is fit on. */
 export const SLOPE_SEASONS = 10
 
+/** The share of its normal change that an Ohio team moves by in a game against another state. */
+export const OTHER_STATE_WEIGHT = 0.25
+
 /** The share of a surprise that moves the rating of a team that has played n games. */
 export function learningWeight(gamesPlayed: number) {
   return LEARNING_RATE / (gamesPlayed + LEARNING_OFFSET)
