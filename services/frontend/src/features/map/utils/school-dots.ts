@@ -1,5 +1,6 @@
 import type { MapTeam } from "@/features/map/api/get-map-teams"
 import { type MercatorFit, project } from "@/features/map/utils/projection"
+import { type RegionKey, regionOfCounty } from "@/features/map/utils/regions"
 
 type LocatedTeam = MapTeam & { coordinates: NonNullable<MapTeam["coordinates"]> }
 
@@ -12,6 +13,8 @@ export interface Dot {
   opacity: number
   /** A few dots twinkle. The delay spreads them out so they do not blink together. */
   twinkleDelay: number | null
+  /** The region of the school, from its county. Null when the county is not known. */
+  region: RegionKey | null
 }
 
 /** One dot in this many twinkles. */
@@ -42,6 +45,7 @@ export function schoolDots(teams: MapTeam[], fit: MercatorFit): Dot[] {
         radius: round(2.4 + 5 * standing ** 3, 1),
         opacity: round(team.rating ? 0.5 + 0.5 * standing : 0.35, 2),
         twinkleDelay: index % TWINKLE_EVERY === 0 ? (index * 733) % 3500 : null,
+        region: regionOfCounty(team.county),
         standing,
       }
     })

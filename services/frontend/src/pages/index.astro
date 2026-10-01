@@ -7,11 +7,10 @@ import { Link } from "@/components/ui/link"
 import { Text } from "@/components/ui/text"
 import { paths } from "@/config/paths"
 import { getMapTeams } from "@/features/map/api/get-map-teams"
-import { RegionMap } from "@/features/map/components/region-map"
+import { RegionPoster } from "@/features/map/components/region-poster"
 import { RegionStats } from "@/features/map/components/region-stats"
 import { ohioMap } from "@/features/map/server/ohio-map"
 import { programCount, schoolDots } from "@/features/map/utils/school-dots"
-import { project } from "@/features/map/utils/projection"
 import { regionKings } from "@/features/map/utils/regions"
 import { RatingNote } from "@/features/methodology/components/rating-note"
 import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
@@ -24,13 +23,6 @@ import { siteUrl, webSiteJsonLd } from "@/utils/seo"
 const [season, mapTeams, teams] = await Promise.all([getCurrentSeason(), getMapTeams(), getTeams()])
 const map = ohioMap()
 const kings = regionKings(mapTeams)
-const kingPoints = Object.fromEntries(
-  kings.flatMap(({ region, king }) =>
-    king?.coordinates
-      ? [[region.key, project(map.fit, king.coordinates.longitude, king.coordinates.latitude)]]
-      : [],
-  ),
-)
 const stats = [
   { value: programCount(mapTeams.length), label: "Programs" },
   { value: String(new Set(teams.flatMap((team) => team.county ?? [])).size), label: "Counties" },
@@ -48,8 +40,8 @@ const description =
   jsonLd={webSiteJsonLd(siteUrl(Astro.site), "ohfootball.io", description)}
 >
   <main>
-    <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
-      <div class="grid items-center gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <Container className="max-w-7xl py-12 sm:py-16 lg:py-20">
+      <div class="grid items-center gap-10 md:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
         <div>
           <Text className="font-medium text-primary-subtle-fg text-xs/5 uppercase tracking-[0.2em] sm:text-xs/5">
             {`Ohio high school football ratings · ${season}`}
@@ -86,12 +78,7 @@ const description =
           </div>
         </div>
 
-        <RegionMap
-          map={map}
-          kingPoints={kingPoints}
-          kings={kings}
-          dots={schoolDots(mapTeams, map.fit)}
-        />
+        <RegionPoster map={map} kings={kings} dots={schoolDots(mapTeams, map.fit)} />
       </div>
 
       <RegionStats stats={stats} />

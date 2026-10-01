@@ -78,7 +78,11 @@ export function ohioMap(topology: Counties = readCounties()): OhioMap {
     regions: REGIONS.map((region) => {
       const shape = shapeOf(region.counties)
       const [centerX, centerY] = path.centroid(shape)
-      return { key: region.key, path: path(shape) ?? "", center: { x: centerX, y: centerY } }
+      return {
+        key: region.key,
+        path: path(shape) ?? "",
+        center: { x: centerX, y: centerY },
+      }
     }),
   }
 }

@@ -33,6 +33,12 @@ describe("schoolDots", () => {
     expect(dots.map((dot) => dot.id).sort()).toEqual(["best", "last", "unrated"])
   })
 
+  it("puts a dot in the region of its county", () => {
+    const [stark] = schoolDots([{ ...team("massillon", 4), county: "Stark" }], map.fit)
+    expect(stark?.region).toBe("ne")
+    expect(dots.every((dot) => dot.region === null)).toBe(true)
+  })
+
   it("draws the best school last, biggest, and brightest", () => {
     const best = dots.at(-1)
     expect(best?.id).toBe("best")
