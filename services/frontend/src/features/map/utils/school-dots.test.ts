@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { MapTeam } from "@/features/map/api/get-map-teams"
 import { ohioMap } from "@/features/map/server/ohio-map"
-import { programCount, schoolDots } from "@/features/map/utils/school-dots"
+import { schoolDots } from "@/features/map/utils/school-dots"
 
 const map = ohioMap()
 
@@ -63,13 +63,5 @@ describe("schoolDots", () => {
     const twinkling = many.filter((dot) => dot.twinkleDelay !== null)
     expect(twinkling).toHaveLength(2)
     expect(new Set(twinkling.map((dot) => dot.twinkleDelay)).size).toBe(2)
-  })
-})
-
-describe("programCount", () => {
-  it("rounds down to fifty for a headline", () => {
-    expect(programCount(703)).toBe("700+")
-    expect(programCount(749)).toBe("700+")
-    expect(programCount(42)).toBe("42")
   })
 })

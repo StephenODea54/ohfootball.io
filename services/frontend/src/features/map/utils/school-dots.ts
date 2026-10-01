@@ -57,8 +57,3 @@ function round(value: number, digits: number) {
   const scale = 10 ** digits
   return Math.round(value * scale) / scale
 }
-
-/** The number of programs, rounded down to a round number for a headline, such as "700+". */
-export function programCount(count: number) {
-  return count >= 100 ? `${Math.floor(count / 50) * 50}+` : String(count)
-}

@@ -13,14 +13,15 @@ const FALLBACK_COLOR = "var(--color-muted-fg)"
 /**
  * Where the card of each region sits, in percent of the map box. A card on the left grows to the
  * right from its spot, and a card on the right grows to the left. Some cards hang past the edge
- * of the map, as on a poster.
+ * of the map, as on a poster. The cards sit on the map only on an extra wide screen, where the
+ * map is wide enough for them.
  */
 const CARD_SPOTS: Record<RegionKey, { side: "left" | "right"; inset: number; top: number }> = {
   nw: { side: "left", inset: -1, top: 13 },
-  ne: { side: "right", inset: -7, top: 19 },
+  ne: { side: "right", inset: 0, top: 19 },
   central: { side: "left", inset: 7, top: 40 },
   sw: { side: "left", inset: -2.5, top: 80 },
-  se: { side: "right", inset: -5.5, top: 67 },
+  se: { side: "right", inset: 0, top: 67 },
 }
 
 /**
@@ -70,6 +71,23 @@ interface RegionPosterProps {
 export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
   const kingOf = (key: RegionKey) => kings.find((entry) => entry.region.key === key)
   const tintOf = (key: RegionKey | null) => tint((key && kingOf(key)?.color) || FALLBACK_COLOR)
+  const stateWidth = map.width - 2 * MARGIN
+  const stateHeight = map.height - 2 * MARGIN
+  const logos = map.regions.flatMap((region) => {
+    const king = kingOf(region.key)?.king
+    const href = king ? logoHref(king.sourceId, "large") : null
+    if (!href) return []
+    const spot = LOGO_SPOTS[region.key]
+    return [
+      {
+        key: region.key,
+        href,
+        x: MARGIN + spot.x * stateWidth,
+        y: MARGIN + spot.y * stateHeight,
+        size: spot.width * stateWidth,
+      },
+    ]
+  })
   // Only the larger dots get a colored halo, so the busy parts of the state do not blur together.
   const haloDots = dots.filter((dot) => dot.region !== null && dot.radius > 3)
 
@@ -102,6 +120,38 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            {/* The dots fade where a logo sits, so the logo reads clearly through them. The mask
+                keeps a dot at full strength in white and at a third in the dark gray. */}
+            <radialGradient id="poster-logo-fade">
+              <stop offset="0%" stopColor="#555" />
+              <stop offset="70%" stopColor="#555" />
+              <stop offset="100%" stopColor="#fff" />
+            </radialGradient>
+            <mask
+              id="poster-logo-mask"
+              maskUnits="userSpaceOnUse"
+              x="-100"
+              y="-100"
+              width={map.width + 200}
+              height={map.height + 200}
+            >
+              <rect
+                x="-100"
+                y="-100"
+                width={map.width + 200}
+                height={map.height + 200}
+                fill="#fff"
+              />
+              {logos.map((logo) => (
+                <circle
+                  key={logo.key}
+                  cx={logo.x}
+                  cy={logo.y}
+                  r={logo.size / 2}
+                  fill="url(#poster-logo-fade)"
+                />
+              ))}
+            </mask>
           </defs>
 
           {map.regions.map((region) => (
@@ -117,71 +167,64 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
             className="fill-none stroke-bg/30 stroke-[0.8] dark:stroke-fg/15"
           />
 
-          {map.regions.map((region) => {
-            const king = kingOf(region.key)?.king
-            const href = king ? logoHref(king.sourceId, "large") : null
-            if (!href) return null
-            const spot = LOGO_SPOTS[region.key]
-            const stateWidth = map.width - 2 * MARGIN
-            const stateHeight = map.height - 2 * MARGIN
-            const size = spot.width * stateWidth
-            return (
-              <image
-                key={region.key}
-                href={href}
-                x={MARGIN + spot.x * stateWidth - size / 2}
-                y={MARGIN + spot.y * stateHeight - size / 2}
-                width={size}
-                height={size}
-                className="opacity-55 motion-safe:transition-opacity motion-safe:duration-500 group-hover:opacity-70 dark:opacity-50"
-              />
-            )
-          })}
-
-          <g filter="url(#poster-halo)" className="opacity-70 dark:opacity-90">
-            {haloDots.map((dot) => (
-              <circle
-                key={dot.id}
-                cx={dot.x}
-                cy={dot.y}
-                r={dot.radius * 2.4}
-                className={TINT.halo}
-                style={tintOf(dot.region)}
-              />
-            ))}
-          </g>
-
-          {map.regions.map((region) => (
-            <path
-              key={region.key}
-              d={region.path}
-              className={`${TINT.stroke} stroke-[3]`}
-              style={tintOf(region.key)}
-              strokeLinejoin="round"
-              filter="url(#poster-neon)"
+          {logos.map((logo) => (
+            <image
+              key={logo.key}
+              href={logo.href}
+              x={logo.x - logo.size / 2}
+              y={logo.y - logo.size / 2}
+              width={logo.size}
+              height={logo.size}
+              className="opacity-55 motion-safe:transition-opacity motion-safe:duration-500 group-hover:opacity-70 dark:opacity-50"
             />
           ))}
 
-          <g filter="url(#poster-dot)">
-            {dots.map((dot) => (
-              <circle
-                key={dot.id}
-                cx={dot.x}
-                cy={dot.y}
-                r={dot.radius}
-                opacity={dot.opacity}
-                className={
-                  dot.twinkleDelay === null
-                    ? "fill-white"
-                    : "fill-white motion-safe:animate-twinkle"
-                }
-                style={
-                  dot.twinkleDelay === null
-                    ? undefined
-                    : { animationDelay: `${dot.twinkleDelay}ms` }
-                }
+          <g mask="url(#poster-logo-mask)">
+            <g filter="url(#poster-halo)" className="opacity-70 dark:opacity-90">
+              {haloDots.map((dot) => (
+                <circle
+                  key={dot.id}
+                  cx={dot.x}
+                  cy={dot.y}
+                  r={dot.radius * 2.4}
+                  className={TINT.halo}
+                  style={tintOf(dot.region)}
+                />
+              ))}
+            </g>
+
+            {map.regions.map((region) => (
+              <path
+                key={region.key}
+                d={region.path}
+                className={`${TINT.stroke} stroke-[3]`}
+                style={tintOf(region.key)}
+                strokeLinejoin="round"
+                filter="url(#poster-neon)"
               />
             ))}
+
+            <g filter="url(#poster-dot)">
+              {dots.map((dot) => (
+                <circle
+                  key={dot.id}
+                  cx={dot.x}
+                  cy={dot.y}
+                  r={dot.radius}
+                  opacity={dot.opacity}
+                  className={
+                    dot.twinkleDelay === null
+                      ? "fill-white"
+                      : "fill-white motion-safe:animate-twinkle"
+                  }
+                  style={
+                    dot.twinkleDelay === null
+                      ? undefined
+                      : { animationDelay: `${dot.twinkleDelay}ms` }
+                  }
+                />
+              ))}
+            </g>
           </g>
         </svg>
 
@@ -191,7 +234,7 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
           return (
             <div
               key={region.key}
-              className="absolute hidden lg:block"
+              className="absolute hidden xl:block"
               style={{ [spot.side]: `${spot.inset}%`, top: `${spot.top}%` }}
             >
               <PosterCard king={king} label={region.label} style={tintOf(region.key)} />
@@ -200,7 +243,7 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
         })}
       </div>
 
-      <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:hidden">
+      <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:hidden">
         {kings.flatMap(({ region, king }) =>
           king
             ? [

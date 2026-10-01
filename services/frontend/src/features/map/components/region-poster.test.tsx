@@ -61,6 +61,14 @@ describe("RegionPoster", () => {
     expect(html.match(/<image/g)).toHaveLength(1)
   })
 
+  it("fades the dots where a logo sits", () => {
+    const mask = html.slice(html.indexOf('<mask id="poster-logo-mask"'), html.indexOf("</mask>"))
+    expect(mask.match(/<circle/g)).toHaveLength(1)
+    expect(mask).toContain('cx="834"')
+    expect(mask).toContain('r="125"')
+    expect(html).toContain('mask="url(#poster-logo-mask)"')
+  })
+
   it("gives a colored halo only to a large dot with a region", () => {
     const halos = html.slice(html.indexOf('filter="url(#poster-halo)"'))
     const haloGroup = halos.slice(0, halos.indexOf("</g>"))
@@ -75,7 +83,7 @@ describe("RegionPoster", () => {
 
   it("places a card for each king on the map and lists it again for small screens", () => {
     expect(html.match(/href="\/teams\/hoban-key"/g)).toHaveLength(2)
-    expect(html).toContain("right:-7%;top:19%")
+    expect(html).toContain("right:0%;top:19%")
     expect(html).toContain("NE Ohio")
     expect(html).toContain("#1 · +65.2")
     expect(html).not.toContain("NW Ohio")
