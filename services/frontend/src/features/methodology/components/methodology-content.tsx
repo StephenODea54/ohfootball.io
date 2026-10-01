@@ -23,8 +23,8 @@ const limits = [
     body: "Most teams play a narrow local schedule. A team that dominates a weak area can carry a higher rating than it deserves until it plays outside that area, which often means the playoffs.",
   },
   {
-    title: "Out-of-state opponents are invisible",
-    body: "Only games between rated Ohio teams update ratings. A game against an out-of-state program is skipped, so it neither helps nor hurts. The leaderboard and the home page mark a school with two or more of these games this season.",
+    title: "Out-of-state opponents are known only a little",
+    body: "A game against an out-of-state program counts at half weight, and the opponent is rated only from its games against Ohio teams. Such an opponent is never ranked. The leaderboard and the home page mark a school with two or more of these games this season, because less stands behind its rating.",
   },
   {
     title: "New schools start below the field",

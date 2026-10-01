@@ -18,6 +18,10 @@ import {
   LEARNING_OFFSET,
   LEARNING_RATE,
   MARGIN_CAP,
+  OTHER_STATE_MIN_GAMES,
+  OTHER_STATE_SHRINKAGE,
+  OTHER_STATE_WEIGHT,
+  OTHER_STATE_WINDOW_SEASONS,
   SLOPE_SEASONS,
 } from "@/features/methodology/rating-model"
 
@@ -64,6 +68,30 @@ const parameters = [
     name: "Slope window",
     value: SLOPE_SEASONS.toString(),
     note: "The number of earlier seasons that each win probability slope is fit on.",
+  },
+  {
+    id: "other-state-weight",
+    name: "Out-of-state weight",
+    value: OTHER_STATE_WEIGHT.toString(),
+    note: "The share of its normal change that an Ohio team moves by in a game against an out-of-state team.",
+  },
+  {
+    id: "other-state-shrinkage",
+    name: "Out-of-state shrinkage",
+    value: OTHER_STATE_SHRINKAGE.toString(),
+    note: "A new out-of-state opponent starts at the average for its state, mixed with this many games of the average for the division of its Ohio opponent.",
+  },
+  {
+    id: "other-state-window",
+    name: "Out-of-state window",
+    value: OTHER_STATE_WINDOW_SEASONS.toString(),
+    note: "The number of earlier seasons that the start of a new out-of-state opponent reads.",
+  },
+  {
+    id: "other-state-minimum",
+    name: "Out-of-state minimum",
+    value: OTHER_STATE_MIN_GAMES.toString(),
+    note: "The fewest games that give the average of a division for that start.",
   },
 ]
 
