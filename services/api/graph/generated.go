@@ -51,6 +51,7 @@ type ComplexityRoot struct {
 		BrierScore      func(childComplexity int) int
 		Correct         func(childComplexity int) int
 		Decided         func(childComplexity int) int
+		ExactMargins    func(childComplexity int) int
 		ExpectedCorrect func(childComplexity int) int
 		Games           func(childComplexity int) int
 		LogLoss         func(childComplexity int) int
@@ -93,15 +94,16 @@ type ComplexityRoot struct {
 	}
 
 	ModelAccuracy struct {
-		Confidence    func(childComplexity int) int
-		Current       func(childComplexity int) int
-		CurrentSeason func(childComplexity int) int
-		FromSeason    func(childComplexity int) int
-		Overall       func(childComplexity int) int
-		Phases        func(childComplexity int) int
-		Seasons       func(childComplexity int) int
-		Upsets        func(childComplexity int) int
-		WorstWeeks    func(childComplexity int) int
+		Confidence       func(childComplexity int) int
+		Current          func(childComplexity int) int
+		CurrentSeason    func(childComplexity int) int
+		ExactMarginGames func(childComplexity int) int
+		FromSeason       func(childComplexity int) int
+		Overall          func(childComplexity int) int
+		Phases           func(childComplexity int) int
+		Seasons          func(childComplexity int) int
+		Upsets           func(childComplexity int) int
+		WorstWeeks       func(childComplexity int) int
 	}
 
 	PhaseAccuracy struct {
@@ -150,13 +152,14 @@ type ComplexityRoot struct {
 	}
 
 	ScoredGame struct {
-		Date              func(childComplexity int) int
-		ID                func(childComplexity int) int
-		Loser             func(childComplexity int) int
-		Season            func(childComplexity int) int
-		Week              func(childComplexity int) int
-		Winner            func(childComplexity int) int
-		WinnerProbability func(childComplexity int) int
+		Date                  func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		Loser                 func(childComplexity int) int
+		Season                func(childComplexity int) int
+		Week                  func(childComplexity int) int
+		Winner                func(childComplexity int) int
+		WinnerPredictedMargin func(childComplexity int) int
+		WinnerProbability     func(childComplexity int) int
 	}
 
 	ScoredTeam struct {
@@ -174,10 +177,11 @@ type ComplexityRoot struct {
 	}
 
 	SeasonReport struct {
-		LastWeek       func(childComplexity int) int
-		LastWeekUpsets func(childComplexity int) int
-		Season         func(childComplexity int) int
-		Weeks          func(childComplexity int) int
+		LastWeek                 func(childComplexity int) int
+		LastWeekExactMarginGames func(childComplexity int) int
+		LastWeekUpsets           func(childComplexity int) int
+		Season                   func(childComplexity int) int
+		Weeks                    func(childComplexity int) int
 	}
 
 	SeasonWeekAccuracy struct {
@@ -274,6 +278,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AccuracyScore.Decided(childComplexity), true
+
+	case "AccuracyScore.exactMargins":
+		if e.complexity.AccuracyScore.ExactMargins == nil {
+			break
+		}
+
+		return e.complexity.AccuracyScore.ExactMargins(childComplexity), true
 
 	case "AccuracyScore.expectedCorrect":
 		if e.complexity.AccuracyScore.ExpectedCorrect == nil {
@@ -505,6 +516,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ModelAccuracy.CurrentSeason(childComplexity), true
+
+	case "ModelAccuracy.exactMarginGames":
+		if e.complexity.ModelAccuracy.ExactMarginGames == nil {
+			break
+		}
+
+		return e.complexity.ModelAccuracy.ExactMarginGames(childComplexity), true
 
 	case "ModelAccuracy.fromSeason":
 		if e.complexity.ModelAccuracy.FromSeason == nil {
@@ -799,6 +817,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ScoredGame.Winner(childComplexity), true
 
+	case "ScoredGame.winnerPredictedMargin":
+		if e.complexity.ScoredGame.WinnerPredictedMargin == nil {
+			break
+		}
+
+		return e.complexity.ScoredGame.WinnerPredictedMargin(childComplexity), true
+
 	case "ScoredGame.winnerProbability":
 		if e.complexity.ScoredGame.WinnerProbability == nil {
 			break
@@ -868,6 +893,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SeasonReport.LastWeek(childComplexity), true
+
+	case "SeasonReport.lastWeekExactMarginGames":
+		if e.complexity.SeasonReport.LastWeekExactMarginGames == nil {
+			break
+		}
+
+		return e.complexity.SeasonReport.LastWeekExactMarginGames(childComplexity), true
 
 	case "SeasonReport.lastWeekUpsets":
 		if e.complexity.SeasonReport.LastWeekUpsets == nil {
@@ -1786,6 +1818,50 @@ func (ec *executionContext) _AccuracyScore_correct(ctx context.Context, field gr
 }
 
 func (ec *executionContext) fieldContext_AccuracyScore_correct(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccuracyScore",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AccuracyScore_exactMargins(ctx context.Context, field graphql.CollectedField, obj *model.AccuracyScore) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccuracyScore_exactMargins(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExactMargins, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccuracyScore_exactMargins(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AccuracyScore",
 		Field:      field,
@@ -3237,6 +3313,8 @@ func (ec *executionContext) fieldContext_ModelAccuracy_overall(_ context.Context
 				return ec.fieldContext_AccuracyScore_decided(ctx, field)
 			case "correct":
 				return ec.fieldContext_AccuracyScore_correct(ctx, field)
+			case "exactMargins":
+				return ec.fieldContext_AccuracyScore_exactMargins(ctx, field)
 			case "accuracy":
 				return ec.fieldContext_AccuracyScore_accuracy(ctx, field)
 			case "expectedCorrect":
@@ -3471,6 +3549,70 @@ func (ec *executionContext) fieldContext_ModelAccuracy_upsets(_ context.Context,
 				return ec.fieldContext_ScoredGame_loser(ctx, field)
 			case "winnerProbability":
 				return ec.fieldContext_ScoredGame_winnerProbability(ctx, field)
+			case "winnerPredictedMargin":
+				return ec.fieldContext_ScoredGame_winnerPredictedMargin(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ScoredGame", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelAccuracy_exactMarginGames(ctx context.Context, field graphql.CollectedField, obj *model.ModelAccuracy) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ModelAccuracy_exactMarginGames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExactMarginGames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ScoredGame)
+	fc.Result = res
+	return ec.marshalNScoredGame2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐScoredGameᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ModelAccuracy_exactMarginGames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAccuracy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ScoredGame_id(ctx, field)
+			case "season":
+				return ec.fieldContext_ScoredGame_season(ctx, field)
+			case "week":
+				return ec.fieldContext_ScoredGame_week(ctx, field)
+			case "date":
+				return ec.fieldContext_ScoredGame_date(ctx, field)
+			case "winner":
+				return ec.fieldContext_ScoredGame_winner(ctx, field)
+			case "loser":
+				return ec.fieldContext_ScoredGame_loser(ctx, field)
+			case "winnerProbability":
+				return ec.fieldContext_ScoredGame_winnerProbability(ctx, field)
+			case "winnerPredictedMargin":
+				return ec.fieldContext_ScoredGame_winnerPredictedMargin(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ScoredGame", field.Name)
 		},
@@ -3583,6 +3725,8 @@ func (ec *executionContext) fieldContext_ModelAccuracy_current(_ context.Context
 				return ec.fieldContext_SeasonReport_lastWeek(ctx, field)
 			case "lastWeekUpsets":
 				return ec.fieldContext_SeasonReport_lastWeekUpsets(ctx, field)
+			case "lastWeekExactMarginGames":
+				return ec.fieldContext_SeasonReport_lastWeekExactMarginGames(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SeasonReport", field.Name)
 		},
@@ -3681,6 +3825,8 @@ func (ec *executionContext) fieldContext_PhaseAccuracy_score(_ context.Context, 
 				return ec.fieldContext_AccuracyScore_decided(ctx, field)
 			case "correct":
 				return ec.fieldContext_AccuracyScore_correct(ctx, field)
+			case "exactMargins":
+				return ec.fieldContext_AccuracyScore_exactMargins(ctx, field)
 			case "accuracy":
 				return ec.fieldContext_AccuracyScore_accuracy(ctx, field)
 			case "expectedCorrect":
@@ -4781,6 +4927,8 @@ func (ec *executionContext) fieldContext_Query_modelAccuracy(ctx context.Context
 				return ec.fieldContext_ModelAccuracy_confidence(ctx, field)
 			case "upsets":
 				return ec.fieldContext_ModelAccuracy_upsets(ctx, field)
+			case "exactMarginGames":
+				return ec.fieldContext_ModelAccuracy_exactMarginGames(ctx, field)
 			case "worstWeeks":
 				return ec.fieldContext_ModelAccuracy_worstWeeks(ctx, field)
 			case "current":
@@ -5454,6 +5602,50 @@ func (ec *executionContext) fieldContext_ScoredGame_winnerProbability(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _ScoredGame_winnerPredictedMargin(ctx context.Context, field graphql.CollectedField, obj *model.ScoredGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ScoredGame_winnerPredictedMargin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WinnerPredictedMargin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ScoredGame_winnerPredictedMargin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ScoredGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ScoredTeam_id(ctx context.Context, field graphql.CollectedField, obj *model.ScoredTeam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ScoredTeam_id(ctx, field)
 	if err != nil {
@@ -5806,6 +5998,8 @@ func (ec *executionContext) fieldContext_SeasonAccuracy_score(_ context.Context,
 				return ec.fieldContext_AccuracyScore_decided(ctx, field)
 			case "correct":
 				return ec.fieldContext_AccuracyScore_correct(ctx, field)
+			case "exactMargins":
+				return ec.fieldContext_AccuracyScore_exactMargins(ctx, field)
 			case "accuracy":
 				return ec.fieldContext_AccuracyScore_accuracy(ctx, field)
 			case "expectedCorrect":
@@ -6031,6 +6225,70 @@ func (ec *executionContext) fieldContext_SeasonReport_lastWeekUpsets(_ context.C
 				return ec.fieldContext_ScoredGame_loser(ctx, field)
 			case "winnerProbability":
 				return ec.fieldContext_ScoredGame_winnerProbability(ctx, field)
+			case "winnerPredictedMargin":
+				return ec.fieldContext_ScoredGame_winnerPredictedMargin(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ScoredGame", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SeasonReport_lastWeekExactMarginGames(ctx context.Context, field graphql.CollectedField, obj *model.SeasonReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SeasonReport_lastWeekExactMarginGames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastWeekExactMarginGames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ScoredGame)
+	fc.Result = res
+	return ec.marshalNScoredGame2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐScoredGameᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SeasonReport_lastWeekExactMarginGames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SeasonReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ScoredGame_id(ctx, field)
+			case "season":
+				return ec.fieldContext_ScoredGame_season(ctx, field)
+			case "week":
+				return ec.fieldContext_ScoredGame_week(ctx, field)
+			case "date":
+				return ec.fieldContext_ScoredGame_date(ctx, field)
+			case "winner":
+				return ec.fieldContext_ScoredGame_winner(ctx, field)
+			case "loser":
+				return ec.fieldContext_ScoredGame_loser(ctx, field)
+			case "winnerProbability":
+				return ec.fieldContext_ScoredGame_winnerProbability(ctx, field)
+			case "winnerPredictedMargin":
+				return ec.fieldContext_ScoredGame_winnerPredictedMargin(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ScoredGame", field.Name)
 		},
@@ -6305,6 +6563,8 @@ func (ec *executionContext) fieldContext_SeasonWeekAccuracy_score(_ context.Cont
 				return ec.fieldContext_AccuracyScore_decided(ctx, field)
 			case "correct":
 				return ec.fieldContext_AccuracyScore_correct(ctx, field)
+			case "exactMargins":
+				return ec.fieldContext_AccuracyScore_exactMargins(ctx, field)
 			case "accuracy":
 				return ec.fieldContext_AccuracyScore_accuracy(ctx, field)
 			case "expectedCorrect":
@@ -9367,6 +9627,11 @@ func (ec *executionContext) _AccuracyScore(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "exactMargins":
+			out.Values[i] = ec._AccuracyScore_exactMargins(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "accuracy":
 			out.Values[i] = ec._AccuracyScore_accuracy(ctx, field, obj)
 		case "expectedCorrect":
@@ -9655,6 +9920,11 @@ func (ec *executionContext) _ModelAccuracy(ctx context.Context, sel ast.Selectio
 			}
 		case "upsets":
 			out.Values[i] = ec._ModelAccuracy_upsets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exactMarginGames":
+			out.Values[i] = ec._ModelAccuracy_exactMarginGames(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -10185,6 +10455,11 @@ func (ec *executionContext) _ScoredGame(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "winnerPredictedMargin":
+			out.Values[i] = ec._ScoredGame_winnerPredictedMargin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10338,6 +10613,11 @@ func (ec *executionContext) _SeasonReport(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SeasonReport_lastWeek(ctx, field, obj)
 		case "lastWeekUpsets":
 			out.Values[i] = ec._SeasonReport_lastWeekUpsets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastWeekExactMarginGames":
+			out.Values[i] = ec._SeasonReport_lastWeekExactMarginGames(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

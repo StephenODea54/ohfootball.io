@@ -21,6 +21,8 @@ type Cell struct {
 	Ties    int
 	Decided int
 	Correct int
+	// ExactMargins is the number of decided games in which the model called the margin exactly.
+	ExactMargins int
 	// SumSquaredError and SumLogLoss are the sums of the Brier score and the log loss of each game.
 	SumSquaredError float64
 	SumLogLoss      float64
@@ -51,10 +53,13 @@ const (
 	MinWorstWeekGames = 100
 	// Bins is the number of confidence bins. Each bin is five points wide.
 	Bins = 10
-	// ListLimit is the length of the list of upsets and of the list of worst weeks.
+	// ListLimit is the length of the list of upsets, of the list of exact margins, and of the
+	// list of worst weeks.
 	ListLimit = 10
 	// LastWeekUpsets is the length of the list of upsets of the last week.
 	LastWeekUpsets = 5
+	// LastWeekExactMargins is the length of the list of exact margins of the last week.
+	LastWeekExactMargins = 5
 	// FirstScoredSeason is the default first season of the range. From 2000 on, the scores come
 	// from one source and every season has overtime. The site scores the same range.
 	FirstScoredSeason = 2000

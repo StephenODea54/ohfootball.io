@@ -20,6 +20,10 @@ type AccuracyScore struct {
 	Decided int `json:"decided"`
 	// The decided games in which the favorite won.
 	Correct int `json:"correct"`
+	// The decided games in which the model called the margin exactly: the margin that it expected for
+	// the winner, rounded to a whole point with a half rounded up, is the final margin. A game without
+	// both scores never counts.
+	ExactMargins int `json:"exactMargins"`
 	// correct divided by decided. Null when no game was decided.
 	Accuracy *float64 `json:"accuracy,omitempty"`
 	// The sum of the probability of the favorite over the decided games. It is the number of correct
@@ -94,6 +98,12 @@ type ModelAccuracy struct {
 	Confidence []*ConfidenceBin `json:"confidence"`
 	// The ten games of the range in which the winner had the lowest probability, lowest first.
 	Upsets []*ScoredGame `json:"upsets"`
+	// The ten games of the range in which the model called the margin exactly, as exactMargins counts
+	// them, biggest games first. A game is bigger when its two teams carried higher ratings into it.
+	// Each rating is measured against the ratings of its season: its gap to the mean, in standard
+	// deviations. So a season with a wider spread of ratings does not fill the list. Of two games that
+	// are as big, the playoff game comes first.
+	ExactMarginGames []*ScoredGame `json:"exactMarginGames"`
 	// The ten weeks of the range with the largest gap between expectedCorrect and the correct picks,
 	// worst first. Each week has at least 100 games and no pending game.
 	WorstWeeks []*SeasonWeekAccuracy `json:"worstWeeks"`
@@ -171,6 +181,9 @@ type ScoredGame struct {
 	Loser  *ScoredTeam `json:"loser"`
 	// The win probability that the model gave the winner before the game.
 	WinnerProbability float64 `json:"winnerProbability"`
+	// The margin that the model expected for the winner before the game, in points, with the home edge
+	// included. It is negative when the model expected the winner to lose.
+	WinnerPredictedMargin float64 `json:"winnerPredictedMargin"`
 }
 
 type ScoredTeam struct {
@@ -200,6 +213,9 @@ type SeasonReport struct {
 	LastWeek *SeasonWeekAccuracy `json:"lastWeek,omitempty"`
 	// The upsets of lastWeek, lowest winner probability first, at most 5. Empty when lastWeek is null.
 	LastWeekUpsets []*ScoredGame `json:"lastWeekUpsets"`
+	// The games of lastWeek in which the model called the margin exactly, in the order of
+	// exactMarginGames, at most 5. Empty when lastWeek is null.
+	LastWeekExactMarginGames []*ScoredGame `json:"lastWeekExactMarginGames"`
 }
 
 // One week of one season, with the regular season and the playoff games of the week. Weeks run from

@@ -18,9 +18,10 @@ type accuracyKey struct {
 
 // ModelAccuracy scores the stored predictions of the games that have a result. The SQL sums the
 // predictions into cells, and the package accuracy folds the cells into each view. Two more
-// queries give the lists of upsets. The answer of each range is kept for accuracyCacheTTL, and
-// calls for the same range at the same time share one load, because the load reads every stored
-// prediction and the predictions change once a week.
+// queries give the lists of upsets, and two more give the lists of exact margins. The answer of
+// each range is kept for accuracyCacheTTL, and calls for the same range at the same time share
+// one load, because the load reads every stored prediction and the predictions change once a
+// week.
 func (store *Postgres) ModelAccuracy(ctx context.Context, from, to *int) (*model.ModelAccuracy, error) {
 	current, err := store.CurrentSeason(ctx)
 	if err != nil {
@@ -47,20 +48,31 @@ func (store *Postgres) loadModelAccuracy(ctx context.Context, current int, r acc
 	if err != nil {
 		return nil, err
 	}
-	upsets, err := collect(ctx, store, "select upsets", accuracyGamesSQL,
+	upsets, err := collect(ctx, store, "select upsets", accuracyUpsetsSQL,
+		[]any{r.From, r.To, nil, accuracy.ListLimit}, scanScoredGame)
+	if err != nil {
+		return nil, err
+	}
+	exactMargins, err := collect(ctx, store, "select exact margins", accuracyExactMarginsSQL,
 		[]any{r.From, r.To, nil, accuracy.ListLimit}, scanScoredGame)
 	if err != nil {
 		return nil, err
 	}
 	report := accuracy.Report(cells, pending, current)
 	if week := report.LastWeek; week != nil {
-		report.LastWeekUpsets, err = collect(ctx, store, "select upsets of the last week", accuracyGamesSQL,
+		report.LastWeekUpsets, err = collect(ctx, store, "select upsets of the last week", accuracyUpsetsSQL,
 			[]any{current, current, week.Week, accuracy.LastWeekUpsets}, scanScoredGame)
 		if err != nil {
 			return nil, err
 		}
+		report.LastWeekExactMarginGames, err = collect(ctx, store, "select exact margins of the last week",
+			accuracyExactMarginsSQL, []any{current, current, week.Week, accuracy.LastWeekExactMargins},
+			scanScoredGame)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return accuracy.Assemble(cells, pending, current, r, upsets, report), nil
+	return accuracy.Assemble(cells, pending, current, r, upsets, exactMargins, report), nil
 }
 
 // collect runs a query and scans each row with scan.
@@ -105,7 +117,7 @@ func scanRows[T any](rows rowIterator, name string, scan func(rowScanner) (T, er
 
 func scanCell(row rowScanner) (accuracy.Cell, error) {
 	var cell accuracy.Cell
-	var games, ties, decided, correct int64
+	var games, ties, decided, correct, exactMargins int64
 	var firstDate, lastDate time.Time
 	if err := row.Scan(
 		&cell.Season,
@@ -116,6 +128,7 @@ func scanCell(row rowScanner) (accuracy.Cell, error) {
 		&ties,
 		&decided,
 		&correct,
+		&exactMargins,
 		&cell.SumSquaredError,
 		&cell.SumLogLoss,
 		&cell.SumFavoriteProbability,
@@ -126,6 +139,7 @@ func scanCell(row rowScanner) (accuracy.Cell, error) {
 		return accuracy.Cell{}, err
 	}
 	cell.Games, cell.Ties, cell.Decided, cell.Correct = int(games), int(ties), int(decided), int(correct)
+	cell.ExactMargins = int(exactMargins)
 	cell.FirstDate = firstDate.Format(time.DateOnly)
 	cell.LastDate = lastDate.Format(time.DateOnly)
 	return cell, nil
@@ -159,6 +173,7 @@ func scanScoredGame(row rowScanner) (*model.ScoredGame, error) {
 		&game.Loser.Name,
 		&loserScore,
 		&game.WinnerProbability,
+		&game.WinnerPredictedMargin,
 	); err != nil {
 		return nil, err
 	}
@@ -185,7 +200,13 @@ var scoredPredictionsCTE = `
 			game.team_a_key,
 			game.team_b_key,
 			game.team_a_score,
-			game.team_b_score
+			game.team_b_score,
+			prediction.team_a_rating,
+			prediction.team_b_rating,
+			CASE game.team_a_result WHEN 'W' THEN prediction.predicted_margin
+				ELSE -prediction.predicted_margin END AS winner_margin,
+			CASE game.team_a_result WHEN 'W' THEN game.team_a_score - game.team_b_score
+				ELSE game.team_b_score - game.team_a_score END AS final_margin
 		FROM ohfootball_marts.fct_game_predictions AS prediction
 		INNER JOIN ohfootball_marts.fct_games AS game
 			ON game.game_key = prediction.game_key AND game.is_current
@@ -207,7 +228,16 @@ var scoredPredictionsCTE = `
 				AND (scored.probability > 0.5) = (scored.outcome = 1)) AS correct,
 			-- The same clip as the rating service. The table refuses 0 and 1, so it changes
 			-- nothing today.
-			LEAST(GREATEST(scored.probability, 1e-15), 1 - 1e-15) AS clipped
+			LEAST(GREATEST(scored.probability, 1e-15), 1 - 1e-15) AS clipped,
+			-- The model called the margin exactly when the margin that it expected for the
+			-- winner, rounded as the site rounds it, is the final margin. The site uses
+			-- Math.round, which rounds a half up. ROUND of a float8 rounds a half to even. A cast
+			-- to numeric keeps only 15 digits, so 2.4999999999999996 becomes 3. FLOOR of the
+			-- margin plus 0.5 rounds as the site does. The site shows a margin under 0.5 as
+			-- "Even", which calls no margin. A tie has no winner. A game without both scores
+			-- has no final margin, so it does not count.
+			COALESCE(scored.outcome <> 0.5 AND scored.winner_margin >= 0.5
+				AND FLOOR(scored.winner_margin + 0.5) = scored.final_margin, FALSE) AS exact_margin
 		FROM scored
 	)
 `
@@ -224,6 +254,7 @@ var accuracyCellsSQL = scoredPredictionsCTE + `
 		COUNT(*) FILTER (WHERE outcome = 0.5),
 		COUNT(*) FILTER (WHERE decided),
 		COUNT(*) FILTER (WHERE correct),
+		COUNT(*) FILTER (WHERE exact_margin),
 		SUM(POWER(probability - outcome, 2)),
 		SUM(-(outcome * LN(clipped) + (1 - outcome) * LN(1 - clipped))),
 		SUM(favorite_probability),
@@ -251,10 +282,10 @@ var accuracyPendingSQL = `
 	ORDER BY game.season, week
 `
 
-// accuracyGamesSQL lists the scored games with a winner, seen from the winner, lowest winner
-// probability first. The parameters are the first and the last season, a week or null, and the
-// number of games.
-var accuracyGamesSQL = scoredPredictionsCTE + `,
+// sidedGamesSQL gives the scored games with a winner, in a range of seasons, in one week or in
+// every week. The parameters are the first and the last season, a week or null, and the number of
+// games, which the query that reads it applies.
+var sidedGamesSQL = scoredPredictionsCTE + `,
 	sided AS (
 		SELECT
 			graded.*,
@@ -264,6 +295,10 @@ var accuracyGamesSQL = scoredPredictionsCTE + `,
 		  AND graded.season BETWEEN $1::int AND $2::int
 		  AND ($3::int IS NULL OR graded.week = $3::int)
 	)
+`
+
+// scoredGameSQL reads the games of sided from the winner, in the columns of scanScoredGame.
+var scoredGameSQL = `
 	SELECT
 		sided.game_key::text,
 		sided.season,
@@ -278,7 +313,8 @@ var accuracyGamesSQL = scoredPredictionsCTE + `,
 		loser.name,
 		CASE WHEN sided.a_won THEN sided.team_b_score ELSE sided.team_a_score END,
 		CASE WHEN sided.a_won THEN sided.probability ELSE 1 - sided.probability END
-			AS winner_probability
+			AS winner_probability,
+		sided.winner_margin
 	FROM sided
 	INNER JOIN ohfootball_marts.dim_teams AS winner
 		ON winner.is_current
@@ -286,6 +322,32 @@ var accuracyGamesSQL = scoredPredictionsCTE + `,
 	INNER JOIN ohfootball_marts.dim_teams AS loser
 		ON loser.is_current
 	   AND loser.team_key = CASE WHEN sided.a_won THEN sided.team_b_key ELSE sided.team_a_key END
+`
+
+// accuracyUpsetsSQL lists the scored games with a winner, lowest winner probability first.
+var accuracyUpsetsSQL = sidedGamesSQL + scoredGameSQL + `
 	ORDER BY winner_probability, sided.game_date, sided.game_key
+	LIMIT $4::int
+`
+
+// accuracyExactMarginsSQL lists the scored games in which the model called the margin exactly,
+// biggest games first. The size of a game is the sum of the gaps of the two ratings to the mean
+// rating of the season, in standard deviations of the season. The mean and the deviation use
+// every scored game of the season, whatever the week. Of two games that are as big, the playoff
+// game comes first.
+var accuracyExactMarginsSQL = sidedGamesSQL + `,
+	season_spread AS (
+		SELECT graded.season, AVG(side.rating) AS mean_rating, STDDEV_POP(side.rating) AS spread
+		FROM graded
+		CROSS JOIN LATERAL (VALUES (graded.team_a_rating), (graded.team_b_rating)) AS side (rating)
+		WHERE graded.season BETWEEN $1::int AND $2::int
+		GROUP BY graded.season
+	)
+` + scoredGameSQL + `
+	INNER JOIN season_spread ON season_spread.season = sided.season
+	WHERE sided.exact_margin
+	ORDER BY (sided.team_a_rating + sided.team_b_rating - 2 * season_spread.mean_rating)
+			/ NULLIF(season_spread.spread, 0) DESC NULLS LAST,
+		sided.is_playoff_game DESC, sided.game_date, sided.game_key
 	LIMIT $4::int
 `

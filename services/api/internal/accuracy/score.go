@@ -4,7 +4,7 @@ import "github.com/StephenODea54/services/api/graph/model"
 
 // totals holds the sums of a set of cells.
 type totals struct {
-	games, ties, decided, correct                    int
+	games, ties, decided, correct, exactMargins      int
 	squaredError, logLoss, favorite, favoriteDecided float64
 	firstDate, lastDate                              string
 }
@@ -20,6 +20,7 @@ func (sum *totals) add(cell Cell) {
 	sum.ties += cell.Ties
 	sum.decided += cell.Decided
 	sum.correct += cell.Correct
+	sum.exactMargins += cell.ExactMargins
 	sum.squaredError += cell.SumSquaredError
 	sum.logLoss += cell.SumLogLoss
 	sum.favorite += cell.SumFavoriteProbability
@@ -49,6 +50,7 @@ func (sum totals) score() *model.AccuracyScore {
 		Ties:            sum.ties,
 		Decided:         sum.decided,
 		Correct:         sum.correct,
+		ExactMargins:    sum.exactMargins,
 		Accuracy:        ratio(float64(sum.correct), sum.decided),
 		ExpectedCorrect: sum.favoriteDecided,
 		BrierScore:      ratio(sum.squaredError, sum.games),

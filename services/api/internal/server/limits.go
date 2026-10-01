@@ -26,7 +26,7 @@ const (
 
 const (
 	// DefaultFieldLimit is the most fields that one query may select. The introspection query of
-	// GraphiQL selects about 220. The query of the Accuracy page selects about 120, and each other
+	// GraphiQL selects about 220. The query of the Accuracy page selects about 160, and each other
 	// query of the site fewer than 60.
 	DefaultFieldLimit = 300
 

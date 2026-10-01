@@ -75,15 +75,17 @@ func (fake *fakeStore) ModelAccuracy(context.Context, *int, *int) (*model.ModelA
 // emptyAccuracy is an answer of ModelAccuracy with no games.
 func emptyAccuracy() *model.ModelAccuracy {
 	return &model.ModelAccuracy{
-		Overall:    &model.AccuracyScore{},
-		Seasons:    []*model.SeasonAccuracy{},
-		Phases:     []*model.PhaseAccuracy{},
-		Confidence: []*model.ConfidenceBin{},
-		Upsets:     []*model.ScoredGame{},
-		WorstWeeks: []*model.SeasonWeekAccuracy{},
+		Overall:          &model.AccuracyScore{},
+		Seasons:          []*model.SeasonAccuracy{},
+		Phases:           []*model.PhaseAccuracy{},
+		Confidence:       []*model.ConfidenceBin{},
+		Upsets:           []*model.ScoredGame{},
+		ExactMarginGames: []*model.ScoredGame{},
+		WorstWeeks:       []*model.SeasonWeekAccuracy{},
 		Current: &model.SeasonReport{
-			Weeks:          []*model.SeasonWeekAccuracy{},
-			LastWeekUpsets: []*model.ScoredGame{},
+			Weeks:                    []*model.SeasonWeekAccuracy{},
+			LastWeekUpsets:           []*model.ScoredGame{},
+			LastWeekExactMarginGames: []*model.ScoredGame{},
 		},
 	}
 }
@@ -528,20 +530,28 @@ func TestModelAccuracyQuery(t *testing.T) {
 	accuracy := 0.8078
 	answer := emptyAccuracy()
 	answer.CurrentSeason, answer.FromSeason = 2026, 2000
-	answer.Overall = &model.AccuracyScore{Games: 97688, Accuracy: &accuracy}
+	answer.Overall = &model.AccuracyScore{Games: 97688, ExactMargins: 2300, Accuracy: &accuracy}
 	answer.Upsets = []*model.ScoredGame{{
 		ID: "game", Season: 2011, Week: 6, Date: "2011-09-30",
 		Winner:            &model.ScoredTeam{ID: "greenville", SourceID: "678", Name: "Greenville"},
 		Loser:             &model.ScoredTeam{ID: "watterson", SourceID: "1720", Name: "Bishop Watterson"},
 		WinnerProbability: 0.0037,
 	}}
+	answer.ExactMarginGames = []*model.ScoredGame{{
+		ID: "exact", Season: 2004, Week: 8, Date: "2004-10-16",
+		Winner:                &model.ScoredTeam{ID: "ignatius", SourceID: "1354", Name: "St Ignatius"},
+		Loser:                 &model.ScoredTeam{ID: "edward", SourceID: "1346", Name: "St Edward"},
+		WinnerProbability:     0.8257,
+		WinnerPredictedMargin: 15.54,
+	}}
 	handler := newHandler(t, &fakeStore{accuracy: answer}, Options{})
 
 	response := decode(t, post(t, handler, `{
 		modelAccuracy(fromSeason: 2000) {
 			fromSeason
-			overall { games accuracy brierScore }
+			overall { games exactMargins accuracy brierScore }
 			upsets { winner { name score } winnerProbability }
+			exactMarginGames { winner { name } winnerPredictedMargin }
 			current { lastWeek { week } }
 		}
 	}`))
@@ -559,6 +569,13 @@ func TestModelAccuracyQuery(t *testing.T) {
 	upset := got["upsets"].([]any)[0].(map[string]any)
 	if upset["winner"].(map[string]any)["name"] != "Greenville" || upset["winnerProbability"] != 0.0037 {
 		t.Fatalf("upset = %v, want Greenville at 0.37%%", upset)
+	}
+	if overall["exactMargins"] != float64(2300) {
+		t.Fatalf("exactMargins = %v, want 2300", overall["exactMargins"])
+	}
+	exact := got["exactMarginGames"].([]any)[0].(map[string]any)
+	if exact["winner"].(map[string]any)["name"] != "St Ignatius" || exact["winnerPredictedMargin"] != 15.54 {
+		t.Fatalf("exact margin = %v, want St Ignatius by 15.54", exact)
 	}
 	if last := got["current"].(map[string]any)["lastWeek"]; last != nil {
 		t.Fatalf("lastWeek = %v, want null", last)

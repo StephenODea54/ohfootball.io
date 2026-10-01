@@ -62,8 +62,9 @@ The query `modelAccuracy(fromSeason, toSeason)` scores the stored predictions of
 have a result. `fromSeason` defaults to 2000, the first season that the site scores, or to
 `toSeason` when `toSeason` is earlier. `toSeason` defaults to the current season. A `fromSeason`
 after `toSeason` gives a GraphQL error. The answer holds the scores of the range, each season, each
-phase, ten confidence bins, the ten biggest upsets, the ten worst weeks, and a report of the
-current season. `seasons` and `current` are not cut to the range.
+phase, ten confidence bins, the ten biggest upsets, the ten biggest games with an exact margin,
+the ten worst weeks, and a report of the current season. `seasons` and `current` are not cut to
+the range.
 
 The rules are those of the `evaluate` command of the rating service. A game counts when it has a
 result of win, loss, or tie, it is not a forfeit, and its prediction is from no later than the day
@@ -88,10 +89,20 @@ and no pending game, and it is ranked by the correct picks minus `expectedCorrec
 of `current` is the latest week in which the scored games are at least as many as the pending
 games, so a week with only its first games played is not graded.
 
+The model called the margin exactly when the margin that it expected for the winner, rounded to a
+whole point with a half rounded up, is the final margin. The site rounds the same way, so the
+margin that it shows is the final margin. A tie and a game without both scores never count. A
+margin under half a point does not count either, because the site shows it as "Even".
+`exactMargins` counts such games. `exactMarginGames` lists ten of them, biggest games first. The
+size of a game is the sum of the gaps of the two ratings to the mean rating of their season, in
+standard deviations of that season. So a season with a wider spread of ratings does not fill the
+list. Of two games that are as big, the playoff game comes first. `lastWeekExactMarginGames` of
+`current` lists at most five such games of the last week, in the same order.
+
 Each weekly run replays every season with the current model, so the scores describe the model of
 today on past games. The SQL sums the predictions into cells of one season, week, playoff flag,
-and bin, and the package `internal/accuracy` folds the cells into each view. The field runs four
-queries, and three of them read every stored prediction. So it has a complexity of 600 plus its
+and bin, and the package `internal/accuracy` folds the cells into each view. The field runs six
+queries, and five of them read every stored prediction. So it has a complexity of 600 plus its
 fields, and one operation can ask for it only one time. The API keeps the answer of each range for
 10 minutes, and calls for the same range at the same time share one load. The predictions change
 once a week, so a kept answer is at most 10 minutes behind the last run.
@@ -157,7 +168,7 @@ Each query also has limits on its size. The API checks them before it validates 
   A larger query gets 422 and `FIELD_LIMIT_EXCEEDED`. The complexity limit of gqlgen does not
   count the fields of `__Schema`, so this limit is the one that holds for introspection. The
   introspection query of GraphiQL selects 217 fields. The query of the Accuracy page selects
-  122, and each other query of the site selects at most 58.
+  162, and each other query of the site selects at most 58.
 
 The complexity limit then runs, and a query over it gets 422 and `COMPLEXITY_LIMIT_EXCEEDED`.
 

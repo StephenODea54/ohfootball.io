@@ -20,6 +20,9 @@ func TestReportDescribesTheCurrentSeason(t *testing.T) {
 	if report.LastWeekUpsets == nil || len(report.LastWeekUpsets) != 0 {
 		t.Fatalf("upsets = %v, want an empty list", report.LastWeekUpsets)
 	}
+	if report.LastWeekExactMarginGames == nil || len(report.LastWeekExactMarginGames) != 0 {
+		t.Fatalf("exact margins = %v, want an empty list", report.LastWeekExactMarginGames)
+	}
 
 	empty := Report(nil, pending, 2026)
 	if empty.LastWeek != nil || len(empty.Weeks) != 0 {
@@ -32,9 +35,10 @@ func TestAssembleCutsTheViewsToTheRange(t *testing.T) {
 	playoff.Playoff = true
 	cells := []Cell{cell(1990, 1, 300, 200, 210), cell(2025, 1, 300, 250, 240), playoff, cell(2026, 1, 300, 260, 250)}
 	upsets := []*model.ScoredGame{{ID: "upset"}}
+	exact := []*model.ScoredGame{{ID: "exact"}}
 	report := Report(cells, nil, 2026)
 
-	answer := Assemble(cells, nil, 2026, Range{From: 2000, To: 2026}, upsets, report)
+	answer := Assemble(cells, nil, 2026, Range{From: 2000, To: 2026}, upsets, exact, report)
 	if answer.CurrentSeason != 2026 || answer.FromSeason != 2000 {
 		t.Fatalf("answer = %+v, want 2000 to 2026 with the current season 2026", answer)
 	}
@@ -50,13 +54,16 @@ func TestAssembleCutsTheViewsToTheRange(t *testing.T) {
 	if len(answer.Confidence) != Bins || answer.Upsets[0].ID != "upset" || answer.Current != report {
 		t.Fatalf("answer = %+v, want the bins, the upsets, and the report it was given", answer)
 	}
+	if len(answer.ExactMarginGames) != 1 || answer.ExactMarginGames[0].ID != "exact" {
+		t.Fatalf("exact margins = %+v, want the list it was given", answer.ExactMarginGames)
+	}
 	if len(answer.WorstWeeks) != 3 || answer.WorstWeeks[0].Season != 2025 || answer.WorstWeeks[0].Week != 11 {
 		t.Fatalf("worst weeks = %+v, want week 11 of 2025 first", answer.WorstWeeks)
 	}
 }
 
 func TestAssembleWithNoScoredGameHasNoGames(t *testing.T) {
-	answer := Assemble(nil, nil, 2027, Range{From: 2000, To: 2027}, nil, Report(nil, nil, 2027))
+	answer := Assemble(nil, nil, 2027, Range{From: 2000, To: 2027}, nil, nil, Report(nil, nil, 2027))
 	if answer.Overall.Games != 0 || len(answer.WorstWeeks) != 0 {
 		t.Fatalf("answer = %+v, want no games and no worst weeks", answer)
 	}

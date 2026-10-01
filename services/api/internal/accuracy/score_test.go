@@ -12,17 +12,18 @@ func near(got *float64, want float64) bool {
 func TestScoreAddsTheCells(t *testing.T) {
 	cells := []Cell{
 		{
-			Games: 10, Ties: 1, Decided: 9, Correct: 7, SumSquaredError: 1.5, SumLogLoss: 4,
+			Games: 10, Ties: 1, Decided: 9, Correct: 7, ExactMargins: 2, SumSquaredError: 1.5, SumLogLoss: 4,
 			SumFavoriteProbability: 7.5, SumFavoriteProbabilityDecided: 6.8,
 		},
 		{
-			Games: 10, Decided: 10, Correct: 9, SumSquaredError: 0.5, SumLogLoss: 2,
+			Games: 10, Decided: 10, Correct: 9, ExactMargins: 1, SumSquaredError: 0.5, SumLogLoss: 2,
 			SumFavoriteProbability: 8.2, SumFavoriteProbabilityDecided: 8.2,
 		},
 	}
 	score := Score(cells)
-	if score.Games != 20 || score.Ties != 1 || score.Decided != 19 || score.Correct != 16 {
-		t.Fatalf("counts = %+v, want 20 games, 1 tie, 19 decided, 16 correct", score)
+	if score.Games != 20 || score.Ties != 1 || score.Decided != 19 || score.Correct != 16 ||
+		score.ExactMargins != 3 {
+		t.Fatalf("counts = %+v, want 20 games, 1 tie, 19 decided, 16 correct, 3 exact margins", score)
 	}
 	if !near(score.Accuracy, 16.0/19) || !near(score.BrierScore, 0.1) || !near(score.LogLoss, 0.3) {
 		t.Fatalf("rates = %v %v %v, want 16/19, 0.1, 0.3", *score.Accuracy, *score.BrierScore, *score.LogLoss)
