@@ -35,6 +35,11 @@ func (r *queryResolver) ModelAccuracy(ctx context.Context, fromSeason *int, toSe
 	return r.Store.ModelAccuracy(ctx, fromSeason, toSeason)
 }
 
+// Program is the resolver for the program field.
+func (r *queryResolver) Program(ctx context.Context, sourceID string) (*model.Program, error) {
+	return r.Store.Program(ctx, sourceID)
+}
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 

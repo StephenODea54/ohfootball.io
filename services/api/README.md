@@ -96,6 +96,21 @@ fields, and one operation can ask for it only one time. The API keeps the answer
 10 minutes, and calls for the same range at the same time share one load. The predictions change
 once a week, so a kept answer is at most 10 minutes behind the last run.
 
+## Programs
+
+`program(sourceId)` returns one Ohio school across every season that the marts hold. A team has a
+different `id` in each season, but its `sourceId` stays the same. So the source identifier is the
+key of a program. A source can give the same identifier to a team of another state, so only the
+Ohio teams with the identifier count. The query answers null when no season has an Ohio team with
+that identifier.
+
+A program carries `ratingHistory`, which is the same list as `Team.ratingHistory`, and `games`.
+The games are oldest first, from the side of the program. Only a game against an Ohio team with a
+result of win, loss, or tie and both scores is listed. A game with no scores or no result,
+including a forfeit, is left out. A canceled game and a game against a team from another state are
+left out too. Two schools that merged have different source identifiers, and the API does not join
+them.
+
 ## Rules for callers
 
 The API needs no sign-in. Each caller follows two rules.

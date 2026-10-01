@@ -106,6 +106,37 @@ type PhaseAccuracy struct {
 	Score *AccuracyScore `json:"score"`
 }
 
+// An Ohio school across every season the marts hold. The source identifier follows the school from
+// one season to the next, so it is the key of a program. A source can give the same identifier to a
+// team of another state, so only the Ohio teams with the identifier count.
+type Program struct {
+	SourceID string `json:"sourceId"`
+	// The rating of the program at every snapshot of every season, oldest first. It is the same list
+	// as Team.ratingHistory.
+	RatingHistory []*TeamRating `json:"ratingHistory"`
+	// The games of the program against Ohio teams that have a result of win, loss, or tie and both
+	// scores, oldest first. A game with no scores or no result, including a forfeit, is left out. A
+	// canceled game and a game against a team from another state are left out too.
+	Games []*ProgramGame `json:"games"`
+}
+
+// One game of a program, as the program saw it. Only a game against an Ohio team that ended with a
+// win, a loss, or a tie and has both scores is listed, because the head-to-head record of two Ohio
+// schools reads only such games.
+type ProgramGame struct {
+	Season int    `json:"season"`
+	Date   string `json:"date"`
+	// The identifier of the opponent in its source. It stays the same from one season to the next.
+	OpponentSourceID string `json:"opponentSourceId"`
+	// The name of the opponent in the season of the game.
+	OpponentName  string       `json:"opponentName"`
+	Location      GameLocation `json:"location"`
+	Result        GameResult   `json:"result"`
+	TeamScore     int          `json:"teamScore"`
+	OpponentScore int          `json:"opponentScore"`
+	Playoff       bool         `json:"playoff"`
+}
+
 // One season of a program, as it stands at the end of that season. The season in progress shows its
 // latest snapshot. The rating and the rank compare only with the other teams of the same season.
 type ProgramSeason struct {

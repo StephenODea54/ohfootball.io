@@ -28,6 +28,9 @@ type fakeStore struct {
 	// empty answer that has every field the schema needs.
 	accuracy    *model.ModelAccuracy
 	accuracyErr error
+	program     *model.Program
+	// programID is the source id that the last call of Program asked for.
+	programID string
 	// calls counts the calls of CurrentSeason, so a test can tell that no resolver ran.
 	calls int
 }
@@ -52,6 +55,11 @@ func (fake *fakeStore) ListTeams(
 
 func (fake *fakeStore) Team(context.Context, string, *int) (*model.Team, error) {
 	return fake.team, nil
+}
+
+func (fake *fakeStore) Program(_ context.Context, sourceID string) (*model.Program, error) {
+	fake.programID = sourceID
+	return fake.program, nil
 }
 
 func (fake *fakeStore) ModelAccuracy(context.Context, *int, *int) (*model.ModelAccuracy, error) {
@@ -319,6 +327,67 @@ func TestTeamQueryAnswersTheProgramHistory(t *testing.T) {
 	unrated := history[1].(map[string]any)
 	if value, found := unrated["rating"]; !found || value != nil {
 		t.Fatalf("unrated season rating = %v (present %t), want null", value, found)
+	}
+}
+
+func TestProgramQueryReturnsTheGames(t *testing.T) {
+	rating := &model.TeamRating{Season: 2025, Rating: 40, RelativeRating: 14, Rank: 3, AsOf: "2025-12-31"}
+	program := &model.Program{
+		SourceID:      "1624",
+		RatingHistory: []*model.TeamRating{rating},
+		Games: []*model.ProgramGame{{
+			Season: 2025, Date: "2025-10-18", OpponentSourceID: "306", OpponentName: "Canton McKinley",
+			Location: model.GameLocationHome, Result: model.GameResultWin, TeamScore: 28, OpponentScore: 21,
+			Playoff: false,
+		}},
+	}
+	store := &fakeStore{program: program}
+	handler := newHandler(t, store, Options{})
+
+	response := decode(t, post(t, handler, `{
+		program(sourceId: "1624") {
+			sourceId
+			ratingHistory { season relativeRating rank }
+			games { season date opponentSourceId opponentName location result teamScore opponentScore playoff }
+		}
+	}`))
+	if _, found := response["errors"]; found {
+		t.Fatalf("response carried errors: %v", response["errors"])
+	}
+	if store.programID != "1624" {
+		t.Fatalf("the store was asked for %q, want 1624", store.programID)
+	}
+	data, _ := response["data"].(map[string]any)
+	got, _ := data["program"].(map[string]any)
+	if got["sourceId"] != "1624" {
+		t.Fatalf("sourceId = %v, want 1624", got["sourceId"])
+	}
+	if value := got["ratingHistory"].([]any)[0].(map[string]any)["relativeRating"]; value != float64(14) {
+		t.Fatalf("ratingHistory relativeRating = %v, want 14", value)
+	}
+	game := got["games"].([]any)[0].(map[string]any)
+	want := map[string]any{
+		"season": float64(2025), "date": "2025-10-18", "opponentSourceId": "306",
+		"opponentName": "Canton McKinley", "location": "HOME", "result": "WIN",
+		"teamScore": float64(28), "opponentScore": float64(21), "playoff": false,
+	}
+	for field, value := range want {
+		if game[field] != value {
+			t.Errorf("game %s = %v, want %v", field, game[field], value)
+		}
+	}
+}
+
+func TestProgramQueryAnswersNullForAnUnknownProgram(t *testing.T) {
+	handler := newHandler(t, &fakeStore{}, Options{})
+
+	response := decode(t, post(t, handler, `{ program(sourceId: "99999") { sourceId } }`))
+	if _, found := response["errors"]; found {
+		t.Fatalf("response carried errors: %v", response["errors"])
+	}
+	data, _ := response["data"].(map[string]any)
+	if value, found := data["program"]; !found || value != nil {
+		t.Fatalf("program = %v (present %t), want null", value, found)
 	}
 }
 

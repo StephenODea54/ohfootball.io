@@ -178,6 +178,79 @@ func (store *Postgres) Team(ctx context.Context, id string, season *int) (*model
 	return team, nil
 }
 
+// Program follows one Ohio source id through every season. A source can give the same id to a
+// team of another state, so only the Ohio teams with the id count. It returns nil when no season
+// has an Ohio team with the id.
+func (store *Postgres) Program(ctx context.Context, sourceID string) (*model.Program, error) {
+	var found bool
+	if err := store.client.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM ohfootball_marts.dim_teams
+			WHERE is_current AND state_code = 'OH' AND source_id = $1
+		)
+	`, sourceID).Scan(&found); err != nil {
+		return nil, fmt.Errorf("select program: %w", err)
+	}
+	if !found {
+		return nil, nil
+	}
+
+	history, err := store.ratingHistory(ctx, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	games, err := store.programGames(ctx, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.Program{SourceID: sourceID, RatingHistory: history, Games: games}, nil
+}
+
+func (store *Postgres) programGames(ctx context.Context, sourceID string) ([]*model.ProgramGame, error) {
+	rows, err := store.client.Query(ctx, programGamesSQL, sourceID)
+	if err != nil {
+		return nil, fmt.Errorf("select program games: %w", err)
+	}
+	defer rows.Close()
+
+	games := make([]*model.ProgramGame, 0)
+	for rows.Next() {
+		game, err := scanProgramGame(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan program game: %w", err)
+		}
+		games = append(games, game)
+	}
+	return games, rows.Err()
+}
+
+func scanProgramGame(row rowScanner) (*model.ProgramGame, error) {
+	var game model.ProgramGame
+	var gameDate time.Time
+	var rawLocation, rawResult string
+	var teamScore, opponentScore int64
+	if err := row.Scan(
+		&game.Season,
+		&gameDate,
+		&game.OpponentSourceID,
+		&game.OpponentName,
+		&rawLocation,
+		&rawResult,
+		&teamScore,
+		&opponentScore,
+		&game.Playoff,
+	); err != nil {
+		return nil, err
+	}
+	game.Date = gameDate.Format(time.DateOnly)
+	game.Location = model.GameLocation(rawLocation)
+	game.Result = result(rawResult)
+	game.TeamScore = int(teamScore)
+	game.OpponentScore = int(opponentScore)
+	return &game, nil
+}
+
 func (store *Postgres) resolveSeason(ctx context.Context, season *int) (int, error) {
 	if season != nil {
 		return *season, nil
@@ -713,5 +786,77 @@ const scheduleSQL = `
 	WHERE game.is_current
 	  AND game.season = $2
 	  AND (game.team_a_key = $1::uuid OR game.team_b_key = $1::uuid)
+	ORDER BY date.date_day, game.game_key
+`
+
+// The games of one Ohio program against Ohio teams, from the side of the program. A game joins
+// the program through team a or through team b. The two joins are two halves of a UNION ALL. Each
+// half joins on one key, so it can use the index of that key. One join on either key makes the
+// planner compare each game with each season of the program. A game between two seasons of one
+// program cannot exist, so no game is in both halves. A game with no scores or no result,
+// including a forfeit, is left out.
+const programGamesSQL = `
+	WITH program_seasons AS (
+		SELECT team_key
+		FROM ohfootball_marts.dim_teams
+		WHERE is_current AND state_code = 'OH' AND source_id = $1
+	),
+	program_games AS (
+		SELECT
+			game.game_key,
+			game.season,
+			game.game_date_key,
+			game.team_b_key AS opponent_key,
+			CASE
+				WHEN game.is_team_a_home THEN 'HOME'
+				WHEN game.is_team_b_home THEN 'AWAY'
+				ELSE 'NEUTRAL'
+			END AS location,
+			game.team_a_result AS result,
+			game.team_a_score AS team_score,
+			game.team_b_score AS opponent_score,
+			game.is_playoff_game
+		FROM ohfootball_marts.fct_games AS game
+		INNER JOIN program_seasons ON program_seasons.team_key = game.team_a_key
+		WHERE game.is_current
+		UNION ALL
+		SELECT
+			game.game_key,
+			game.season,
+			game.game_date_key,
+			game.team_a_key,
+			CASE
+				WHEN game.is_team_b_home THEN 'HOME'
+				WHEN game.is_team_a_home THEN 'AWAY'
+				ELSE 'NEUTRAL'
+			END,
+			game.team_b_result,
+			game.team_b_score,
+			game.team_a_score,
+			game.is_playoff_game
+		FROM ohfootball_marts.fct_games AS game
+		INNER JOIN program_seasons ON program_seasons.team_key = game.team_b_key
+		WHERE game.is_current
+	)
+	SELECT
+		game.season,
+		date.date_day,
+		opponent.source_id,
+		opponent.name,
+		game.location,
+		game.result,
+		game.team_score,
+		game.opponent_score,
+		COALESCE(game.is_playoff_game, FALSE)
+	FROM program_games AS game
+	INNER JOIN ohfootball_marts.dim_dates AS date
+		ON date.date_key = game.game_date_key
+	INNER JOIN ohfootball_marts.dim_teams AS opponent
+		ON opponent.team_key = game.opponent_key
+	   AND opponent.is_current
+	WHERE opponent.state_code = 'OH'
+	  AND game.result IN ('W', 'L', 'T')
+	  AND game.team_score IS NOT NULL
+	  AND game.opponent_score IS NOT NULL
 	ORDER BY date.date_day, game.game_key
 `

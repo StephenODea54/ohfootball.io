@@ -15,9 +15,9 @@ import (
 )
 
 // The queries that the build of the site sends. They are copies of the queries in
-// services/frontend/src/features/seasons/api, services/frontend/src/features/teams/api, and
-// services/frontend/src/features/accuracy/api, with the fields of team-fields.ts put in. Change
-// them together.
+// services/frontend/src/features/seasons/api, services/frontend/src/features/teams/api,
+// services/frontend/src/features/accuracy/api, and services/frontend/src/features/compare/api,
+// with the fields of team-fields.ts put in. Change them together.
 const (
 	siteTeamFields = `
   id
@@ -61,6 +61,21 @@ const (
       record { wins losses ties }
       playoffRecord { wins losses ties }
       rating { value: relativeRating rank }
+    }
+  }
+}`
+	siteProgram = `query Program($sourceId: String!) {
+  program(sourceId: $sourceId) {
+    sourceId
+    ratingHistory { season value: relativeRating rank asOf }
+    games {
+      season
+      date
+      opponentSourceId
+      result
+      teamScore
+      opponentScore
+      playoff
     }
   }
 }`
@@ -230,6 +245,7 @@ func TestQueriesThatMustPassTheFieldLimit(t *testing.T) {
 		{"the teams of the site", siteTeams, map[string]any{"season": 2025}, 100},
 		{"one team of the site", siteTeam, map[string]any{"id": "x", "season": 2025}, 100},
 		{"the scores of the site", siteModelAccuracy, map[string]any{"fromSeason": 2000}, 250},
+		{"one program of the site", siteProgram, map[string]any{"sourceId": "1624"}, 100},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {

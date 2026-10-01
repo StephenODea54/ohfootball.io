@@ -360,6 +360,49 @@ type ModelAccuracy {
   current: SeasonReport!
 }
 
+"""
+One game of a program, as the program saw it. Only a game against an Ohio team that ended with a
+win, a loss, or a tie and has both scores is listed, because the head-to-head record of two Ohio
+schools reads only such games.
+"""
+type ProgramGame {
+  season: Int!
+  date: String!
+  """
+  The identifier of the opponent in its source. It stays the same from one season to the next.
+  """
+  opponentSourceId: String!
+  """
+  The name of the opponent in the season of the game.
+  """
+  opponentName: String!
+  location: GameLocation!
+  result: GameResult!
+  teamScore: Int!
+  opponentScore: Int!
+  playoff: Boolean!
+}
+
+"""
+An Ohio school across every season the marts hold. The source identifier follows the school from
+one season to the next, so it is the key of a program. A source can give the same identifier to a
+team of another state, so only the Ohio teams with the identifier count.
+"""
+type Program {
+  sourceId: String!
+  """
+  The rating of the program at every snapshot of every season, oldest first. It is the same list
+  as Team.ratingHistory.
+  """
+  ratingHistory: [TeamRating!]!
+  """
+  The games of the program against Ohio teams that have a result of win, loss, or tie and both
+  scores, oldest first. A game with no scores or no result, including a forfeit, is left out. A
+  canceled game and a game against a team from another state are left out too.
+  """
+  games: [ProgramGame!]!
+}
+
 type Query {
   currentSeason: Int!
   seasons: [Int!]!
@@ -378,4 +421,9 @@ type Query {
   fromSeason may not be after toSeason.
   """
   modelAccuracy(fromSeason: Int, toSeason: Int): ModelAccuracy!
+  """
+  One program by its source identifier. It is null when no season has an Ohio team with that
+  identifier.
+  """
+  program(sourceId: String!): Program
 }

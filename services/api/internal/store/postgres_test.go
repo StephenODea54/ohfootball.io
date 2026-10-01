@@ -230,3 +230,67 @@ func TestThePreviousRankReadsTheGamesOfTheWeekBeforeTheSnapshot(t *testing.T) {
 		}
 	}
 }
+
+func programGameRow(location, result string, playoff bool) fakeRow {
+	day := time.Date(2025, 10, 17, 0, 0, 0, 0, time.UTC)
+	return fakeRow{2025, day, "306", "Canton McKinley", location, result, int64(28), int64(21), playoff}
+}
+
+func TestScanProgramGameReadsAGame(t *testing.T) {
+	game, err := scanProgramGame(programGameRow("AWAY", "W", true))
+	if err != nil {
+		t.Fatalf("scanProgramGame: %v", err)
+	}
+	want := model.ProgramGame{
+		Season: 2025, Date: "2025-10-17", OpponentSourceID: "306", OpponentName: "Canton McKinley",
+		Location: model.GameLocationAway, Result: model.GameResultWin, TeamScore: 28, OpponentScore: 21,
+		Playoff: true,
+	}
+	if *game != want {
+		t.Fatalf("game = %+v, want %+v", *game, want)
+	}
+
+	tie, err := scanProgramGame(programGameRow("NEUTRAL", "T", false))
+	if err != nil {
+		t.Fatalf("scanProgramGame: %v", err)
+	}
+	if tie.Result != model.GameResultTie || tie.Location != model.GameLocationNeutral || tie.Playoff {
+		t.Fatalf("game = %+v, want a tie on a neutral field in the regular season", *tie)
+	}
+}
+
+func TestScanProgramGameStopsOnAShortRow(t *testing.T) {
+	if _, err := scanProgramGame(fakeRow{2025}); err == nil {
+		t.Fatal("scanProgramGame read a row with one value, want an error")
+	}
+}
+
+// This test guards the text of the query and not what it does. A change that keeps the clauses
+// but breaks the query still passes, so check a change of the query against a warehouse too.
+func TestProgramGamesSQLKeepsOnlyOhioGamesWithAResult(t *testing.T) {
+	for _, clause := range []string{
+		"WHERE is_current AND state_code = 'OH' AND source_id = $1",
+		"opponent.state_code = 'OH'",
+		"game.result IN ('W', 'L', 'T')",
+		"game.team_score IS NOT NULL",
+		"game.opponent_score IS NOT NULL",
+		"INNER JOIN program_seasons ON program_seasons.team_key = game.team_a_key",
+		"INNER JOIN program_seasons ON program_seasons.team_key = game.team_b_key",
+		"ORDER BY date.date_day, game.game_key",
+	} {
+		if !strings.Contains(programGamesSQL, clause) {
+			t.Errorf("programGamesSQL does not hold %q", clause)
+		}
+	}
+}
+
+// Each line of the last SELECT of programGamesSQL must hold one column, and scanProgramGame reads
+// one value for each column.
+func TestProgramGamesColumnsMatchTheValuesThatScanReads(t *testing.T) {
+	selects := strings.Split(programGamesSQL, "SELECT")
+	last := strings.Split(selects[len(selects)-1], "FROM program_games")[0]
+	columns := strings.Split(strings.TrimSpace(last), "\n")
+	if row := programGameRow("HOME", "W", false); len(columns) != len(row) {
+		t.Fatalf("programGamesSQL selects %d columns, scanProgramGame reads %d values", len(columns), len(row))
+	}
+}
