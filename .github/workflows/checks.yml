@@ -17,8 +17,8 @@ jobs:
     name: go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.25"
           cache-dependency-path: |
@@ -34,8 +34,8 @@ jobs:
     name: python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           # The images build on Python 3.12, and this file names the same version.
           python-version-file: .python-version
@@ -68,13 +68,13 @@ jobs:
     name: frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The repository root has no package.json. This step reads the pnpm version from the
       # packageManager field of the site instead.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: services/frontend/package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: pnpm
@@ -111,7 +111,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://im_batman:shhhhhhhhh@localhost:5432/ohfootball?sslmode=disable
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -f infra/postgres/Dockerfile -t ohfootball/migrate .
       - name: apply every migration
         run: docker run --rm --network host -e DATABASE_URL ohfootball/migrate python migrate.py
