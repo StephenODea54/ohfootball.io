@@ -22,8 +22,8 @@ interface OutOfStateMarkerProps {
 }
 
 /**
- * A small button next to the name of a school that played several games against out-of-state
- * teams, which the rating counts at half weight. A pointer that rests on it shows a tooltip with the count. A press opens a
+ * A small button next to the name of a school whose rating leaves out several games against
+ * out-of-state teams. A pointer that rests on it shows a tooltip with the count. A press opens a
  * popover that tells the same in a full sentence. A touch screen has no hover, so the press is
  * the part that works everywhere. It shows nothing for a school below the threshold.
  */
@@ -56,7 +56,7 @@ export function OutOfStateMarker({ team, className }: OutOfStateMarkerProps) {
         {/* The Dialog gives the popover the role of a dialog and names it with the title. */}
         <Dialog>
           <PopoverHeader>
-            <PopoverTitle>Less behind this rating</PopoverTitle>
+            <PopoverTitle>Fewer games behind this rating</PopoverTitle>
           </PopoverHeader>
           <PopoverBody className="pb-(--gutter)">
             <Text>{note.text}</Text>

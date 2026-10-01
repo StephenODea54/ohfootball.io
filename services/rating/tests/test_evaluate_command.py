@@ -8,7 +8,6 @@ import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,7 +15,6 @@ from test_margin import league
 from test_repository import write_export
 
 from ohfootball_rating import cli
-from ohfootball_rating.games import Game
 
 
 def run_evaluate(*arguments: str, as_of: str = "2030-01-01") -> dict:
@@ -90,35 +88,7 @@ class EvaluateCommandTests(unittest.TestCase):
             )
 
         self.load_games.assert_not_called()
-        # The export holds one game between Ohio teams and one against a team from another state.
         self.assertEqual(report["games"], 1)
-        self.assertEqual(report["other_state_games"], 1)
-        self.assertEqual(report["windows"][0]["games"], 1)
-        self.assertEqual(report["config"]["other_state_weight"], 0.5)
-
-    def test_scores_only_games_between_ohio_teams(self) -> None:
-        games = tuple(league(range(2000, 2016))) + tuple(
-            Game(
-                game_key=f"{season}-visit",
-                season=season,
-                game_date=date(season, 9, 30),
-                team_a_key="a",
-                team_a_name="a",
-                team_b_key="w",
-                team_b_name="w",
-                team_a_result="W",
-                team_a_score=35,
-                team_b_score=0,
-                team_b_state="WV",
-            )
-            for season in range(2000, 2016)
-        )
-        self.load_games.return_value = games
-        report = run_evaluate("--windows", "2010:2013", "--holdout", "2014:2015")
-
-        self.assertEqual(report["pooled"]["games"], 60)
-        self.assertEqual(report["games"], 240)
-        self.assertEqual(report["other_state_games"], 16)
 
     def test_the_main_function_runs_each_command(self) -> None:
         for command in ("evaluate", "publish"):

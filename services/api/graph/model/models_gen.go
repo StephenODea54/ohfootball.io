@@ -70,10 +70,7 @@ type GamePrediction struct {
 	// negative margin is an expected loss.
 	PredictedMargin float64 `json:"predictedMargin"`
 	TeamRating      float64 `json:"teamRating"`
-	// The rating that the opponent carried into the game. For an opponent from another state, it is
-	// the rating that the model keeps for that team from its games against Ohio teams. Such a team is
-	// never ranked.
-	OpponentRating float64 `json:"opponentRating"`
+	OpponentRating  float64 `json:"opponentRating"`
 	// The date of the prediction. It is the date of the game for a game played before the last
 	// update, and the date of the last update for a game not yet played.
 	AsOf string `json:"asOf"`
@@ -240,10 +237,10 @@ type Team struct {
 	SecondaryColor *string `json:"secondaryColor,omitempty"`
 	Record         *Record `json:"record"`
 	// The number of games this season that the team played against a team that is not recorded as an
-	// Ohio team. The rating counts such a game at half weight, and it knows the opponent only from its
-	// games against Ohio teams, so less stands behind the rating of a team with many of them. A game
-	// counts only when it has a result and both scores. A canceled game and a forfeit do not count. The
-	// number has a meaning only for an Ohio team.
+	// Ohio team. The rating leaves these games out, so a team with many of them has fewer games behind
+	// its rating. A game counts only when it has a result and both scores. A canceled game and a
+	// forfeit do not count. The number has a meaning only for an Ohio team, because the rating leaves
+	// out every game of a team from another state.
 	OutOfStateGamesPlayed int         `json:"outOfStateGamesPlayed"`
 	Rating                *TeamRating `json:"rating,omitempty"`
 	// Every snapshot of every season the program played. Only the team query fills it. The teams query

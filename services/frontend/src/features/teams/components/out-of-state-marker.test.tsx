@@ -7,7 +7,7 @@ describe("OutOfStateMarker", () => {
     const html = renderToStaticMarkup(<OutOfStateMarker team={{ outOfStateGamesPlayed: 2 }} />)
 
     expect(html).toContain("<button")
-    expect(html).toContain('aria-label="2 out-of-state games at half weight"')
+    expect(html).toContain('aria-label="2 out-of-state games not in this rating"')
     expect(html).toContain("<svg")
     expect(html).toContain('aria-hidden="true"')
   })
@@ -16,7 +16,7 @@ describe("OutOfStateMarker", () => {
     const html = renderToStaticMarkup(<OutOfStateMarker team={{ outOfStateGamesPlayed: 3 }} />)
 
     expect(html).toContain('aria-expanded="false"')
-    expect(html).not.toContain("Less behind this rating")
+    expect(html).not.toContain("Fewer games behind this rating")
   })
 
   it("keeps the classes of the caller", () => {

@@ -191,7 +191,7 @@ flowchart TD
 | `snapshot-recruits` | Python | stores the answer of CollegeFootballData for the three recruiting classes still in high school, in the private schema `ohfootball_private`; three calls |
 | `scrape` | Go | collects the games of the season named by `SCRAPER_SEASON` |
 | `transform` | dbt | rebuilds staging, intermediate, and the marts |
-| `rate` | Python | rates every Ohio team in every season, reads its games against teams from other states too, and stores a pregame prediction for every game of an Ohio team played and for every such game of the season in progress not yet played |
+| `rate` | Python | rates every team in every season and stores a pregame prediction for every game played and for every game of the season in progress not yet played |
 | `publish-site` | curl | starts the site workflow through the REST API of GitHub |
 | `publish-download` | Python | zips the marts and sends the zip to R2, under the date and under `latest/` |
 | `publish-dataset` | Python | sends the marts to Kaggle as one new version |

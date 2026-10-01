@@ -31,21 +31,6 @@ export const HISTORY_SEASONS = 8
 /** The number of earlier seasons that each win probability slope is fit on. */
 export const SLOPE_SEASONS = 10
 
-/** The share of its normal change that an Ohio team moves by in a game against another state. */
-export const OTHER_STATE_WEIGHT = 0.5
-
-/**
- * A new out-of-state opponent starts at the average that games against its state gave, mixed with
- * this many games of the average of the division of its Ohio opponent.
- */
-export const OTHER_STATE_SHRINKAGE = 20
-
-/** The number of earlier seasons that the start of a new out-of-state opponent reads. */
-export const OTHER_STATE_WINDOW_SEASONS = 10
-
-/** The fewest games that give the average of a division for that start. */
-export const OTHER_STATE_MIN_GAMES = 30
-
 /** The share of a surprise that moves the rating of a team that has played n games. */
 export function learningWeight(gamesPlayed: number) {
   return LEARNING_RATE / (gamesPlayed + LEARNING_OFFSET)

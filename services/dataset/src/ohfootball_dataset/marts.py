@@ -413,12 +413,10 @@ MARTS: tuple[Mart, ...] = (
     Mart(
         name="fct_game_predictions",
         description=(
-            "One prediction for each game of an Ohio team: each game played before the date of "
-            "the data, and each game of the season in progress not yet played. It holds the "
-            "rating each team carried into the game, the margin that the model expected and the "
-            "win probability read from that margin. In a game against a team from another state, "
-            "that team's rating comes only from its games against Ohio teams, and the team is not "
-            "in fct_team_ratings."
+            "One prediction for each game between two Ohio teams: each game played before the "
+            "date of the data, and each game of the season in progress not yet played. It holds "
+            "the rating each team carried into the game, the margin that the model expected and "
+            "the win probability read from that margin."
         ),
         columns=(
             Column(

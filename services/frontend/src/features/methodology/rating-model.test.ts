@@ -10,10 +10,6 @@ import {
   LEARNING_RATE,
   learningWeight,
   MARGIN_CAP,
-  OTHER_STATE_MIN_GAMES,
-  OTHER_STATE_SHRINKAGE,
-  OTHER_STATE_WEIGHT,
-  OTHER_STATE_WINDOW_SEASONS,
   RATING_SUMMARY,
   SLOPE_SEASONS,
 } from "@/features/methodology/rating-model"
@@ -46,8 +42,6 @@ describe("the values of the rating service", () => {
     ["division_step", `${DIVISION_STEP}.0`],
     ["carryover_last", `${CARRYOVER_LAST}`],
     ["carryover_older", `${CARRYOVER_OLDER}`],
-    ["other_state_weight", `${OTHER_STATE_WEIGHT}`],
-    ["other_state_shrinkage", `${OTHER_STATE_SHRINKAGE}.0`],
   ])("use the same %s", (name, value) => {
     expect(margin).toContain(`${name}: float = ${value}`)
   })
@@ -55,8 +49,6 @@ describe("the values of the rating service", () => {
   it.each([
     ["history_seasons", HISTORY_SEASONS],
     ["slope_seasons", SLOPE_SEASONS],
-    ["other_state_window_seasons", OTHER_STATE_WINDOW_SEASONS],
-    ["other_state_min_games", OTHER_STATE_MIN_GAMES],
   ])("use the same %s", (name, value) => {
     expect(margin).toContain(`${name}: int = ${value}`)
   })
