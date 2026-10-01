@@ -20,7 +20,8 @@ const (
 // Postgres reads the marts through the shared database client. The client owns the connection
 // pool, so every service of this repository connects in the same way.
 type Postgres struct {
-	client *database.Client
+	client          *database.Client
+	accuracyAnswers *answerCache[accuracyKey, *model.ModelAccuracy]
 }
 
 func Open(ctx context.Context, databaseURL string) (*Postgres, error) {
@@ -28,7 +29,10 @@ func Open(ctx context.Context, databaseURL string) (*Postgres, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Postgres{client: client}, nil
+	return &Postgres{
+		client:          client,
+		accuracyAnswers: newAnswerCache[accuracyKey, *model.ModelAccuracy](accuracyCacheTTL, accuracyCacheSize, time.Now),
+	}, nil
 }
 
 func (store *Postgres) Close() {

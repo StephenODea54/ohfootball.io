@@ -6,6 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.17.64
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/vektah/gqlparser/v2 v2.5.22
+	golang.org/x/sync v0.21.0
 )
 
 require (
@@ -25,7 +26,6 @@ require (
 	github.com/urfave/cli/v2 v2.27.5 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

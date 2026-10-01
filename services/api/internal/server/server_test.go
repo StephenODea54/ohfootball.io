@@ -24,6 +24,10 @@ type fakeStore struct {
 	pingErr error
 	teams   []*model.Team
 	team    *model.Team
+	// accuracy is the answer of ModelAccuracy, and accuracyErr its error. A nil accuracy gives an
+	// empty answer that has every field the schema needs.
+	accuracy    *model.ModelAccuracy
+	accuracyErr error
 	// calls counts the calls of CurrentSeason, so a test can tell that no resolver ran.
 	calls int
 }
@@ -48,6 +52,32 @@ func (fake *fakeStore) ListTeams(
 
 func (fake *fakeStore) Team(context.Context, string, *int) (*model.Team, error) {
 	return fake.team, nil
+}
+
+func (fake *fakeStore) ModelAccuracy(context.Context, *int, *int) (*model.ModelAccuracy, error) {
+	if fake.accuracyErr != nil {
+		return nil, fake.accuracyErr
+	}
+	if fake.accuracy != nil {
+		return fake.accuracy, nil
+	}
+	return emptyAccuracy(), nil
+}
+
+// emptyAccuracy is an answer of ModelAccuracy with no games.
+func emptyAccuracy() *model.ModelAccuracy {
+	return &model.ModelAccuracy{
+		Overall:    &model.AccuracyScore{},
+		Seasons:    []*model.SeasonAccuracy{},
+		Phases:     []*model.PhaseAccuracy{},
+		Confidence: []*model.ConfidenceBin{},
+		Upsets:     []*model.ScoredGame{},
+		WorstWeeks: []*model.SeasonWeekAccuracy{},
+		Current: &model.SeasonReport{
+			Weeks:          []*model.SeasonWeekAccuracy{},
+			LastWeekUpsets: []*model.ScoredGame{},
+		},
+	}
 }
 
 func newHandler(t *testing.T, store Store, options Options) http.Handler {
@@ -422,5 +452,74 @@ func TestWebsocketTransportIsNotAdvertised(t *testing.T) {
 
 	if recorder.Code == http.StatusSwitchingProtocols {
 		t.Fatal("the server accepted a websocket upgrade")
+	}
+}
+
+func TestModelAccuracyQuery(t *testing.T) {
+	accuracy := 0.8078
+	answer := emptyAccuracy()
+	answer.CurrentSeason, answer.FromSeason = 2026, 2000
+	answer.Overall = &model.AccuracyScore{Games: 97688, Accuracy: &accuracy}
+	answer.Upsets = []*model.ScoredGame{{
+		ID: "game", Season: 2011, Week: 6, Date: "2011-09-30",
+		Winner:            &model.ScoredTeam{ID: "greenville", SourceID: "678", Name: "Greenville"},
+		Loser:             &model.ScoredTeam{ID: "watterson", SourceID: "1720", Name: "Bishop Watterson"},
+		WinnerProbability: 0.0037,
+	}}
+	handler := newHandler(t, &fakeStore{accuracy: answer}, Options{})
+
+	response := decode(t, post(t, handler, `{
+		modelAccuracy(fromSeason: 2000) {
+			fromSeason
+			overall { games accuracy brierScore }
+			upsets { winner { name score } winnerProbability }
+			current { lastWeek { week } }
+		}
+	}`))
+	if _, found := response["errors"]; found {
+		t.Fatalf("response carried errors: %v", response["errors"])
+	}
+	got := response["data"].(map[string]any)["modelAccuracy"].(map[string]any)
+	overall := got["overall"].(map[string]any)
+	if got["fromSeason"] != float64(2000) || overall["games"] != float64(97688) || overall["accuracy"] != 0.8078 {
+		t.Fatalf("modelAccuracy = %v, want 97688 games at 0.8078 from 2000", got)
+	}
+	if brier, found := overall["brierScore"]; !found || brier != nil {
+		t.Fatalf("brierScore = %v (present %t), want null", brier, found)
+	}
+	upset := got["upsets"].([]any)[0].(map[string]any)
+	if upset["winner"].(map[string]any)["name"] != "Greenville" || upset["winnerProbability"] != 0.0037 {
+		t.Fatalf("upset = %v, want Greenville at 0.37%%", upset)
+	}
+	if last := got["current"].(map[string]any)["lastWeek"]; last != nil {
+		t.Fatalf("lastWeek = %v, want null", last)
+	}
+}
+
+func TestModelAccuracyRefusesABackwardRange(t *testing.T) {
+	store := &fakeStore{accuracyErr: errors.New("fromSeason 2025 is after toSeason 2024")}
+	handler := newHandler(t, store, Options{})
+
+	response := decode(t, post(t, handler, "{ modelAccuracy(fromSeason: 2025, toSeason: 2024) { fromSeason } }"))
+	errorList, _ := response["errors"].([]any)
+	if len(errorList) != 1 || !strings.Contains(fmt.Sprint(errorList[0]), "is after toSeason") {
+		t.Fatalf("errors = %v, want the backward range to be refused", response["errors"])
+	}
+}
+
+// The scores read every stored prediction, so one operation may ask for them only one time.
+func TestModelAccuracyIsCostly(t *testing.T) {
+	handler := newHandler(t, &fakeStore{}, Options{})
+
+	one := postVariables(t, handler, siteModelAccuracy, map[string]any{"fromSeason": 2000})
+	if one.Code != http.StatusOK || decode(t, one)["errors"] != nil {
+		t.Fatalf("the query of the site: status = %d, body %.300q, want 200", one.Code, one.Body)
+	}
+	two := post(t, handler, "{ a: modelAccuracy { currentSeason } b: modelAccuracy { currentSeason } }")
+	if two.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("two uses: status = %d, want %d", two.Code, http.StatusUnprocessableEntity)
+	}
+	if code := errorCode(t, two); code != complexityLimitCode {
+		t.Fatalf("code = %q, want %q", code, complexityLimitCode)
 	}
 }

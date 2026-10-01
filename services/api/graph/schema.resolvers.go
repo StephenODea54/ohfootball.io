@@ -30,6 +30,11 @@ func (r *queryResolver) Team(ctx context.Context, id string, season *int) (*mode
 	return r.Store.Team(ctx, id, season)
 }
 
+// ModelAccuracy is the resolver for the modelAccuracy field.
+func (r *queryResolver) ModelAccuracy(ctx context.Context, fromSeason *int, toSeason *int) (*model.ModelAccuracy, error) {
+	return r.Store.ModelAccuracy(ctx, fromSeason, toSeason)
+}
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 

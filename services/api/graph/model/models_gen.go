@@ -8,6 +8,46 @@ import (
 	"strconv"
 )
 
+// The scores of a set of predictions. A game counts when it has a result of win, loss, or tie, both
+// teams are Ohio teams, and it is not a forfeit. A tie counts as half a win for each team in the
+// Brier score and the log loss. A tie is not part of the winner accuracy, and a forecast of exactly
+// 50% is not part of it either. The rules are those of the evaluate command of the rating service.
+type AccuracyScore struct {
+	// The games that were scored.
+	Games int `json:"games"`
+	Ties  int `json:"ties"`
+	// The games with a winner and a pick.
+	Decided int `json:"decided"`
+	// The decided games in which the favorite won.
+	Correct int `json:"correct"`
+	// correct divided by decided. Null when no game was decided.
+	Accuracy *float64 `json:"accuracy,omitempty"`
+	// The sum of the probability of the favorite over the decided games. It is the number of correct
+	// picks that the model expected.
+	ExpectedCorrect float64 `json:"expectedCorrect"`
+	// The mean squared error of the probabilities. A coin flip scores 0.25. Null when no game was
+	// scored.
+	BrierScore *float64 `json:"brierScore,omitempty"`
+	// The mean negative log likelihood. A coin flip scores 0.6931. Null when no game was scored.
+	LogLoss *float64 `json:"logLoss,omitempty"`
+}
+
+// The games in which the model gave the favorite a probability from lowerBound up to but not
+// including upperBound. The last bin includes every probability up to 1.
+type ConfidenceBin struct {
+	LowerBound float64 `json:"lowerBound"`
+	UpperBound float64 `json:"upperBound"`
+	Games      int     `json:"games"`
+	Ties       int     `json:"ties"`
+	// The mean probability of the favorite. Null when the bin has no game.
+	MeanProbability *float64 `json:"meanProbability,omitempty"`
+	FavoriteWins    int      `json:"favoriteWins"`
+	// favoriteWins plus half the ties, divided by games. Null when the bin has no game.
+	ObservedRate *float64 `json:"observedRate,omitempty"`
+	// favoriteWins divided by the games with a winner. Null when there is no such game.
+	Accuracy *float64 `json:"accuracy,omitempty"`
+}
+
 type Game struct {
 	ID            string          `json:"id"`
 	Week          int             `json:"week"`
@@ -36,6 +76,36 @@ type GamePrediction struct {
 	AsOf string `json:"asOf"`
 }
 
+// How the predictions did on the games that have a result. Each prediction was made from the
+// ratings that the two teams carried into the game and a curve fit on earlier seasons, so no
+// prediction saw its own result. Each weekly run replays every season with the current model, so the
+// numbers describe the model of today on past games.
+type ModelAccuracy struct {
+	CurrentSeason int `json:"currentSeason"`
+	// The first season of the range. The range ends at the toSeason argument, which defaults to the
+	// current season. Every field but seasons and current is cut to the range.
+	FromSeason int            `json:"fromSeason"`
+	Overall    *AccuracyScore `json:"overall"`
+	// Every season with a prediction, oldest first. It is not cut to the range.
+	Seasons []*SeasonAccuracy `json:"seasons"`
+	// The four phases, in order, each with the games of the range.
+	Phases []*PhaseAccuracy `json:"phases"`
+	// Ten bins of five points from 50% up, each with the games of the range.
+	Confidence []*ConfidenceBin `json:"confidence"`
+	// The ten games of the range in which the winner had the lowest probability, lowest first.
+	Upsets []*ScoredGame `json:"upsets"`
+	// The ten weeks of the range with the largest gap between expectedCorrect and the correct picks,
+	// worst first. Each week has at least 100 games and no pending game.
+	WorstWeeks []*SeasonWeekAccuracy `json:"worstWeeks"`
+	// The current season. It is not cut to the range.
+	Current *SeasonReport `json:"current"`
+}
+
+type PhaseAccuracy struct {
+	Phase SeasonPhase    `json:"phase"`
+	Score *AccuracyScore `json:"score"`
+}
+
 // One season of a program, as it stands at the end of that season. The season in progress shows its
 // latest snapshot. The rating and the rank compare only with the other teams of the same season.
 type ProgramSeason struct {
@@ -57,6 +127,64 @@ type Record struct {
 	Wins   int `json:"wins"`
 	Losses int `json:"losses"`
 	Ties   int `json:"ties"`
+}
+
+// A game with a winner, seen from the winner.
+type ScoredGame struct {
+	ID     string `json:"id"`
+	Season int    `json:"season"`
+	// The week of the season, counted as in SeasonWeekAccuracy.
+	Week   int         `json:"week"`
+	Date   string      `json:"date"`
+	Winner *ScoredTeam `json:"winner"`
+	Loser  *ScoredTeam `json:"loser"`
+	// The win probability that the model gave the winner before the game.
+	WinnerProbability float64 `json:"winnerProbability"`
+}
+
+type ScoredTeam struct {
+	// The key of the team in the season of the game.
+	ID       string `json:"id"`
+	SourceID string `json:"sourceId"`
+	Name     string `json:"name"`
+	Score    *int   `json:"score,omitempty"`
+}
+
+type SeasonAccuracy struct {
+	Season int `json:"season"`
+	// The games of the season with a prediction and no result yet.
+	PendingGames int `json:"pendingGames"`
+	// True when the season is the current season and it has pending games.
+	InProgress bool           `json:"inProgress"`
+	Score      *AccuracyScore `json:"score"`
+}
+
+// The current season: each of its weeks, and the last week with results.
+type SeasonReport struct {
+	Season int `json:"season"`
+	// The weeks of the season that have a scored game, oldest first.
+	Weeks []*SeasonWeekAccuracy `json:"weeks"`
+	// The latest week in which the scored games are at least as many as the pending games. Null when
+	// there is no such week.
+	LastWeek *SeasonWeekAccuracy `json:"lastWeek,omitempty"`
+	// The upsets of lastWeek, lowest winner probability first, at most 5. Empty when lastWeek is null.
+	LastWeekUpsets []*ScoredGame `json:"lastWeekUpsets"`
+}
+
+// One week of one season, with the regular season and the playoff games of the week. Weeks run from
+// Wednesday to Tuesday. Week 1 is the first week of the season with at least 50 games between two
+// Ohio teams, and a game before it counts in week 1. A week counts even when it holds no game, so the
+// number never shifts. This is not the week of the Game type, which counts the games of one team.
+type SeasonWeekAccuracy struct {
+	Season int `json:"season"`
+	Week   int `json:"week"`
+	// The date of the first scored game of the week.
+	FirstDate string `json:"firstDate"`
+	// The date of the last scored game of the week.
+	LastDate string `json:"lastDate"`
+	// The games of the week with a prediction and no result yet.
+	PendingGames int            `json:"pendingGames"`
+	Score        *AccuracyScore `json:"score"`
 }
 
 type Team struct {
@@ -202,6 +330,53 @@ func (e *GameResult) UnmarshalGQL(v any) error {
 }
 
 func (e GameResult) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+// The phase of a season. EARLY is weeks 1 to 3, MID is weeks 4 to 7, and LATE is week 8 and later
+// of the regular season. PLAYOFF is every playoff game, whatever its week.
+type SeasonPhase string
+
+const (
+	SeasonPhaseEarly   SeasonPhase = "EARLY"
+	SeasonPhaseMid     SeasonPhase = "MID"
+	SeasonPhaseLate    SeasonPhase = "LATE"
+	SeasonPhasePlayoff SeasonPhase = "PLAYOFF"
+)
+
+var AllSeasonPhase = []SeasonPhase{
+	SeasonPhaseEarly,
+	SeasonPhaseMid,
+	SeasonPhaseLate,
+	SeasonPhasePlayoff,
+}
+
+func (e SeasonPhase) IsValid() bool {
+	switch e {
+	case SeasonPhaseEarly, SeasonPhaseMid, SeasonPhaseLate, SeasonPhasePlayoff:
+		return true
+	}
+	return false
+}
+
+func (e SeasonPhase) String() string {
+	return string(e)
+}
+
+func (e *SeasonPhase) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SeasonPhase(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SeasonPhase", str)
+	}
+	return nil
+}
+
+func (e SeasonPhase) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

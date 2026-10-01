@@ -153,6 +153,213 @@ type Team {
   schedule: [Game!]!
 }
 
+"""
+The phase of a season. EARLY is weeks 1 to 3, MID is weeks 4 to 7, and LATE is week 8 and later
+of the regular season. PLAYOFF is every playoff game, whatever its week.
+"""
+enum SeasonPhase {
+  EARLY
+  MID
+  LATE
+  PLAYOFF
+}
+
+"""
+The scores of a set of predictions. A game counts when it has a result of win, loss, or tie, both
+teams are Ohio teams, and it is not a forfeit. A tie counts as half a win for each team in the
+Brier score and the log loss. A tie is not part of the winner accuracy, and a forecast of exactly
+50% is not part of it either. The rules are those of the evaluate command of the rating service.
+"""
+type AccuracyScore {
+  """
+  The games that were scored.
+  """
+  games: Int!
+  ties: Int!
+  """
+  The games with a winner and a pick.
+  """
+  decided: Int!
+  """
+  The decided games in which the favorite won.
+  """
+  correct: Int!
+  """
+  correct divided by decided. Null when no game was decided.
+  """
+  accuracy: Float
+  """
+  The sum of the probability of the favorite over the decided games. It is the number of correct
+  picks that the model expected.
+  """
+  expectedCorrect: Float!
+  """
+  The mean squared error of the probabilities. A coin flip scores 0.25. Null when no game was
+  scored.
+  """
+  brierScore: Float
+  """
+  The mean negative log likelihood. A coin flip scores 0.6931. Null when no game was scored.
+  """
+  logLoss: Float
+}
+
+type SeasonAccuracy {
+  season: Int!
+  """
+  The games of the season with a prediction and no result yet.
+  """
+  pendingGames: Int!
+  """
+  True when the season is the current season and it has pending games.
+  """
+  inProgress: Boolean!
+  score: AccuracyScore!
+}
+
+"""
+One week of one season, with the regular season and the playoff games of the week. Weeks run from
+Wednesday to Tuesday. Week 1 is the first week of the season with at least 50 games between two
+Ohio teams, and a game before it counts in week 1. A week counts even when it holds no game, so the
+number never shifts. This is not the week of the Game type, which counts the games of one team.
+"""
+type SeasonWeekAccuracy {
+  season: Int!
+  week: Int!
+  """
+  The date of the first scored game of the week.
+  """
+  firstDate: String!
+  """
+  The date of the last scored game of the week.
+  """
+  lastDate: String!
+  """
+  The games of the week with a prediction and no result yet.
+  """
+  pendingGames: Int!
+  score: AccuracyScore!
+}
+
+type PhaseAccuracy {
+  phase: SeasonPhase!
+  score: AccuracyScore!
+}
+
+"""
+The games in which the model gave the favorite a probability from lowerBound up to but not
+including upperBound. The last bin includes every probability up to 1.
+"""
+type ConfidenceBin {
+  lowerBound: Float!
+  upperBound: Float!
+  games: Int!
+  ties: Int!
+  """
+  The mean probability of the favorite. Null when the bin has no game.
+  """
+  meanProbability: Float
+  favoriteWins: Int!
+  """
+  favoriteWins plus half the ties, divided by games. Null when the bin has no game.
+  """
+  observedRate: Float
+  """
+  favoriteWins divided by the games with a winner. Null when there is no such game.
+  """
+  accuracy: Float
+}
+
+type ScoredTeam {
+  """
+  The key of the team in the season of the game.
+  """
+  id: ID!
+  sourceId: String!
+  name: String!
+  score: Int
+}
+
+"""
+A game with a winner, seen from the winner.
+"""
+type ScoredGame {
+  id: ID!
+  season: Int!
+  """
+  The week of the season, counted as in SeasonWeekAccuracy.
+  """
+  week: Int!
+  date: String!
+  winner: ScoredTeam!
+  loser: ScoredTeam!
+  """
+  The win probability that the model gave the winner before the game.
+  """
+  winnerProbability: Float!
+}
+
+"""
+The current season: each of its weeks, and the last week with results.
+"""
+type SeasonReport {
+  season: Int!
+  """
+  The weeks of the season that have a scored game, oldest first.
+  """
+  weeks: [SeasonWeekAccuracy!]!
+  """
+  The latest week in which the scored games are at least as many as the pending games. Null when
+  there is no such week.
+  """
+  lastWeek: SeasonWeekAccuracy
+  """
+  The upsets of lastWeek, lowest winner probability first, at most 5. Empty when lastWeek is null.
+  """
+  lastWeekUpsets: [ScoredGame!]!
+}
+
+"""
+How the predictions did on the games that have a result. Each prediction was made from the
+ratings that the two teams carried into the game and a curve fit on earlier seasons, so no
+prediction saw its own result. Each weekly run replays every season with the current model, so the
+numbers describe the model of today on past games.
+"""
+type ModelAccuracy {
+  currentSeason: Int!
+  """
+  The first season of the range. The range ends at the toSeason argument, which defaults to the
+  current season. Every field but seasons and current is cut to the range.
+  """
+  fromSeason: Int!
+  overall: AccuracyScore!
+  """
+  Every season with a prediction, oldest first. It is not cut to the range.
+  """
+  seasons: [SeasonAccuracy!]!
+  """
+  The four phases, in order, each with the games of the range.
+  """
+  phases: [PhaseAccuracy!]!
+  """
+  Ten bins of five points from 50% up, each with the games of the range.
+  """
+  confidence: [ConfidenceBin!]!
+  """
+  The ten games of the range in which the winner had the lowest probability, lowest first.
+  """
+  upsets: [ScoredGame!]!
+  """
+  The ten weeks of the range with the largest gap between expectedCorrect and the correct picks,
+  worst first. Each week has at least 100 games and no pending game.
+  """
+  worstWeeks: [SeasonWeekAccuracy!]!
+  """
+  The current season. It is not cut to the range.
+  """
+  current: SeasonReport!
+}
+
 type Query {
   currentSeason: Int!
   seasons: [Int!]!
@@ -165,4 +372,10 @@ type Query {
     limit: Int = 1000
   ): [Team!]!
   team(id: ID!, season: Int): Team
+  """
+  The scores of the predictions. fromSeason defaults to 2000, the first season of the scores on
+  the site, or to toSeason when toSeason is earlier. toSeason defaults to the current season.
+  fromSeason may not be after toSeason.
+  """
+  modelAccuracy(fromSeason: Int, toSeason: Int): ModelAccuracy!
 }

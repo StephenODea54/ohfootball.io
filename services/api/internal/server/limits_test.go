@@ -15,8 +15,9 @@ import (
 )
 
 // The queries that the build of the site sends. They are copies of the queries in
-// services/frontend/src/features/seasons/api and services/frontend/src/features/teams/api, with
-// the fields of team-fields.ts put in. Change them together.
+// services/frontend/src/features/seasons/api, services/frontend/src/features/teams/api, and
+// services/frontend/src/features/accuracy/api, with the fields of team-fields.ts put in. Change
+// them together.
 const (
 	siteTeamFields = `
   id
@@ -62,6 +63,39 @@ const (
       rating { value: relativeRating rank }
     }
   }
+}`
+	siteModelAccuracy = `query ModelAccuracy($fromSeason: Int!) {
+  modelAccuracy(fromSeason: $fromSeason) {
+    currentSeason
+    fromSeason
+    overall { ...Score }
+    seasons { season pendingGames inProgress score { ...Score } }
+    phases { phase score { ...Score } }
+    confidence { lowerBound upperBound games ties meanProbability favoriteWins observedRate accuracy }
+    upsets { ...Game }
+    worstWeeks { ...Week }
+    current {
+      season
+      weeks { ...Week }
+      lastWeek { ...Week }
+      lastWeekUpsets { ...Game }
+    }
+  }
+}
+
+fragment Score on AccuracyScore {
+  games ties decided correct accuracy expectedCorrect brierScore logLoss
+}
+
+fragment Week on SeasonWeekAccuracy {
+  season week firstDate lastDate pendingGames score { ...Score }
+}
+
+fragment Game on ScoredGame {
+  id season date
+  winner { id sourceId name score }
+  loser { id sourceId name score }
+  winnerProbability
 }`
 )
 
@@ -195,6 +229,7 @@ func TestQueriesThatMustPassTheFieldLimit(t *testing.T) {
 		{"the current season of the site", siteCurrentSeason, nil, 100},
 		{"the teams of the site", siteTeams, map[string]any{"season": 2025}, 100},
 		{"one team of the site", siteTeam, map[string]any{"id": "x", "season": 2025}, 100},
+		{"the scores of the site", siteModelAccuracy, map[string]any{"fromSeason": 2000}, 250},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {

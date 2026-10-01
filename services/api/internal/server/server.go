@@ -35,6 +35,10 @@ const (
 	// on load, and low enough to stop a query that repeats fields under many aliases.
 	DefaultComplexityLimit = 1000
 
+	// modelAccuracyComplexity is the cost of the modelAccuracy field before its fields. Two uses
+	// cost more than DefaultComplexityLimit, and one use with the query of the site costs less.
+	modelAccuracyComplexity = 600
+
 	queryCacheSize     = 1000
 	persistedQuerySize = 100
 )
@@ -95,9 +99,13 @@ func New(store Store, options Options) (http.Handler, error) {
 		fields = DefaultFieldLimit
 	}
 
-	graphql := handler.New(graph.NewExecutableSchema(graph.Config{
-		Resolvers: &graph.Resolver{Store: store},
-	}))
+	config := graph.Config{Resolvers: &graph.Resolver{Store: store}}
+	// The scores of the predictions take four queries, and three of them read every stored
+	// prediction. The field costs so much that one operation can ask for it only one time.
+	config.Complexity.Query.ModelAccuracy = func(childComplexity int, _, _ *int) int {
+		return modelAccuracyComplexity + childComplexity
+	}
+	graphql := handler.New(graph.NewExecutableSchema(config))
 	// The websocket and multipart transports are left out. The schema has no subscriptions and
 	// accepts no uploads, and a function that returns one buffered response cannot hold a
 	// websocket open.

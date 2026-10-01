@@ -2,8 +2,8 @@
 
 The API exposes current dbt marts and published rating snapshots without
 leaking source-system identifiers. The rating job stores the rating of each team and a prediction
-for each game, so the API reads them and calculates nothing. Start PostgreSQL, publish a rating
-snapshot, then run:
+for each game. The API reads them and calculates only the ranks, the records, the out-of-state
+counts, and the scores of the predictions. Start PostgreSQL, publish a rating snapshot, then run:
 
 ```bash
 go run ./cmd/server
@@ -56,6 +56,46 @@ can therefore move by a place when the model or the data changes. The `teams` qu
 empty list for `programHistory` and for `ratingHistory`, because it does not read the history of
 each team.
 
+## Model accuracy
+
+The query `modelAccuracy(fromSeason, toSeason)` scores the stored predictions of the games that
+have a result. `fromSeason` defaults to 2000, the first season that the site scores, or to
+`toSeason` when `toSeason` is earlier. `toSeason` defaults to the current season. A `fromSeason`
+after `toSeason` gives a GraphQL error. The answer holds the scores of the range, each season, each
+phase, ten confidence bins, the ten biggest upsets, the ten worst weeks, and a report of the
+current season. `seasons` and `current` are not cut to the range.
+
+The rules are those of the `evaluate` command of the rating service. A game counts when it has a
+result of win, loss, or tie, it is not a forfeit, and its prediction is from no later than the day
+of the game. Only a game between two Ohio teams has a prediction. A tie counts as half a win in the
+Brier score and the log loss. A tie is not part of the winner accuracy, and neither is a forecast
+of exactly 50%. `expectedCorrect` is the sum of the probability of the favorite over the decided
+games.
+
+Weeks run from Wednesday to Tuesday. Week 1 is the first week of the season that holds at least 50
+current games in `fct_games` between two Ohio teams, whatever their result. A game before that week
+counts in week 1, so a few early out-of-state games do not move the start of the season. A season
+with no week of that size starts at the week of its first game. A week counts even when it holds no
+game, so the numbers never shift. A Wednesday game and a Monday makeup game go with the games of
+their Friday. The rule is in `internal/store/week.go`. Any query that numbers weeks must use it.
+This week is not the `week` of the `Game` type, which counts the games of one team.
+
+The phases are EARLY for weeks 1 to 3, MID for weeks 4 to 7, and LATE for week 8 and later of the
+regular season. PLAYOFF holds every playoff game, whatever its week. A confidence bin holds the
+games in which the favorite had a probability from its lower bound up to its upper bound. The bins
+are five points wide from 50%, and the last one includes 100%. A worst week has at least 100 games
+and no pending game, and it is ranked by the correct picks minus `expectedCorrect`. The last week
+of `current` is the latest week in which the scored games are at least as many as the pending
+games, so a week with only its first games played is not graded.
+
+Each weekly run replays every season with the current model, so the scores describe the model of
+today on past games. The SQL sums the predictions into cells of one season, week, playoff flag,
+and bin, and the package `internal/accuracy` folds the cells into each view. The field runs four
+queries, and three of them read every stored prediction. So it has a complexity of 600 plus its
+fields, and one operation can ask for it only one time. The API keeps the answer of each range for
+10 minutes, and calls for the same range at the same time share one load. The predictions change
+once a week, so a kept answer is at most 10 minutes behind the last run.
+
 ## Rules for callers
 
 The API needs no sign-in. Each caller follows two rules.
@@ -101,8 +141,8 @@ Each query also has limits on its size. The API checks them before it validates 
   field. The count holds each operation of the document and each fragment that no operation uses.
   A larger query gets 422 and `FIELD_LIMIT_EXCEEDED`. The complexity limit of gqlgen does not
   count the fields of `__Schema`, so this limit is the one that holds for introspection. The
-  introspection query of GraphiQL selects 217 fields, and each query of the site selects at most
-  58.
+  introspection query of GraphiQL selects 217 fields. The query of the Accuracy page selects
+  122, and each other query of the site selects at most 58.
 
 The complexity limit then runs, and a query over it gets 422 and `COMPLEXITY_LIMIT_EXCEEDED`.
 
