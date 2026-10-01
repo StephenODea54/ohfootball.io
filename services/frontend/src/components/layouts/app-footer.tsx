@@ -5,14 +5,13 @@ import { links, paths } from "@/config/paths"
 
 const projectLinks = [
   { label: "GitHub", href: links.repository },
-  { label: "Kaggle Dataset", href: links.dataset },
   { label: "Report An Issue", href: links.issues },
   { label: "Contact", href: links.contact },
 ]
 
 /**
- * The foot of every page, with the links to the code, the data, and the author. Nothing in it
- * runs in the browser.
+ * The foot of every page, with the links to the code, the issue tracker, and the author. Nothing
+ * in it runs in the browser. The data pages link to the dataset, so the foot does not.
  */
 export function AppFooter() {
   return (
