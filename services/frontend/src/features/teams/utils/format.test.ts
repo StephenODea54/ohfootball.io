@@ -58,6 +58,12 @@ describe("formatMargin", () => {
     expect(formatMargin(-0.5)).toBe("L by 1")
   })
 
+  it("rounds a half up, as the API does when it finds an exact margin", () => {
+    expect(formatMargin(2.5)).toBe("W by 3")
+    expect(formatMargin(2.4999999999999996)).toBe("W by 2")
+    expect(formatMargin(10.5)).toBe("W by 11")
+  })
+
   it("colors a margin as a win, a loss, or an even game", () => {
     expect(marginIntent(4.2)).toBe("success")
     expect(marginIntent(-13.5)).toBe("danger")

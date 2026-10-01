@@ -104,6 +104,11 @@ export interface AccuracyScore {
   decided: number
   /** The decided games in which the favorite won. */
   correct: number
+  /**
+   * The decided games in which the margin that the model expected for the winner, rounded to a
+   * whole point with a half rounded up, is the final margin.
+   */
+  exactMargins: number
   accuracy: number | null
   /** The number of correct picks that the model expected. */
   expectedCorrect: number
@@ -169,6 +174,11 @@ export interface ScoredGame {
   loser: ScoredTeam
   /** The win probability the model gave the winner before the game. */
   winnerProbability: number
+  /**
+   * The margin that the model expected for the winner before the game, in points. It is negative
+   * when the model expected the winner to lose.
+   */
+  winnerPredictedMargin: number
 }
 
 /** The current season: its weeks and the last week with results. */
@@ -177,6 +187,8 @@ export interface SeasonReport {
   weeks: SeasonWeekAccuracy[]
   lastWeek: SeasonWeekAccuracy | null
   lastWeekUpsets: ScoredGame[]
+  /** The games of the last week in which the model called the margin exactly, at most 5. */
+  lastWeekExactMarginGames: ScoredGame[]
 }
 
 /** How the predictions did on the games that have a result. */
@@ -189,6 +201,8 @@ export interface ModelAccuracy {
   phases: PhaseAccuracy[]
   confidence: ConfidenceBin[]
   upsets: ScoredGame[]
+  /** The ten biggest games in which the model called the margin exactly, biggest first. */
+  exactMarginGames: ScoredGame[]
   worstWeeks: SeasonWeekAccuracy[]
   current: SeasonReport
 }

@@ -14,7 +14,10 @@ The Accuracy page scores every season.
 
 The page `/accuracy` grades the predictions against the results: the headline scores, the last
 week with results, the weeks of the current season, and the scores by season, by phase, and by
-confidence, with the biggest upsets and the worst weeks. The build reads it from one query
+confidence, with the biggest upsets and the worst weeks. The Hall Of Fame lists the ten biggest
+games in which the model called the final margin exactly, and the report of the last week lists
+the exact margins of that week. A margin is exact when the margin that the model expected for the
+winner, rounded as the page shows it, is the final margin. The build reads it from one query
 of the API. `FIRST_SCORED_SEASON` in `src/features/accuracy/scored-seasons.ts` is 2000, the first
 season of every number but the chart by season. From 2000 on, the scores come from one source and
 every season has overtime. `FIRST_CHART_SEASON` is 1973, because 1972 is the first season of the

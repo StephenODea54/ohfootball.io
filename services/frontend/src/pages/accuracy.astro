@@ -8,6 +8,7 @@ import { AccuracyIntro } from "@/features/accuracy/components/accuracy-intro"
 import { CalibrationChart } from "@/features/accuracy/components/calibration-chart"
 import { ChartFigure } from "@/features/accuracy/components/chart-figure"
 import { ConfidenceTable } from "@/features/accuracy/components/confidence-table"
+import { ExactMarginsTable } from "@/features/accuracy/components/exact-margins-table"
 import { HeadlineTiles } from "@/features/accuracy/components/headline-tiles"
 import { PhaseTable } from "@/features/accuracy/components/phase-table"
 import { ReportCard } from "@/features/accuracy/components/report-card"
@@ -39,11 +40,17 @@ const { current, currentSeason, fromSeason } = accuracy
 const tiles = headline(accuracy.overall)
 const card = reportCard(current)
 const cardUpsets = linkScoredTeams(current.lastWeekUpsets, currentSeason, pageTeamIds)
+const cardExactMargins = linkScoredTeams(
+  current.lastWeekExactMarginGames,
+  currentSeason,
+  pageTeamIds,
+)
 const thisSeason = weekSeries(current.weeks)
 const seasons = seasonSeries(accuracy.seasons, FIRST_CHART_SEASON)
 const phases = phaseRows(accuracy.phases)
 const bins = confidenceRows(accuracy.confidence)
 const calibration = calibrationPoints(accuracy.confidence)
+const exactMargins = linkScoredTeams(accuracy.exactMarginGames, currentSeason, pageTeamIds)
 const upsets = linkScoredTeams(accuracy.upsets, currentSeason, pageTeamIds)
 const worstWeeks = worstWeekRows(accuracy.worstWeeks)
 
@@ -74,7 +81,7 @@ const sectionHeading = "text-2xl/8 sm:text-3xl/9"
         </Heading>
         <div class="mt-5">
           {card ? (
-            <ReportCard card={card} upsets={cardUpsets} />
+            <ReportCard card={card} upsets={cardUpsets} exactMargins={cardExactMargins} />
           ) : (
             <Text>No games of {currentSeason} have a result yet.</Text>
           )}
@@ -136,14 +143,20 @@ const sectionHeading = "text-2xl/8 sm:text-3xl/9"
         </div>
       </section>
 
-      <section class="mt-12" aria-labelledby="upsets-heading">
-        <Heading id="upsets-heading" level={2} className={sectionHeading}>
-          Biggest Upsets
+      <section class="mt-12" aria-labelledby="fame-heading">
+        <Heading id="fame-heading" level={2} className={sectionHeading}>
+          Hall Of Fame
         </Heading>
         <Text className="mt-2 mb-5 max-w-3xl">
-          The games since {fromSeason} in which the winner had the lowest chance.
+          The top 10 games where the model exactly predicted the outcome.
         </Text>
-        <UpsetsTable client:visible games={upsets} label={`Biggest upsets since ${fromSeason}`} />
+        {exactMargins.length > 0 && (
+          <ExactMarginsTable
+            client:visible
+            games={exactMargins}
+            label={`Exact margins since ${fromSeason}`}
+          />
+        )}
       </section>
 
       <section class="mt-12" aria-labelledby="shame-heading">
@@ -155,6 +168,16 @@ const sectionHeading = "text-2xl/8 sm:text-3xl/9"
           winners that it picked.
         </Text>
         <WorstWeeksTable client:visible rows={worstWeeks} />
+      </section>
+
+      <section class="mt-12" aria-labelledby="upsets-heading">
+        <Heading id="upsets-heading" level={2} className={sectionHeading}>
+          Biggest Upsets
+        </Heading>
+        <Text className="mt-2 mb-5 max-w-3xl">
+          The games since {fromSeason} in which the winner had the lowest chance.
+        </Text>
+        <UpsetsTable client:visible games={upsets} label={`Biggest upsets since ${fromSeason}`} />
       </section>
     </Container>
   </main>

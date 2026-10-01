@@ -22,3 +22,14 @@ it("asks one time for the scores from the first scored season", async () => {
   expect(graphqlRequest).toHaveBeenCalledTimes(1)
   expect(graphqlRequest).toHaveBeenCalledWith(modelAccuracyQuery, { fromSeason: 2000 })
 })
+
+it("asks for the exact margins", async () => {
+  const { modelAccuracyQuery } = await import("@/features/accuracy/api/get-model-accuracy")
+
+  expect(modelAccuracyQuery).toContain("exactMarginGames { ...Game }")
+  expect(modelAccuracyQuery).toContain("lastWeekExactMarginGames { ...Game }")
+  expect(modelAccuracyQuery).toMatch(/fragment Score on AccuracyScore \{[^}]*\bexactMargins\b/)
+  expect(modelAccuracyQuery).toMatch(
+    /fragment Game on ScoredGame \{[\s\S]*\bwinnerPredictedMargin\b/,
+  )
+})

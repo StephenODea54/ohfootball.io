@@ -16,18 +16,20 @@ export const modelAccuracyQuery = `query ModelAccuracy($fromSeason: Int!) {
     phases { phase score { ...Score } }
     confidence { lowerBound upperBound games ties meanProbability favoriteWins observedRate accuracy }
     upsets { ...Game }
+    exactMarginGames { ...Game }
     worstWeeks { ...Week }
     current {
       season
       weeks { ...Week }
       lastWeek { ...Week }
       lastWeekUpsets { ...Game }
+      lastWeekExactMarginGames { ...Game }
     }
   }
 }
 
 fragment Score on AccuracyScore {
-  games ties decided correct accuracy expectedCorrect brierScore logLoss
+  games ties decided correct exactMargins accuracy expectedCorrect brierScore logLoss
 }
 
 fragment Week on SeasonWeekAccuracy {
@@ -39,6 +41,7 @@ fragment Game on ScoredGame {
   winner { id sourceId name score }
   loser { id sourceId name score }
   winnerProbability
+  winnerPredictedMargin
 }`
 
 /** The scores of the predictions from FIRST_SCORED_SEASON to the current season. */

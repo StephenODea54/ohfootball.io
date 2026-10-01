@@ -146,6 +146,8 @@ export interface ReportCard {
   week: number
   correct: number
   decided: number
+  /** The decided games in which the model called the margin exactly. */
+  exactMargins: number
   expected: number
   accuracy: number | null
   brierScore: number | null
@@ -161,6 +163,7 @@ export function reportCard(current: SeasonReport): ReportCard | null {
     week: week.week,
     correct: score.correct,
     decided: score.decided,
+    exactMargins: score.exactMargins,
     expected: score.expectedCorrect,
     accuracy: score.accuracy,
     brierScore: score.brierScore,

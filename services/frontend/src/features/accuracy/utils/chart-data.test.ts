@@ -23,6 +23,7 @@ function score(
     ties: 0,
     decided: games,
     correct: accuracy === null ? 0 : Math.round(games * accuracy),
+    exactMargins: 0,
     accuracy,
     expectedCorrect: games * 0.8,
     brierScore: games ? 0.13 : null,
@@ -165,6 +166,7 @@ describe("reportCard", () => {
       weeks: lastWeek ? [lastWeek] : [],
       lastWeek,
       lastWeekUpsets: [],
+      lastWeekExactMarginGames: [],
     }
   }
 
@@ -176,6 +178,7 @@ describe("reportCard", () => {
           score: score(337, 0.8694, {
             correct: 293,
             decided: 337,
+            exactMargins: 5,
             expectedCorrect: 295,
             brierScore: 0.0869,
           }),
@@ -186,6 +189,7 @@ describe("reportCard", () => {
       week: 6,
       correct: 293,
       decided: 337,
+      exactMargins: 5,
       expected: 295,
       accuracy: 0.8694,
       brierScore: 0.0869,

@@ -10,6 +10,7 @@ function game(season: number): ScoredGame {
     winner: { id: "ross", sourceId: "1", name: "Ross", score: 14 },
     loser: { id: "talawanda", sourceId: "2", name: "Talawanda", score: 7 },
     winnerProbability: 0.07,
+    winnerPredictedMargin: -19.9,
   }
 }
 
@@ -20,4 +21,5 @@ it("links only the teams of the current season whose pages the build draws", () 
   expect(current?.loser.href).toBeNull()
   expect(past?.winner.href).toBeNull()
   expect(current?.winner.name).toBe("Ross")
+  expect(current?.winnerPredictedMargin).toBe(-19.9)
 })
