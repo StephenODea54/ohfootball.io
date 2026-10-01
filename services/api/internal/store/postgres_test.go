@@ -77,7 +77,7 @@ func (row fakeRow) Scan(dest ...any) error {
 
 func teamRow(rating, relativeRating, rank, asOf, previousRank any) fakeRow {
 	return fakeRow{
-		"team-key", 2026, "1624", "Massillon", "Tigers", "Massillon", "Stark", int64(2), int64(7),
+		"team-key", 2026, "1624", "Massillon", "Tigers", "Massillon", "Stark", 40.79, -81.52, int64(2), int64(7),
 		"#ff6600", "#000000", int64(5), int64(1), int64(0), int64(2),
 		rating, relativeRating, rank, asOf, previousRank,
 	}
@@ -151,6 +151,28 @@ func TestScanTeamReadsTheOutOfStateGamesPlayed(t *testing.T) {
 	}
 	if team.OutOfStateGamesPlayed != 2 {
 		t.Fatalf("out-of-state games played = %d, want 2", team.OutOfStateGamesPlayed)
+	}
+}
+
+func TestScanTeamReadsTheCoordinates(t *testing.T) {
+	team, err := scanTeam(teamRow(nil, nil, nil, nil, nil))
+	if err != nil {
+		t.Fatalf("scanTeam: %v", err)
+	}
+	if team.Coordinates == nil || team.Coordinates.Latitude != 40.79 || team.Coordinates.Longitude != -81.52 {
+		t.Fatalf("coordinates = %+v, want 40.79 and -81.52", team.Coordinates)
+	}
+
+	for _, missing := range []int{7, 8} {
+		row := teamRow(nil, nil, nil, nil, nil)
+		row[missing] = nil
+		team, err = scanTeam(row)
+		if err != nil {
+			t.Fatalf("scanTeam: %v", err)
+		}
+		if team.Coordinates != nil {
+			t.Fatalf("coordinates = %+v with value %d missing, want nil", team.Coordinates, missing)
+		}
 	}
 }
 

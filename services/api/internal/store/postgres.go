@@ -294,7 +294,7 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	var team model.Team
 	var mascot, city, county, primaryColor, secondaryColor pgtype.Text
 	var division, region pgtype.Int2
-	var rating, relativeRating pgtype.Float8
+	var latitude, longitude, rating, relativeRating pgtype.Float8
 	var ratingRank, previousRank pgtype.Int8
 	var asOf pgtype.Date
 	var wins, losses, ties, outOfStateGamesPlayed int64
@@ -306,6 +306,8 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 		&mascot,
 		&city,
 		&county,
+		&latitude,
+		&longitude,
 		&division,
 		&region,
 		&primaryColor,
@@ -325,6 +327,9 @@ func scanTeam(row rowScanner) (*model.Team, error) {
 	team.Mascot = optional(mascot.Valid, mascot.String)
 	team.City = optional(city.Valid, city.String)
 	team.County = optional(county.Valid, county.String)
+	if latitude.Valid && longitude.Valid {
+		team.Coordinates = &model.Coordinates{Latitude: latitude.Float64, Longitude: longitude.Float64}
+	}
 	team.Division = optional(division.Valid, int(division.Int16))
 	team.Region = optional(region.Valid, int(region.Int16))
 	team.PrimaryColor = optional(primaryColor.Valid, primaryColor.String)
@@ -591,6 +596,8 @@ const teamColumns = `
 	team.mascot,
 	team.city,
 	team.county,
+	team.latitude,
+	team.longitude,
 	team.division,
 	team.region,
 	team.primary_color_hex,

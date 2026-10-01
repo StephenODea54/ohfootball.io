@@ -52,6 +52,12 @@ type ConfidenceBin struct {
 	Accuracy *float64 `json:"accuracy,omitempty"`
 }
 
+// A point on the earth in degrees (WGS 84).
+type Coordinates struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
 type Game struct {
 	ID            string          `json:"id"`
 	Week          int             `json:"week"`
@@ -246,12 +252,15 @@ type Team struct {
 	City     *string `json:"city,omitempty"`
 	// The Ohio county of the school, as joeeitel.com gives it, such as Stark. It has no word "County".
 	// It is null when the source does not state it.
-	County         *string `json:"county,omitempty"`
-	Division       *int    `json:"division,omitempty"`
-	Region         *int    `json:"region,omitempty"`
-	PrimaryColor   *string `json:"primaryColor,omitempty"`
-	SecondaryColor *string `json:"secondaryColor,omitempty"`
-	Record         *Record `json:"record"`
+	County *string `json:"county,omitempty"`
+	// The location of the school today. Every season of a school has the same point, so a school that
+	// merged or moved shows where it is now. It is null when the site has no location for the school.
+	Coordinates    *Coordinates `json:"coordinates,omitempty"`
+	Division       *int         `json:"division,omitempty"`
+	Region         *int         `json:"region,omitempty"`
+	PrimaryColor   *string      `json:"primaryColor,omitempty"`
+	SecondaryColor *string      `json:"secondaryColor,omitempty"`
+	Record         *Record      `json:"record"`
 	// The number of games this season that the team played against a team that is not recorded as an
 	// Ohio team. The rating leaves these games out, so a team with many of them has fewer games behind
 	// its rating. A game counts only when it has a result and both scores. A canceled game and a

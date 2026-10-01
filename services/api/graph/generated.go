@@ -69,6 +69,11 @@ type ComplexityRoot struct {
 		UpperBound      func(childComplexity int) int
 	}
 
+	Coordinates struct {
+		Latitude  func(childComplexity int) int
+		Longitude func(childComplexity int) int
+	}
+
 	Game struct {
 		Date          func(childComplexity int) int
 		ID            func(childComplexity int) int
@@ -195,6 +200,7 @@ type ComplexityRoot struct {
 
 	Team struct {
 		City                  func(childComplexity int) int
+		Coordinates           func(childComplexity int) int
 		County                func(childComplexity int) int
 		Division              func(childComplexity int) int
 		ID                    func(childComplexity int) int
@@ -369,6 +375,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ConfidenceBin.UpperBound(childComplexity), true
+
+	case "Coordinates.latitude":
+		if e.complexity.Coordinates.Latitude == nil {
+			break
+		}
+
+		return e.complexity.Coordinates.Latitude(childComplexity), true
+
+	case "Coordinates.longitude":
+		if e.complexity.Coordinates.Longitude == nil {
+			break
+		}
+
+		return e.complexity.Coordinates.Longitude(childComplexity), true
 
 	case "Game.date":
 		if e.complexity.Game.Date == nil {
@@ -970,6 +990,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Team.City(childComplexity), true
+
+	case "Team.coordinates":
+		if e.complexity.Team.Coordinates == nil {
+			break
+		}
+
+		return e.complexity.Team.Coordinates(childComplexity), true
 
 	case "Team.county":
 		if e.complexity.Team.County == nil {
@@ -2374,6 +2401,94 @@ func (ec *executionContext) _ConfidenceBin_accuracy(ctx context.Context, field g
 func (ec *executionContext) fieldContext_ConfidenceBin_accuracy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ConfidenceBin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Coordinates_latitude(ctx context.Context, field graphql.CollectedField, obj *model.Coordinates) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Coordinates_latitude(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Latitude, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Coordinates_latitude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Coordinates",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Coordinates_longitude(ctx context.Context, field graphql.CollectedField, obj *model.Coordinates) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Coordinates_longitude(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Longitude, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Coordinates_longitude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Coordinates",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -4748,6 +4863,8 @@ func (ec *executionContext) fieldContext_Query_teams(ctx context.Context, field 
 				return ec.fieldContext_Team_city(ctx, field)
 			case "county":
 				return ec.fieldContext_Team_county(ctx, field)
+			case "coordinates":
+				return ec.fieldContext_Team_coordinates(ctx, field)
 			case "division":
 				return ec.fieldContext_Team_division(ctx, field)
 			case "region":
@@ -4836,6 +4953,8 @@ func (ec *executionContext) fieldContext_Query_team(ctx context.Context, field g
 				return ec.fieldContext_Team_city(ctx, field)
 			case "county":
 				return ec.fieldContext_Team_county(ctx, field)
+			case "coordinates":
+				return ec.fieldContext_Team_coordinates(ctx, field)
 			case "division":
 				return ec.fieldContext_Team_division(ctx, field)
 			case "region":
@@ -6874,6 +6993,53 @@ func (ec *executionContext) fieldContext_Team_county(_ context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Team_coordinates(ctx context.Context, field graphql.CollectedField, obj *model.Team) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Team_coordinates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Coordinates, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Coordinates)
+	fc.Result = res
+	return ec.marshalOCoordinates2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐCoordinates(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Team_coordinates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "latitude":
+				return ec.fieldContext_Coordinates_latitude(ctx, field)
+			case "longitude":
+				return ec.fieldContext_Coordinates_longitude(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Coordinates", field.Name)
 		},
 	}
 	return fc, nil
@@ -9731,6 +9897,50 @@ func (ec *executionContext) _ConfidenceBin(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var coordinatesImplementors = []string{"Coordinates"}
+
+func (ec *executionContext) _Coordinates(ctx context.Context, sel ast.SelectionSet, obj *model.Coordinates) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, coordinatesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Coordinates")
+		case "latitude":
+			out.Values[i] = ec._Coordinates_latitude(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "longitude":
+			out.Values[i] = ec._Coordinates_longitude(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var gameImplementors = []string{"Game"}
 
 func (ec *executionContext) _Game(ctx context.Context, sel ast.SelectionSet, obj *model.Game) graphql.Marshaler {
@@ -10745,6 +10955,8 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Team_city(ctx, field, obj)
 		case "county":
 			out.Values[i] = ec._Team_county(ctx, field, obj)
+		case "coordinates":
+			out.Values[i] = ec._Team_coordinates(ctx, field, obj)
 		case "division":
 			out.Values[i] = ec._Team_division(ctx, field, obj)
 		case "region":
@@ -12207,6 +12419,13 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	}
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOCoordinates2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐCoordinates(ctx context.Context, sel ast.SelectionSet, v *model.Coordinates) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Coordinates(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
