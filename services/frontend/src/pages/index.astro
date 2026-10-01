@@ -1,17 +1,42 @@
 ---
 import SiteLayout from "@/layouts/site-layout.astro"
+import { buttonStyles } from "@/components/ui/button"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
+import { Link } from "@/components/ui/link"
 import { Text } from "@/components/ui/text"
+import { paths } from "@/config/paths"
+import { getMapTeams } from "@/features/map/api/get-map-teams"
+import { RegionMap } from "@/features/map/components/region-map"
+import { RegionStats } from "@/features/map/components/region-stats"
+import { ohioMap } from "@/features/map/server/ohio-map"
+import { programCount, schoolDots } from "@/features/map/utils/school-dots"
+import { project } from "@/features/map/utils/projection"
+import { regionKings } from "@/features/map/utils/regions"
 import { RatingNote } from "@/features/methodology/components/rating-note"
 import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
 import { getTeams } from "@/features/teams/api/get-teams"
 import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
-import { TeamFinder } from "@/features/teams/components/team-finder"
+import { TeamSearch } from "@/features/teams/components/team-search"
 import { lastUpdated } from "@/features/teams/utils/format"
 import { siteUrl, webSiteJsonLd } from "@/utils/seo"
 
-const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
+const [season, mapTeams, teams] = await Promise.all([getCurrentSeason(), getMapTeams(), getTeams()])
+const map = ohioMap()
+const kings = regionKings(mapTeams)
+const kingPoints = Object.fromEntries(
+  kings.flatMap(({ region, king }) =>
+    king?.coordinates
+      ? [[region.key, project(map.fit, king.coordinates.longitude, king.coordinates.latitude)]]
+      : [],
+  ),
+)
+const stats = [
+  { value: programCount(mapTeams.length), label: "Programs" },
+  { value: String(new Set(teams.flatMap((team) => team.county ?? [])).size), label: "Counties" },
+  { value: String(new Set(teams.flatMap((team) => team.division ?? [])).size), label: "Divisions" },
+  { value: "Weekly", label: "Ratings and predictions" },
+]
 
 const description =
   "Look up any Ohio high school football team and see their statistical ratings and game predictions"
@@ -23,16 +48,53 @@ const description =
   jsonLd={webSiteJsonLd(siteUrl(Astro.site), "ohfootball.io", description)}
 >
   <main>
-    <Container className="max-w-6xl py-16 sm:py-20 lg:py-24">
-      <Heading className="text-5xl/none sm:text-6xl/none">
-        ohfootball<span class="text-primary">.io</span>
-      </Heading>
-      <Text className="mt-4 text-base/7 sm:text-lg/8">
-        Statistical ratings and game predictions for every Ohio high school football team.
-      </Text>
-      <RatingNote className="mt-3 max-w-3xl" />
+    <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
+      <div class="grid items-center gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <div>
+          <Text className="font-medium text-primary-subtle-fg text-xs/5 uppercase tracking-[0.2em] sm:text-xs/5">
+            {`Ohio high school football ratings · ${season}`}
+          </Text>
+          <Heading className="mt-4 font-bold text-5xl/[0.95] uppercase tracking-tight sm:text-6xl/[0.95]">
+            Five regions.
+            <br />
+            <span class="text-primary">One state.</span>
+          </Heading>
+          <Text className="mt-6 max-w-md text-base/7 sm:text-lg/8">
+            Statistical ratings and game predictions for every Ohio high school football team,
+            updated each week. Find your school, or start with the best program in each part of the
+            state.
+          </Text>
+          <RatingNote className="mt-3" />
 
-      <TeamFinder client:load season={season} teams={teams} />
+          <div class="mt-8 max-w-md">
+            <TeamSearch client:load teams={teams} />
+          </div>
+
+          <div class="mt-6 flex flex-wrap gap-3">
+            <Link
+              href={paths.leaderboard.getHref()}
+              className={buttonStyles({ intent: "primary", size: "lg" })}
+            >
+              {`View the ${season} rankings →`}
+            </Link>
+            <Link
+              href={paths.methodology.getHref()}
+              className={buttonStyles({ intent: "outline", size: "lg" })}
+            >
+              How the ratings work
+            </Link>
+          </div>
+        </div>
+
+        <RegionMap
+          map={map}
+          kingPoints={kingPoints}
+          kings={kings}
+          dots={schoolDots(mapTeams, map.fit)}
+        />
+      </div>
+
+      <RegionStats stats={stats} />
     </Container>
 
     <LastUpdatedStamp isoDate={lastUpdated(teams)} />

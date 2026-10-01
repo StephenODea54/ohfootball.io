@@ -84,6 +84,20 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Some school dots of the home page map blink slowly. */
+  --animate-twinkle: twinkle 3.5s ease-in-out infinite;
+
+  /* It fades the fill and not the element, so each dot keeps its own opacity. */
+  @keyframes twinkle {
+    0%,
+    100% {
+      fill-opacity: 1;
+    }
+    50% {
+      fill-opacity: 0.25;
+    }
+  }
 }
 
 :root {

@@ -25,12 +25,11 @@ describe("countyItems", () => {
 })
 
 describe("CountySelect", () => {
-  it("renders a labeled Select with its class", () => {
+  it("renders a labeled Select", () => {
     const html = renderToStaticMarkup(
-      <CountySelect className="col-span-2" onChange={() => {}} teams={[]} value={ALL_COUNTIES} />,
+      <CountySelect onChange={() => {}} teams={[]} value={ALL_COUNTIES} />,
     )
 
     expect(html).toContain("Filter By County")
-    expect(html).toContain("col-span-2")
   })
 })

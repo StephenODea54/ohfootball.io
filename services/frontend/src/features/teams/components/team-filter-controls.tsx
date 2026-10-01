@@ -14,7 +14,6 @@ import { formatDivision } from "@/features/teams/utils/format"
 import type { TeamSummary } from "@/types/api"
 
 interface FilterSelectProps {
-  className?: string
   onChange: (value: string) => void
   teams: TeamSummary[]
   value: string
@@ -86,13 +85,12 @@ export function countyItems(teams: Pick<TeamSummary, "county">[]) {
  * Lists only the counties that the loaded teams actually use. The Select jumps to a county when
  * the visitor types its first letters.
  */
-export function CountySelect({ className, onChange, teams, value }: FilterSelectProps) {
+export function CountySelect({ onChange, teams, value }: FilterSelectProps) {
   const items = countyItems(teams)
 
   return (
     <Select
       aria-label="Filter By County"
-      className={className}
       onChange={(county) => onChange(String(county ?? ALL_COUNTIES))}
       value={value}
     >
