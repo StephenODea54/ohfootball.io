@@ -49,6 +49,9 @@
 # The team logos that the site serves.
 !services/frontend/public/logos/*.webp
 
+# The dbt seeds. Other CSV files, such as the dataset export, stay out.
+!services/analytics/seeds/*.csv
+
 # And files with no extension that a tool reads
 !.python-version
 !.sqlfluff

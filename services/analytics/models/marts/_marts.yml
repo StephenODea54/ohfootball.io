@@ -23,6 +23,13 @@ models:
       - name: name
         data_tests:
           - not_null
+      - name: latitude
+        description: >
+          Degrees north of the location of the school today, from the school_locations seed. Every
+          season of a team number gets the same point, so a school that merged or moved shows its
+          location today in its old seasons. Null when the seed has no row for the team.
+      - name: longitude
+        description: Degrees east of the location of the school today. Null with the latitude.
       - name: valid_from
         description: Inclusive time at which this version was first observed.
         data_tests:

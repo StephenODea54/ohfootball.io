@@ -1,0 +1,31 @@
+version: 2
+
+seeds:
+  - name: school_locations
+    description: >
+      The location of each Ohio school today, one row for each joeeitel.com team number. A person
+      who keeps the school list made the file and gave it to the project with permission to use
+      and share it. The street addresses come from OHSAA, and MapQuest turned them into points.
+      A school that has no location, such as a club team, has no row.
+    columns:
+      - name: team_id
+        description: The joeeitel.com team number. It is the source_id of dim_teams.
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: source_id
+              config:
+                severity: warn
+      - name: team_name
+        description: The name of the school, so that a person can read the file. No model uses it.
+      - name: latitude
+        description: Degrees north.
+        data_tests:
+          - not_null
+      - name: longitude
+        description: Degrees east. Every Ohio value is negative.
+        data_tests:
+          - not_null

@@ -1,6 +1,17 @@
 version: 2
 
 models:
+  - name: stg_school_locations
+    description: The location of each Ohio school today, keyed by its joeeitel.com team number.
+    columns:
+      - name: source_id
+        description: >
+          The joeeitel.com team number. It matches dim_teams.source_id. The seed tests that it is
+          unique and never empty.
+      - name: latitude
+        description: Degrees north.
+      - name: longitude
+        description: Degrees east.
   - name: stg_teams
     description: Clean, typed team records with one row for every raw team row.
     columns:

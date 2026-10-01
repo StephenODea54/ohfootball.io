@@ -38,14 +38,17 @@ SELECT
     {{ ohfootball_uuid(
         "CONCAT('https://ohfootball.io/team-versions/', team_key, '/', scrape_run_id)"
     ) }} AS team_version_key,
-    team_key,
-    season,
-    team_id AS source_id,
+    versioned.team_key,
+    versioned.season,
+    versioned.team_id AS source_id,
     name,
     mascot,
     city,
     state_code,
     county,
+    -- The location joins after the versions are built, so it starts no new version.
+    locations.latitude,
+    locations.longitude,
     primary_color_hex,
     secondary_color_hex,
     division,
@@ -54,3 +57,5 @@ SELECT
     valid_to,
     valid_to IS NULL AS is_current
 FROM versioned
+LEFT JOIN {{ ref('stg_school_locations') }} AS locations
+    ON versioned.team_id = locations.source_id

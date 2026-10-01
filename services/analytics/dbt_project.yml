@@ -25,3 +25,13 @@ models:
     marts:
       +materialized: table
       +schema: ohfootball_marts
+
+seeds:
+  ohfootball:
+    +schema: ohfootball_seeds
+    school_locations:
+      +column_types:
+        team_id: text
+        team_name: text
+        latitude: double precision
+        longitude: double precision
