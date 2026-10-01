@@ -176,6 +176,8 @@ def _publish(arguments: argparse.Namespace) -> None:
     # prediction from the current ratings. A game of a past season that never got a result gets
     # none, because the ratings of that season already hold the games after it. Storing the
     # predictions lets a team page show what was expected before each game.
+    # A game against a team from another state gets a prediction too. The API reads the rating that
+    # the Ohio team carried into each game to find its rank a week earlier.
     upcoming = predict(
         (
             game
@@ -248,7 +250,8 @@ def _evaluate(arguments: argparse.Namespace) -> None:
     report: dict[str, object] = {
         "as_of_date": arguments.as_of_date.isoformat(),
         "config": asdict(config),
-        "games": len(result.predictions),
+        "games": sum(item.is_ohio_game for item in result.predictions),
+        "other_state_games": sum(not item.is_ohio_game for item in result.predictions),
         "windows": [
             {"seasons": [start, end], **scored}
             for start, end in windows
@@ -265,7 +268,9 @@ def _evaluate(arguments: argparse.Namespace) -> None:
 def _score(
     predictions: Sequence[MarginPrediction], first: int, last: int
 ) -> dict[str, object] | None:
-    chosen = [item for item in predictions if first <= item.season <= last]
+    # A game against a team from another state gets a prediction, but it is not part of the
+    # evidence of the model, so only games between two Ohio teams are scored.
+    chosen = [item for item in predictions if item.is_ohio_game and first <= item.season <= last]
     return asdict(evaluate(chosen)) if chosen else None
 
 
