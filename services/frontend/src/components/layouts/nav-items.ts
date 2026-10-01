@@ -6,6 +6,7 @@ export const navItems = [
   { label: "About", ...paths.about },
   { label: "Leaderboard", ...paths.leaderboard },
   { label: "Methodology", ...paths.methodology },
+  { label: "Accuracy", ...paths.accuracy },
   { label: "Data", ...paths.data },
   { label: "API", ...paths.api },
 ]

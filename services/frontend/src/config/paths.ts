@@ -1,6 +1,6 @@
 /**
- * Every page of the site, in one place. The site shows only the current season, so no address
- * carries a season.
+ * Every page of the site, in one place. The site shows the teams of the current season only, so no
+ * address carries a season.
  */
 export const paths = {
   home: {
@@ -18,6 +18,10 @@ export const paths = {
   methodology: {
     path: "/methodology",
     getHref: () => "/methodology",
+  },
+  accuracy: {
+    path: "/accuracy",
+    getHref: () => "/accuracy",
   },
   // The page that tells people how to download the data. Its addresses are in features/data.
   data: {

@@ -8,6 +8,7 @@ describe("the navigation bar", () => {
       "About",
       "Leaderboard",
       "Methodology",
+      "Accuracy",
       "Data",
       "API",
     ])

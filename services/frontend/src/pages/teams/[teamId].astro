@@ -17,6 +17,7 @@ import { linkOpponents } from "@/features/teams/utils/opponent-links"
 import { addOpponentSourceIds } from "@/features/teams/utils/opponent-logos"
 import { addOpponentStandings } from "@/features/teams/utils/opponent-standings"
 import { toSeasonRows } from "@/features/teams/utils/program-history"
+import { drawnTeamIds } from "@/features/teams/utils/team-limit"
 import { teamPageHead } from "@/features/teams/utils/team-seo"
 import { siteUrl } from "@/utils/seo"
 
@@ -27,8 +28,7 @@ import { siteUrl } from "@/utils/seo"
 export const getStaticPaths = (async () => {
   const [season, teams] = await Promise.all([getCurrentSeason(), getTeams()])
 
-  const ids = [...new Set(teams.map((team) => team.id))]
-  const drawn = PRERENDER_TEAM_LIMIT ? ids.slice(0, PRERENDER_TEAM_LIMIT) : ids
+  const drawn = drawnTeamIds(teams, PRERENDER_TEAM_LIMIT)
   // Each page is sent the ids of all pages, so its schedule links only to opponents with a page.
   return drawn.map((teamId) => ({ params: { teamId }, props: { season, pageTeamIds: drawn } }))
 }) satisfies GetStaticPaths

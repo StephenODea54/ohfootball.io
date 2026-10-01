@@ -234,6 +234,10 @@ same files. Use `--windows`, `--window-size` and `--holdout` to score other seas
 teams only. `games` counts them, and `other_state_games` counts the predictions of games against
 another state.
 
+The `/accuracy` page of the site and the `modelAccuracy` query of the API score the stored
+predictions with the same rules as this command. They score the rows of the last run, so they
+match this command only when the stored rows and this command come from the same code.
+
 Run `make coverage` in `services/rating` to see the line and branch coverage of the unit tests.
 
 ## What the rating does not know

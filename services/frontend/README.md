@@ -6,9 +6,20 @@ components.
 Every page is drawn from the API when the site is built. The deployed site is files that
 Cloudflare Pages serves, and nothing runs to answer a visitor. The browser never calls the API.
 Only a few parts of a page run in the browser: the navigation bar, the team finder on the home
-page, the leaderboard table, the rating chart of a team, and the program history of a team.
+page, the leaderboard table, the rating chart and the program history of a team, and the charts
+and tables of the Accuracy page.
 
-The site shows only the current season. Each team of that season has its own page.
+The site shows the teams of the current season only. Each team of that season has its own page.
+The Accuracy page scores every season.
+
+The page `/accuracy` grades the predictions against the results: the headline scores, the last
+week with results, the weeks of the current season, and the scores by season, by phase, and by
+confidence, with the biggest upsets and the worst weeks. The build reads it from one query
+of the API. `FIRST_SCORED_SEASON` in `src/features/accuracy/scored-seasons.ts` is 2000, the first
+season of every number but the chart by season. From 2000 on, the scores come from one source and
+every season has overtime. `FIRST_CHART_SEASON` is 1973, because 1972 is the first season of the
+data and its predictions say little. The text of the page must not name the API, because
+`make pages` refuses a page other than `/api` that names it.
 
 The page `/api` tells people how to call the public API: the endpoint, the contact that each
 request names, the rate limits, the errors, a curl example, the playground, and the Data page and

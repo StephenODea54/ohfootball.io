@@ -22,7 +22,13 @@ const questions = [
   },
   {
     question: "What Does A 68% Win Chance Mean?",
-    answer: "The favorite wins about 68 games out of 100, on average.",
+    answer: (
+      <>
+        The favorite wins about 68 games out of 100, on average. The{" "}
+        <TextLink href={paths.accuracy.getHref()}>Accuracy</TextLink> page shows how often that
+        holds.
+      </>
+    ),
   },
   {
     question: "When Do Ratings Change?",

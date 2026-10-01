@@ -1,0 +1,163 @@
+---
+import { PRERENDER_TEAM_LIMIT } from "astro:env/server"
+import SiteLayout from "@/layouts/site-layout.astro"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { Text } from "@/components/ui/text"
+import { getModelAccuracy } from "@/features/accuracy/api/get-model-accuracy"
+import { AccuracyIntro } from "@/features/accuracy/components/accuracy-intro"
+import { CalibrationChart } from "@/features/accuracy/components/calibration-chart"
+import { ChartFigure } from "@/features/accuracy/components/chart-figure"
+import { ConfidenceTable } from "@/features/accuracy/components/confidence-table"
+import { HeadlineTiles } from "@/features/accuracy/components/headline-tiles"
+import { PhaseTable } from "@/features/accuracy/components/phase-table"
+import { ReportCard } from "@/features/accuracy/components/report-card"
+import { SeasonChart } from "@/features/accuracy/components/season-chart"
+import { UpsetsTable } from "@/features/accuracy/components/upsets-table"
+import { WeekChart } from "@/features/accuracy/components/week-chart"
+import { WorstWeeksTable } from "@/features/accuracy/components/worst-weeks-table"
+import { FIRST_CHART_SEASON } from "@/features/accuracy/scored-seasons"
+import {
+  calibrationPoints,
+  confidenceRows,
+  headline,
+  phaseRows,
+  reportCard,
+  seasonSeries,
+  weekSeries,
+  worstWeekRows,
+} from "@/features/accuracy/utils/chart-data"
+import { calibrationCaption } from "@/features/accuracy/utils/captions"
+import { linkScoredTeams } from "@/features/accuracy/utils/team-links"
+import { getTeams } from "@/features/teams/api/get-teams"
+import { drawnTeamIds } from "@/features/teams/utils/team-limit"
+import { formatWeek } from "@/features/accuracy/utils/format"
+
+const [teams, accuracy] = await Promise.all([getTeams(), getModelAccuracy()])
+
+// A team gets a link only when the build draws its page.
+const pageTeamIds = new Set(drawnTeamIds(teams, PRERENDER_TEAM_LIMIT))
+const { current, currentSeason, fromSeason } = accuracy
+const tiles = headline(accuracy.overall)
+const card = reportCard(current)
+const cardUpsets = linkScoredTeams(current.lastWeekUpsets, currentSeason, pageTeamIds)
+const thisSeason = weekSeries(current.weeks)
+const seasons = seasonSeries(accuracy.seasons, FIRST_CHART_SEASON)
+const phases = phaseRows(accuracy.phases)
+const bins = confidenceRows(accuracy.confidence)
+const calibration = calibrationPoints(accuracy.confidence)
+const upsets = linkScoredTeams(accuracy.upsets, currentSeason, pageTeamIds)
+const worstWeeks = worstWeekRows(accuracy.worstWeeks)
+
+const sectionHeading = "text-2xl/8 sm:text-3xl/9"
+---
+
+<SiteLayout
+  title="Accuracy | ohfootball.io"
+  description="How often the ohfootball.io predictions are right, how well its probabilities are calibrated, and where the model is weak."
+>
+  <main>
+    <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
+      <AccuracyIntro />
+
+      <section class="mt-12" aria-labelledby="headline-heading">
+        <Heading id="headline-heading" level={2} className={sectionHeading}>
+          Overall Metrics
+        </Heading>
+        <Text className="mt-2 mb-5 max-w-3xl">
+          The following metrics are based on games from {fromSeason} and beyond.
+        </Text>
+        <HeadlineTiles tiles={tiles} />
+      </section>
+
+      <section class="mt-12" aria-labelledby="week-report-heading">
+        <Heading id="week-report-heading" level={2} className={sectionHeading}>
+          {card ? `${formatWeek(card.week)} Results` : "Last Week"}
+        </Heading>
+        <div class="mt-5">
+          {card ? (
+            <ReportCard card={card} upsets={cardUpsets} />
+          ) : (
+            <Text>No games of {currentSeason} have a result yet.</Text>
+          )}
+        </div>
+      </section>
+
+      <section class="mt-12" aria-labelledby="season-report-heading">
+        <Heading id="season-report-heading" level={2} className={sectionHeading}>
+          This Season
+        </Heading>
+        <div class="mt-5">
+          {thisSeason.length > 0 ? (
+            <ChartFigure title={`${currentSeason} accuracy by week`}>
+              <WeekChart client:visible points={thisSeason} />
+            </ChartFigure>
+          ) : (
+            <Text>No games of {currentSeason} have a result yet.</Text>
+          )}
+        </div>
+      </section>
+
+      <section class="mt-12" aria-labelledby="by-season-heading">
+        <Heading id="by-season-heading" level={2} className={sectionHeading}>
+          All Seasons
+        </Heading>
+        <div class="mt-5">
+          <ChartFigure title="Accuracy by season">
+            <SeasonChart client:visible points={seasons} headlineSeason={fromSeason} />
+          </ChartFigure>
+        </div>
+      </section>
+
+      <section class="mt-12" aria-labelledby="by-phase-heading">
+        <Heading id="by-phase-heading" level={2} className={sectionHeading}>
+          By Phase
+        </Heading>
+        <div class="mt-5">
+          <PhaseTable client:visible rows={phases} />
+        </div>
+      </section>
+
+      <section class="mt-12" aria-labelledby="calibration-heading">
+        <Heading id="calibration-heading" level={2} className={sectionHeading}>
+          Calibration
+        </Heading>
+        <Text className="mt-2 mb-5 max-w-3xl">
+          A model that says 75% should be right about 75 times in 100. Each dot is the games in
+          which the favorite had a chance in one band of five points. A dot on the diagonal is a
+          band where the model was exactly as sure as it should have been.
+        </Text>
+        <div class="grid gap-6 lg:grid-cols-2">
+          <ChartFigure
+            title="Favorite won vs. what the model said"
+            caption={calibrationCaption(calibration)}
+          >
+            <CalibrationChart client:visible points={calibration} />
+          </ChartFigure>
+          <ConfidenceTable client:visible rows={bins} />
+        </div>
+      </section>
+
+      <section class="mt-12" aria-labelledby="upsets-heading">
+        <Heading id="upsets-heading" level={2} className={sectionHeading}>
+          Biggest Upsets
+        </Heading>
+        <Text className="mt-2 mb-5 max-w-3xl">
+          The games since {fromSeason} in which the winner had the lowest chance.
+        </Text>
+        <UpsetsTable client:visible games={upsets} label={`Biggest upsets since ${fromSeason}`} />
+      </section>
+
+      <section class="mt-12" aria-labelledby="shame-heading">
+        <Heading id="shame-heading" level={2} className={sectionHeading}>
+          Hall Of Shame
+        </Heading>
+        <Text className="mt-2 mb-5 max-w-3xl">
+          The weeks with the largest gap between the winners that the model expected to pick and the
+          winners that it picked.
+        </Text>
+        <WorstWeeksTable client:visible rows={worstWeeks} />
+      </section>
+    </Container>
+  </main>
+</SiteLayout>
