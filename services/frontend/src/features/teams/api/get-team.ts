@@ -2,7 +2,7 @@ import { teamFields } from "@/features/teams/api/team-fields"
 import { graphqlRequest } from "@/lib/graphql-client"
 import type { Team } from "@/types/api"
 
-/** One team in one season, with its rating history and its schedule. */
+/** One team in one season, with its rating history, its schedule, and its program history. */
 export async function getTeam(id: string, season: number): Promise<Team> {
   const data = await graphqlRequest<{ team: Team | null }>(
     `
@@ -27,6 +27,12 @@ export async function getTeam(id: string, season: number): Promise<Team> {
               predictedMargin
               asOf
             }
+          }
+          programHistory {
+            season
+            record { wins losses ties }
+            playoffRecord { wins losses ties }
+            rating { value: relativeRating rank }
           }
         }
       }

@@ -47,6 +47,18 @@ export interface Game {
   prediction: GamePrediction | null
 }
 
+/** One season of a program, as it stands at the end of that season. */
+export interface ProgramSeason {
+  season: number
+  record: TeamRecord
+  playoffRecord: TeamRecord
+  /**
+   * The relative rating and the rank in the last snapshot of the season. Null when the season has
+   * none. The team query selects only these two fields, because the page embeds every season.
+   */
+  rating: Pick<TeamRating, "value" | "rank"> | null
+}
+
 export interface Team {
   /** The key of the team in one season. A team has a different id in each season. */
   id: string
@@ -73,8 +85,10 @@ export interface Team {
   outOfStateGamesPlayed: number
   rating: TeamRating | null
   ratingHistory: TeamRating[]
+  /** Every season the program played, oldest first. */
+  programHistory: ProgramSeason[]
   schedule: Game[]
 }
 
-/** A team as the list of a season returns it, without its rating history and its schedule. */
-export type TeamSummary = Omit<Team, "ratingHistory" | "schedule">
+/** A team as the list of a season returns it, without its histories and its schedule. */
+export type TeamSummary = Omit<Team, "ratingHistory" | "programHistory" | "schedule">

@@ -6,7 +6,7 @@ components.
 Every page is drawn from the API when the site is built. The deployed site is files that
 Cloudflare Pages serves, and nothing runs to answer a visitor. The browser never calls the API.
 Only a few parts of a page run in the browser: the navigation bar, the team finder on the home
-page, the leaderboard table, and the rating chart of a team.
+page, the leaderboard table, the rating chart of a team, and the program history of a team.
 
 The site shows only the current season. Each team of that season has its own page.
 

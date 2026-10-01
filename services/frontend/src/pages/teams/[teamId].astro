@@ -9,12 +9,14 @@ import { paths } from "@/config/paths"
 import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
 import { getTeam } from "@/features/teams/api/get-team"
 import { getTeams } from "@/features/teams/api/get-teams"
+import { ProgramHistory } from "@/features/teams/components/program-history"
 import { RatingHistoryChart } from "@/features/teams/components/rating-history-chart"
 import { TeamHeader } from "@/features/teams/components/team-header"
 import { TeamScheduleTable } from "@/features/teams/components/team-schedule-table"
 import { linkOpponents } from "@/features/teams/utils/opponent-links"
 import { addOpponentSourceIds } from "@/features/teams/utils/opponent-logos"
 import { addOpponentStandings } from "@/features/teams/utils/opponent-standings"
+import { toSeasonRows } from "@/features/teams/utils/program-history"
 import { teamPageHead } from "@/features/teams/utils/team-seo"
 import { siteUrl } from "@/utils/seo"
 
@@ -36,9 +38,10 @@ const { season, pageTeamIds } = Astro.props as InferGetStaticPropsType<typeof ge
 // In the build, getStaticPaths already holds the list of teams, so this asks the API only once.
 const [team, teams] = await Promise.all([getTeam(teamId, season), getTeams()])
 
-// The chart and the schedule run in the browser, so each is sent only the data it draws. Each
-// opponent gets its current rank and rating, and its number for the logo, from the list of teams.
-const history = { season: team.season, rating: team.rating, ratingHistory: team.ratingHistory }
+// The chart, the schedule, and the program history run in the browser, so each is sent only the
+// data it draws. Each opponent gets its current rank and rating, and its number for the logo, from
+// the list of teams.
+const ratingChart = { season: team.season, rating: team.rating, ratingHistory: team.ratingHistory }
 const schedule = {
   name: team.name,
   schedule: addOpponentSourceIds(
@@ -46,6 +49,7 @@ const schedule = {
     teams,
   ),
 }
+const programHistory = { name: team.name, rows: toSeasonRows(team) }
 const head = teamPageHead(team, siteUrl(Astro.site), Astro.url.pathname)
 ---
 
@@ -70,7 +74,7 @@ const head = teamPageHead(team, siteUrl(Astro.site), Astro.url.pathname)
         <Heading id="rating-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
           Rating By Season
         </Heading>
-        <RatingHistoryChart client:visible team={history} />
+        <RatingHistoryChart client:visible team={ratingChart} />
       </section>
 
       <section class="mt-10" aria-labelledby="schedule-heading">
@@ -78,6 +82,13 @@ const head = teamPageHead(team, siteUrl(Astro.site), Astro.url.pathname)
           Schedule
         </Heading>
         <TeamScheduleTable client:visible team={schedule} />
+      </section>
+
+      <section class="mt-10" aria-labelledby="program-history-heading">
+        <Heading id="program-history-heading" level={2} className="mb-4 text-lg/7 sm:text-lg/7">
+          Program History
+        </Heading>
+        <ProgramHistory client:visible team={programHistory} />
       </section>
     </Container>
   </main>

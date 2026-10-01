@@ -1,12 +1,11 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { twJoin } from "tailwind-merge"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
 import { RatingNote } from "@/features/methodology/components/rating-note"
 import { RankMovement } from "@/features/teams/components/rank-movement"
 import { TeamLogo } from "@/features/teams/components/team-logo"
+import { TeamStat } from "@/features/teams/components/team-stat"
 import { formatRating, formatRecord, ratingTone, teamMeta } from "@/features/teams/utils/format"
 import type { Team } from "@/types/api"
 
@@ -52,22 +51,5 @@ export function TeamHeader({ team }: { team: Team }) {
       {/* The schedule on this page shows win chances, so the note also covers home field. */}
       <RatingNote className="max-w-3xl sm:col-span-2" />
     </header>
-  )
-}
-
-function TeamStat({
-  label,
-  value,
-  tone = "text-fg",
-}: {
-  label: string
-  value: ReactNode
-  tone?: string
-}) {
-  return (
-    <div>
-      <dt className="text-xs/5 font-medium uppercase tracking-wide text-muted-fg">{label}</dt>
-      <dd className={twJoin("mt-0.5 text-2xl/7 font-semibold", tone)}>{value}</dd>
-    </div>
   )
 }
