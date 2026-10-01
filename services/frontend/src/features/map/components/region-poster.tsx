@@ -92,7 +92,7 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
   const haloDots = dots.filter((dot) => dot.region !== null && dot.radius > 3)
 
   return (
-    <div>
+    <div className="region-poster">
       <div className="group relative">
         <svg
           viewBox={`0 0 ${map.width} ${map.height}`}
@@ -158,13 +158,14 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
             <path
               key={region.key}
               d={region.path}
-              className={TINT.fill}
+              data-region={region.key}
+              className={`region-fill ${TINT.fill}`}
               style={tintOf(region.key)}
             />
           ))}
           <path
             d={map.countyBorders}
-            className="fill-none stroke-bg/30 stroke-[0.8] dark:stroke-fg/15"
+            className="pointer-events-none fill-none stroke-bg/30 stroke-[0.8] dark:stroke-fg/15"
           />
 
           {logos.map((logo) => (
@@ -175,11 +176,14 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
               y={logo.y - logo.size / 2}
               width={logo.size}
               height={logo.size}
-              className="opacity-55 motion-safe:transition-opacity motion-safe:duration-500 group-hover:opacity-70 dark:opacity-50"
+              data-region={logo.key}
+              className="region-logo pointer-events-none opacity-55 dark:opacity-50"
             />
           ))}
 
-          <g mask="url(#poster-logo-mask)">
+          {/* Only the region fills take the pointer, so pointing at a region works through the
+              dots and the borders above it. */}
+          <g mask="url(#poster-logo-mask)" className="pointer-events-none">
             <g filter="url(#poster-halo)" className="opacity-70 dark:opacity-90">
               {haloDots.map((dot) => (
                 <circle
@@ -197,6 +201,7 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
               <path
                 key={region.key}
                 d={region.path}
+                data-region={region.key}
                 className={`${TINT.stroke} stroke-[3]`}
                 style={tintOf(region.key)}
                 strokeLinejoin="round"
@@ -226,6 +231,21 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
               ))}
             </g>
           </g>
+
+          {/* A second copy of each logo sits above the dots. It shows in full only while its
+              region is pointed at, so the logo of that region comes forward. */}
+          {logos.map((logo) => (
+            <image
+              key={logo.key}
+              href={logo.href}
+              x={logo.x - logo.size / 2}
+              y={logo.y - logo.size / 2}
+              width={logo.size}
+              height={logo.size}
+              data-logo={logo.key}
+              className="region-logo-top pointer-events-none opacity-0"
+            />
+          ))}
         </svg>
 
         {kings.map(({ region, king }) => {
@@ -237,7 +257,12 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
               className="absolute hidden xl:block"
               style={{ [spot.side]: `${spot.inset}%`, top: `${spot.top}%` }}
             >
-              <PosterCard king={king} label={region.label} style={tintOf(region.key)} />
+              <PosterCard
+                king={king}
+                label={region.label}
+                regionKey={region.key}
+                style={tintOf(region.key)}
+              />
             </div>
           )
         })}
@@ -248,7 +273,12 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
           king
             ? [
                 <li key={region.key}>
-                  <PosterCard king={king} label={region.label} style={tintOf(region.key)} />
+                  <PosterCard
+                    king={king}
+                    label={region.label}
+                    regionKey={region.key}
+                    style={tintOf(region.key)}
+                  />
                 </li>,
               ]
             : [],
@@ -261,16 +291,19 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
 function PosterCard({
   king,
   label,
+  regionKey,
   style,
 }: {
   king: NonNullable<RegionKing["king"]>
   label: string
+  regionKey: RegionKey
   style: CSSProperties
 }) {
   return (
     <Link
       href={paths.team.getHref(king.id)}
-      className={`flex items-center gap-3 whitespace-nowrap rounded-lg border bg-bg/95 py-2 ps-3 pe-5 shadow-xl backdrop-blur-sm motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 dark:bg-black/80 ${TINT.card}`}
+      data-card={regionKey}
+      className={`flex items-center gap-3 whitespace-nowrap rounded-lg border bg-bg/95 py-2 ps-3 pe-5 shadow-xl backdrop-blur-sm hover:shadow-[0_12px_32px_-8px_var(--tint)] motion-safe:transition-shadow motion-safe:duration-300 dark:bg-black/80 ${TINT.card}`}
       style={style}
     >
       <TeamLogo team={king} size="sm" className="size-9" />

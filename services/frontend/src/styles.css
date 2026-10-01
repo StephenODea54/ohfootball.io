@@ -288,3 +288,61 @@
   outline: 1px solid var(--primary);
   transform: translateZ(0);
 }
+
+/*
+ * The poster map of the home page. Pointing at a region, or at the card of its best school, makes
+ * the color of that region stronger and dims the other regions. A selector names each region,
+ * because CSS cannot match the region of the card to the region of the shape on its own.
+ */
+.region-poster [data-region] {
+  transition:
+    opacity 300ms ease,
+    fill-opacity 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .region-poster [data-region] {
+    transition: none;
+  }
+}
+
+.region-poster:has([data-region]:hover, [data-card]:hover) [data-region] {
+  opacity: 0.35;
+}
+
+.region-poster:has([data-region="nw"]:hover, [data-card="nw"]:hover) [data-region="nw"],
+.region-poster:has([data-region="ne"]:hover, [data-card="ne"]:hover) [data-region="ne"],
+.region-poster:has([data-region="central"]:hover, [data-card="central"]:hover)
+  [data-region="central"],
+.region-poster:has([data-region="sw"]:hover, [data-card="sw"]:hover) [data-region="sw"],
+.region-poster:has([data-region="se"]:hover, [data-card="se"]:hover) [data-region="se"] {
+  opacity: 1;
+}
+
+.region-poster:has([data-region="nw"]:hover, [data-card="nw"]:hover) .region-fill[data-region="nw"],
+.region-poster:has([data-region="ne"]:hover, [data-card="ne"]:hover) .region-fill[data-region="ne"],
+.region-poster:has([data-region="central"]:hover, [data-card="central"]:hover)
+  .region-fill[data-region="central"],
+.region-poster:has([data-region="sw"]:hover, [data-card="sw"]:hover) .region-fill[data-region="sw"],
+.region-poster:has([data-region="se"]:hover, [data-card="se"]:hover) .region-fill[data-region="se"] {
+  fill-opacity: 0.95;
+}
+
+/* The copy of the logo above the dots fades in for the region that is pointed at. */
+.region-poster .region-logo-top {
+  transition: opacity 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .region-poster .region-logo-top {
+    transition: none;
+  }
+}
+
+.region-poster:has([data-region="nw"]:hover, [data-card="nw"]:hover) [data-logo="nw"],
+.region-poster:has([data-region="ne"]:hover, [data-card="ne"]:hover) [data-logo="ne"],
+.region-poster:has([data-region="central"]:hover, [data-card="central"]:hover) [data-logo="central"],
+.region-poster:has([data-region="sw"]:hover, [data-card="sw"]:hover) [data-logo="sw"],
+.region-poster:has([data-region="se"]:hover, [data-card="se"]:hover) [data-logo="se"] {
+  opacity: 1;
+}

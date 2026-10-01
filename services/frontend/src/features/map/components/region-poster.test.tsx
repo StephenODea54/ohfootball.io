@@ -58,7 +58,9 @@ describe("RegionPoster", () => {
     expect(html).toContain('width="250"')
     expect(html).toContain('x="709"')
     expect(html).toContain('y="149"')
-    expect(html.match(/<image/g)).toHaveLength(1)
+    // One copy sits under the dots, and a hidden copy sits above them for the hover.
+    expect(html.match(/<image/g)).toHaveLength(2)
+    expect(html).toContain('data-logo="ne"')
   })
 
   it("fades the dots where a logo sits", () => {
@@ -79,6 +81,12 @@ describe("RegionPoster", () => {
   it("draws every school as a white dot, some of them twinkling", () => {
     expect(html.match(/fill-white/g)).toHaveLength(3)
     expect(html).toContain("animation-delay:100ms")
+  })
+
+  it("names the region of each shape and each card, so the page can light one up", () => {
+    expect(html).toContain('class="region-poster"')
+    expect(html.match(/data-region="ne"/g)).toHaveLength(3)
+    expect(html.match(/data-card="ne"/g)).toHaveLength(2)
   })
 
   it("places a card for each king on the map and lists it again for small screens", () => {
