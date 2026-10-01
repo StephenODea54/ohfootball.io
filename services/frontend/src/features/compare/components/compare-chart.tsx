@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/chart"
 import { SLOT_STYLES } from "@/features/compare/components/slot-colors"
 import { type CompareRow, ratingAxis } from "@/features/compare/utils/season-series"
-import { formatRating } from "@/features/teams/utils/format"
+import { formatRating, formatRatingTick } from "@/features/teams/utils/format"
 
 interface CompareChartProps {
   rows: CompareRow[]
@@ -54,7 +54,7 @@ export function CompareChart({ rows, nameA, nameB, seasonLabel }: CompareChartPr
             domain={axis.domain}
             ticks={axis.ticks}
             allowDecimals={false}
-            tickFormatter={formatRating}
+            tickFormatter={formatRatingTick}
           />
           {/* The median Ohio team of each season. */}
           <ReferenceLine y={0} strokeDasharray="2 4" />

@@ -61,7 +61,7 @@ export function CompareSeasonTable({ rows, nameA, nameB, seasonLabel }: CompareS
                 </TableCell>
                 <TableCell className="text-end font-medium text-fg tabular-nums">
                   {row.a !== null && row.b !== null ? (
-                    formatRating(Math.round(row.a) - Math.round(row.b))
+                    formatRating(row.a - row.b)
                   ) : (
                     <span className="text-muted-fg">—</span>
                   )}

@@ -36,7 +36,18 @@ function toRoman(value: number) {
  * A rating with its sign, rounded to a whole point. The median team is 0, so a sign shows at once
  * which side of the median a team is on. The minus sign is the typographic one.
  */
+/**
+ * A rating in points with its sign and one decimal, for example +57.4 or \u22123.0. The ranks use
+ * the full value, so two teams can show the same rating and still hold different ranks.
+ */
 export function formatRating(value: number) {
+  const tenths = Math.round(value * 10) / 10
+  if (tenths === 0) return "0.0"
+  return tenths > 0 ? `+${tenths.toFixed(1)}` : `\u2212${Math.abs(tenths).toFixed(1)}`
+}
+
+/** A rating in whole points, for the labels of a chart axis. */
+export function formatRatingTick(value: number) {
   const points = Math.round(value)
   if (points === 0) return "0"
   return points > 0 ? `+${points}` : `\u2212${Math.abs(points)}`

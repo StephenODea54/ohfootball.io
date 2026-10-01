@@ -66,7 +66,7 @@ describe("teamSocialTitle", () => {
 describe("teamDescription", () => {
   it("names the place, the league, and the numbers of the season", () => {
     expect(teamDescription(team())).toBe(
-      "Canfield Cardinals football in Canfield, Ohio (D-III, Region 9). 2026: 2–4 record, #149 in Ohio, rating +4. Schedule and game predictions.",
+      "Canfield Cardinals football in Canfield, Ohio (D-III, Region 9). 2026: 2–4 record, #149 in Ohio, rating +3.6. Schedule and game predictions.",
     )
   })
 
@@ -84,7 +84,7 @@ describe("teamDescription", () => {
         }),
       ),
     ).toBe(
-      "Cincinnati Eagles (club) football in Cincinnati, Ohio (Independent). 2026: 0–2 record, #629 in Ohio, rating \u221241. Schedule and game predictions.",
+      "Cincinnati Eagles (club) football in Cincinnati, Ohio (Independent). 2026: 0–2 record, #629 in Ohio, rating \u221241.0. Schedule and game predictions.",
     )
   })
 
@@ -112,7 +112,7 @@ describe("teamDescription", () => {
 
   it("gives the rating of a team that has played no games", () => {
     expect(teamDescription(team({ record: { wins: 0, losses: 0, ties: 0 } }))).toBe(
-      "Canfield Cardinals football in Canfield, Ohio (D-III, Region 9). 2026: no games yet, #149 in Ohio, rating +4. Schedule and game predictions.",
+      "Canfield Cardinals football in Canfield, Ohio (D-III, Region 9). 2026: no games yet, #149 in Ohio, rating +3.6. Schedule and game predictions.",
     )
   })
 
@@ -134,7 +134,7 @@ describe("teamDescription", () => {
     )
 
     expect(description).toBe(
-      "Cuyahoga Valley Christian Academy Royals football in Cuyahoga Falls, Ohio (D-III, Region 9). 2026: 3–3 record, #158 in Ohio, rating +12.",
+      "Cuyahoga Valley Christian Academy Royals football in Cuyahoga Falls, Ohio (D-III, Region 9). 2026: 3–3 record, #158 in Ohio, rating +12.0.",
     )
     expect(description.length).toBeLessThanOrEqual(MAX_DESCRIPTION_LENGTH)
   })

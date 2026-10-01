@@ -4,18 +4,28 @@ import {
   formatMargin,
   formatRank,
   formatRating,
+  formatRatingTick,
   marginIntent,
   ratingTone,
   winPercent,
 } from "@/features/teams/utils/format"
 
 describe("formatRating", () => {
-  it("gives a rating its sign and rounds it to a whole point", () => {
-    expect(formatRating(12.4)).toBe("+12")
-    expect(formatRating(-7.6)).toBe("\u22128")
-    expect(formatRating(0.4)).toBe("0")
-    expect(formatRating(-0.4)).toBe("0")
-    expect(formatRating(-0.5)).toBe("0")
+  it("gives a rating its sign and one decimal", () => {
+    expect(formatRating(12.44)).toBe("+12.4")
+    expect(formatRating(57.37)).toBe("+57.4")
+    expect(formatRating(-7.66)).toBe("\u22127.7")
+    expect(formatRating(3)).toBe("+3.0")
+    expect(formatRating(0.04)).toBe("0.0")
+    expect(formatRating(-0.04)).toBe("0.0")
+  })
+
+  it("rounds a chart label to a whole point", () => {
+    expect(formatRatingTick(12.4)).toBe("+12")
+    expect(formatRatingTick(-7.6)).toBe("\u22128")
+    expect(formatRatingTick(0.4)).toBe("0")
+    expect(formatRatingTick(-0.4)).toBe("0")
+    expect(formatRatingTick(-0.5)).toBe("0")
   })
 
   it("colors a rating by its side of the median team", () => {

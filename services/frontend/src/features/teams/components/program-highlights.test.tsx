@@ -27,9 +27,9 @@ describe("ProgramHighlights", () => {
 
     expect(html).toContain("Best Season</dt><dd")
     expect(html).toMatch(
-      /<span class="flex items-center gap-2">2023<span class="[^"]*text-success-subtle-fg[^"]*">\+65<\/span><\/span><\/dd>/,
+      /<span class="flex items-center gap-2">2023<span class="[^"]*text-success-subtle-fg[^"]*">\+6[45]\.\d<\/span><\/span><\/dd>/,
     )
-    expect(html).toMatch(/>2015<span class="[^"]*">\+25<\/span><\/span><\/dd>/)
+    expect(html).toMatch(/>2015<span class="[^"]*">\+2[45]\.\d<\/span><\/span><\/dd>/)
     expect(html).toContain("Top 10 Finishes</dt>")
     expect(html).toContain(">27</dd>")
     expect(html).toContain("Playoff Appearances</dt>")

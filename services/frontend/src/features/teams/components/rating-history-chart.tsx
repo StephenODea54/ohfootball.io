@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "@/components/ui/chart"
-import { formatRating } from "@/features/teams/utils/format"
+import { formatRating, formatRatingTick } from "@/features/teams/utils/format"
 import type { Team } from "@/types/api"
 
 const chartConfig = {
@@ -85,7 +85,7 @@ export function RatingHistoryChart({
                 width={48}
                 domain={[minimumRating, maximumRating]}
                 allowDecimals={false}
-                tickFormatter={formatRating}
+                tickFormatter={formatRatingTick}
               />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Area
