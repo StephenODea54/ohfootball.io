@@ -5,12 +5,16 @@ import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
 import { OutOfStateLegend } from "@/features/teams/components/out-of-state-legend"
 import { TeamColorGrid } from "@/features/teams/components/team-color-grid"
-import { DivisionSelect, RegionSelect } from "@/features/teams/components/team-filter-controls"
-import { ALL_DIVISIONS, ALL_REGIONS } from "@/features/teams/utils/filter-teams"
+import {
+  CountySelect,
+  DivisionSelect,
+  RegionSelect,
+} from "@/features/teams/components/team-filter-controls"
+import { ALL_COUNTIES, ALL_DIVISIONS, ALL_REGIONS } from "@/features/teams/utils/filter-teams"
 import { browseView } from "@/features/teams/utils/team-browse"
 import type { TeamSummary } from "@/types/api"
 
-/** How many schools the grid shows before the visitor narrows it by region or division. */
+/** How many schools the grid shows before the visitor narrows it by region, division, or county. */
 const UNFILTERED_TILES = 24
 
 interface TeamBrowserProps {
@@ -19,16 +23,17 @@ interface TeamBrowserProps {
   teams: TeamSummary[]
 }
 
-/** A grid of schools with region and division filters above it. */
+/** A grid of schools with region, division, and county filters above it. */
 export function TeamBrowser({ className, season, teams }: TeamBrowserProps) {
   const [region, setRegion] = useState(ALL_REGIONS)
   const [division, setDivision] = useState(ALL_DIVISIONS)
+  const [county, setCounty] = useState(ALL_COUNTIES)
 
   // The API already sorts by rating, so the top of the list is the top of the state. Showing all
   // seven hundred schools at once is not useful, so the unfiltered grid is capped.
   const view = useMemo(
-    () => browseView(teams, { region, division }, season, UNFILTERED_TILES),
-    [teams, region, division, season],
+    () => browseView(teams, { region, division, county }, season, UNFILTERED_TILES),
+    [teams, region, division, county, season],
   )
 
   return (
@@ -40,9 +45,15 @@ export function TeamBrowser({ className, season, teams }: TeamBrowserProps) {
           </Heading>
           <Text className="mt-1 text-sm/6">{view.summary}</Text>
         </div>
-        <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:grid-cols-[11rem_11rem]">
+        <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:grid-cols-[11rem_11rem_12rem]">
           <RegionSelect onChange={setRegion} teams={teams} value={region} />
           <DivisionSelect onChange={setDivision} teams={teams} value={division} />
+          <CountySelect
+            className="col-span-2 sm:col-span-1"
+            onChange={setCounty}
+            teams={teams}
+            value={county}
+          />
         </div>
       </div>
 

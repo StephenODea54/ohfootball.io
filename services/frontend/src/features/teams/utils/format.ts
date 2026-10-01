@@ -17,6 +17,12 @@ export function teamMeta(team: TeamSummary) {
     .join(" · ")
 }
 
+/** The line above a leaderboard narrowed to one county. The ranks stay those of the state. */
+export function countySummary(count: number, county: string) {
+  const schools = count === 1 ? "1 rated school" : `${count} rated schools`
+  return `${schools} in ${county} County. Ranks are for the whole state.`
+}
+
 export function formatDivision(division: number | null) {
   return division ? `D-${toRoman(division)}` : "Independent"
 }

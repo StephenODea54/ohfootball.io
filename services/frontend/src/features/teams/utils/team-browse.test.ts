@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { ALL_DIVISIONS, ALL_REGIONS } from "@/features/teams/utils/filter-teams"
+import { ALL_COUNTIES, ALL_DIVISIONS, ALL_REGIONS } from "@/features/teams/utils/filter-teams"
 import { browseView } from "@/features/teams/utils/team-browse"
 import type { TeamSummary } from "@/types/api"
 
-function team(id: string, rank: number | null, region = 1): TeamSummary {
+function team(
+  id: string,
+  rank: number | null,
+  region = 1,
+  county: string | null = null,
+): TeamSummary {
   return {
     id,
     season: 2026,
@@ -11,6 +16,7 @@ function team(id: string, rank: number | null, region = 1): TeamSummary {
     name: id,
     mascot: null,
     city: null,
+    county,
     division: 1,
     region,
     primaryColor: null,
@@ -24,7 +30,7 @@ function team(id: string, rank: number | null, region = 1): TeamSummary {
   }
 }
 
-const unfiltered = { region: ALL_REGIONS, division: ALL_DIVISIONS }
+const unfiltered = { region: ALL_REGIONS, division: ALL_DIVISIONS, county: ALL_COUNTIES }
 
 describe("browseView", () => {
   it("shows only rated schools, up to the limit, when no filter is set", () => {
@@ -35,7 +41,7 @@ describe("browseView", () => {
     expect(view.heading).toBe("Top Rated")
     expect(view.gridLabel).toBe("Top Rated Schools")
     expect(view.summary).toBe(
-      "The 2 best rated schools in 2026. Pick a region or division to see more.",
+      "The 2 best rated schools in 2026. Pick a region, division, or county to see more.",
     )
     expect(view.tiles.map((tile) => tile.id)).toEqual(["a", "b"])
   })
@@ -44,7 +50,7 @@ describe("browseView", () => {
     const view = browseView([team("a", 1), team("b", null)], unfiltered, 2026, 24)
 
     expect(view.summary).toBe(
-      "1 school rated so far in 2026. Pick a region or division to see more.",
+      "1 school rated so far in 2026. Pick a region, division, or county to see more.",
     )
     expect(view.tiles.map((tile) => tile.id)).toEqual(["a"])
   })
@@ -53,7 +59,7 @@ describe("browseView", () => {
     const view = browseView([team("a", 1), team("b", 2)], unfiltered, 2026, 2)
 
     expect(view.summary).toBe(
-      "2 schools rated so far in 2026. Pick a region or division to see more.",
+      "2 schools rated so far in 2026. Pick a region, division, or county to see more.",
     )
   })
 
@@ -63,7 +69,7 @@ describe("browseView", () => {
     expect(view.heading).toBe("Schools")
     expect(view.gridLabel).toBe("Schools")
     expect(view.summary).toBe(
-      "Ratings for 2026 start after the first games. Pick a region or division to see more.",
+      "Ratings for 2026 start after the first games. Pick a region, division, or county to see more.",
     )
     expect(view.tiles.map((tile) => tile.id)).toEqual(["a"])
   })
@@ -71,7 +77,7 @@ describe("browseView", () => {
   it("shows every match of a filter and says the ranks are for the whole state", () => {
     const teams = [team("a", 1, 1), team("b", 2, 2), team("c", 3, 2), team("d", null, 2)]
 
-    const view = browseView(teams, { region: "2", division: ALL_DIVISIONS }, 2026, 1)
+    const view = browseView(teams, { ...unfiltered, region: "2" }, 2026, 1)
 
     expect(view.heading).toBe("Matching Schools")
     expect(view.gridLabel).toBe("Matching Schools")
@@ -80,15 +86,24 @@ describe("browseView", () => {
   })
 
   it("treats a division alone as a filter", () => {
-    const view = browseView([team("a", 1)], { region: ALL_REGIONS, division: "2" }, 2026, 24)
+    const view = browseView([team("a", 1)], { ...unfiltered, division: "2" }, 2026, 24)
 
     expect(view.heading).toBe("Matching Schools")
     expect(view.summary).toBe("0 schools in 2026. Ranks are for the whole state.")
     expect(view.tiles).toEqual([])
   })
 
+  it("treats a county alone as a filter", () => {
+    const teams = [team("a", 1, 1, "Stark"), team("b", 2, 1, "Summit"), team("c", 3, 1, null)]
+
+    const view = browseView(teams, { ...unfiltered, county: "Stark" }, 2026, 24)
+
+    expect(view.heading).toBe("Matching Schools")
+    expect(view.tiles.map((tile) => tile.id)).toEqual(["a"])
+  })
+
   it("writes one match in the singular", () => {
-    const view = browseView([team("a", 1)], { region: "1", division: ALL_DIVISIONS }, 2026, 24)
+    const view = browseView([team("a", 1)], { ...unfiltered, region: "1" }, 2026, 24)
 
     expect(view.summary).toBe("1 school in 2026. Ranks are for the whole state.")
   })

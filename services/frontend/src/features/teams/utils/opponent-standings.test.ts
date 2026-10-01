@@ -28,6 +28,7 @@ function team(id: string, rating: { rank: number; value: number } | null): TeamS
     name: `Team ${id}`,
     mascot: null,
     city: null,
+    county: null,
     division: null,
     region: null,
     primaryColor: null,

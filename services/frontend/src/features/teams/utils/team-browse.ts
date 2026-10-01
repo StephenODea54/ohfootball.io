@@ -1,9 +1,15 @@
-import { ALL_DIVISIONS, ALL_REGIONS, filterTeams } from "@/features/teams/utils/filter-teams"
+import {
+  ALL_COUNTIES,
+  ALL_DIVISIONS,
+  ALL_REGIONS,
+  filterTeams,
+} from "@/features/teams/utils/filter-teams"
 import type { TeamSummary } from "@/types/api"
 
 interface BrowseFilters {
   region: string
   division: string
+  county: string
 }
 
 interface BrowseView<T extends TeamSummary> {
@@ -31,7 +37,10 @@ export function browseView<T extends TeamSummary>(
   season: number,
   limit: number,
 ): BrowseView<T> {
-  const isFiltered = filters.region !== ALL_REGIONS || filters.division !== ALL_DIVISIONS
+  const isFiltered =
+    filters.region !== ALL_REGIONS ||
+    filters.division !== ALL_DIVISIONS ||
+    filters.county !== ALL_COUNTIES
 
   if (isFiltered) {
     const tiles = filterTeams(teams, { query: "", ...filters })
@@ -48,7 +57,7 @@ export function browseView<T extends TeamSummary>(
     return {
       heading: "Schools",
       gridLabel: "Schools",
-      summary: `Ratings for ${season} start after the first games. Pick a region or division to see more.`,
+      summary: `Ratings for ${season} start after the first games. Pick a region, division, or county to see more.`,
       tiles: teams.slice(0, limit),
     }
   }
@@ -63,7 +72,7 @@ export function browseView<T extends TeamSummary>(
   return {
     heading: "Top Rated",
     gridLabel: "Top Rated Schools",
-    summary: `${shown} in ${season}. Pick a region or division to see more.`,
+    summary: `${shown} in ${season}. Pick a region, division, or county to see more.`,
     tiles,
   }
 }

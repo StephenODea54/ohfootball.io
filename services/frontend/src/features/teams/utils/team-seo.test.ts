@@ -21,6 +21,7 @@ function team(overrides: Partial<TeamSummary> = {}): TeamSummary {
     name: "Canfield",
     mascot: "Cardinals",
     city: "Canfield",
+    county: "Mahoning",
     division: 3,
     region: 9,
     primaryColor: null,

@@ -21,11 +21,18 @@ import { RankMovement } from "@/features/teams/components/rank-movement"
 import { TeamFilterControls } from "@/features/teams/components/team-filter-controls"
 import { TeamLogo } from "@/features/teams/components/team-logo"
 import {
+  ALL_COUNTIES,
   EMPTY_TEAM_FILTERS,
   filterTeams,
   type TeamFilterState,
 } from "@/features/teams/utils/filter-teams"
-import { formatRating, formatRecord, ratingTone, teamMeta } from "@/features/teams/utils/format"
+import {
+  countySummary,
+  formatRating,
+  formatRecord,
+  ratingTone,
+  teamMeta,
+} from "@/features/teams/utils/format"
 import type { TeamRating, TeamSummary } from "@/types/api"
 
 type RatedTeam = TeamSummary & { rating: TeamRating }
@@ -53,6 +60,9 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
 
       {ratedTeams.length > 0 ? (
         <>
+          {filters.county !== ALL_COUNTIES && (
+            <Text className="mt-6">{countySummary(ratedTeams.length, filters.county)}</Text>
+          )}
           <Card className="mt-8 gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
             <CardContent>
               <Table aria-label={`${season} Rating Leaderboard`} bleed>
@@ -129,7 +139,7 @@ export function LeaderboardTable({ season, teams }: { season: number; teams: Tea
       ) : (
         <Card className="mt-8 px-5 py-10 text-center shadow-none">
           <p className="font-medium text-fg text-sm/6">No Rated Schools Found</p>
-          <Text className="mt-1">Try another school name, region, or division.</Text>
+          <Text className="mt-1">Try another school name, region, division, or county.</Text>
         </Card>
       )}
     </>

@@ -9,6 +9,7 @@ export const teamFields = `
   name
   mascot
   city
+  county
   division
   region
   primaryColor

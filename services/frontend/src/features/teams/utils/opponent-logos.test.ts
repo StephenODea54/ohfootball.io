@@ -27,6 +27,7 @@ function team(id: string, sourceId: string): TeamSummary {
     name: `Team ${id}`,
     mascot: null,
     city: null,
+    county: null,
     division: null,
     region: null,
     primaryColor: null,

@@ -59,6 +59,8 @@ export interface Team {
   name: string
   mascot: string | null
   city: string | null
+  /** The Ohio county of the school without the word County, such as Stark. */
+  county: string | null
   division: number | null
   region: number | null
   primaryColor: string | null

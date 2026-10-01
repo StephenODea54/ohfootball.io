@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  countySummary,
   formatMargin,
   formatRank,
   formatRating,
@@ -52,5 +53,16 @@ describe("formatMargin", () => {
     expect(marginIntent(-13.5)).toBe("danger")
     expect(marginIntent(0.3)).toBe("secondary")
     expect(marginIntent(-0.49)).toBe("secondary")
+  })
+})
+
+describe("countySummary", () => {
+  it("counts the rated schools of a county and says the ranks are for the state", () => {
+    expect(countySummary(12, "Stark")).toBe(
+      "12 rated schools in Stark County. Ranks are for the whole state.",
+    )
+    expect(countySummary(1, "Van Wert")).toBe(
+      "1 rated school in Van Wert County. Ranks are for the whole state.",
+    )
   })
 })
