@@ -28,14 +28,16 @@ the rating of the snapshot when the team did not play. It needs no earlier snaps
 with no game in the week before it, such as one of 31 December, shows no movement. A client finds
 the movement of a team as `previousRank - rank`, so a positive number means the team moved up.
 
-## Games the rating leaves out
+## Games against other states
 
 Each team carries `outOfStateGamesPlayed`. It is the number of games this season that the team
-played against a team that is not recorded as an Ohio team. The rating counts only games between
-two Ohio teams, so it leaves these games out. A game counts here only when it has a result of win,
+played against a team that is not recorded as an Ohio team. The rating counts such a game at half
+weight, and it knows the opponent only from its games against Ohio teams, so less stands behind
+the rating of a team with many of them. A game counts here only when it has a result of win,
 loss, or tie and both scores. A canceled game and a forfeit do not count. An opponent with no
-state, or with no current row in `dim_teams`, counts as out of state, because the rating also
-leaves out its games.
+state, or with no current row in `dim_teams`, counts as out of state. Such a game has a prediction
+like any other game, and its `opponentRating` is the rating that the model keeps for the opponent.
+An opponent from another state is never ranked.
 
 ## Program history
 

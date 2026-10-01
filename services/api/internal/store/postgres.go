@@ -515,10 +515,10 @@ const teamFacts = `
 		FROM team_games
 		GROUP BY team_key
 	),
-	-- The played games that the rating leaves out because of the opponent. The rule is the rule of
-	-- the rating service. The game has a result of W, L or T, it is not a forfeit, and it has both
-	-- scores. The rating also needs the opponent to be a current Ohio team, so an opponent with no
-	-- state or no current row counts here as out of state.
+	-- The played games against a team that is not a current Ohio team. The rating counts them at
+	-- half weight. The rule for a played game is the rule of the rating service: the game has a
+	-- result of W, L or T, it is not a forfeit, and it has both scores. An opponent with no state or
+	-- no current row counts here as out of state.
 	out_of_state_games AS (
 		SELECT game.team_key, COUNT(*) AS played
 		FROM team_games AS game
