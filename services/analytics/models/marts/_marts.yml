@@ -115,7 +115,13 @@ models:
         data_tests:
           - not_null
       - name: valid_to
-        description: Exclusive time at which the next changed version was observed; null for current.
+        description: >
+          Exclusive end of this version. It is the time of the next changed
+          version. It is also the time of a later successful run that read the
+          schedule of a team that listed the game, when that schedule no longer
+          held the game. It is null for the current version. A game that the
+          source dropped or moved to another date has no current version. A
+          moved game has a new key at its new date.
       - name: is_current
         data_tests:
           - not_null

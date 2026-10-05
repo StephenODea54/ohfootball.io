@@ -123,6 +123,10 @@ canonicalized AS (
         NOT BOOL_OR(is_team_a_home) AND NOT BOOL_OR(is_team_b_home) AS is_neutral_site,
         MAX(notes) AS notes,
         BOOL_OR(is_playoff_game) AS is_playoff_game,
+        -- Which of the two teams listed the game. Only the schedule of a team that
+        -- listed a game can later show that the game is gone.
+        BOOL_OR(source_team_id = team_a_id) AS is_listed_by_team_a,
+        BOOL_OR(source_team_id = team_b_id) AS is_listed_by_team_b,
         COUNT(*) AS source_record_count,
         COUNT(DISTINCT source_team_id) AS source_perspective_count,
         COUNT(DISTINCT source_team_id) = 2 AS has_both_team_perspectives,

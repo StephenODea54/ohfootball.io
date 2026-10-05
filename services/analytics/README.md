@@ -11,7 +11,7 @@ the `dbt` service of `compose.yaml` runs the same project against the local data
 | Layer | Materialized as | Schema | Models |
 | --- | --- | --- | --- |
 | staging | view | `ohfootball_stg` | `stg_teams`, `stg_games`, `stg_ohhsfbdb_index`, `stg_ohhsfbdb_teams`, `stg_ohhsfbdb_games`, `stg_ohhsfbdb_season_summaries` |
-| intermediate | view | `ohfootball_int` | `int_team_observations`, `int_games_canonicalized`, `int_ohhsfbdb_sheet_teams`, `int_ohhsfbdb_games`, `int_ohhsfbdb_team_observations`, `int_ohhsfbdb_games_canonicalized` |
+| intermediate | view | `ohfootball_int` | `int_team_observations`, `int_games_canonicalized`, `int_schedule_observations`, `int_ohhsfbdb_sheet_teams`, `int_ohhsfbdb_games`, `int_ohhsfbdb_team_observations`, `int_ohhsfbdb_games_canonicalized` |
 | marts | table | `ohfootball_marts` | `dim_teams`, `fct_games`, `dim_dates` |
 
 The staging models clean and type the raw rows. Each one holds one row for each raw row.
@@ -19,11 +19,21 @@ The staging models clean and type the raw rows. Each one holds one row for each 
 The intermediate models choose the rows that a mart reads. `int_team_observations` holds one team
 for each successful run, and drops a placeholder row of joeeitel.com when the same run holds the
 team in full. `int_games_canonicalized` joins the one or two schedules that hold a game into one
-row. The `int_ohhsfbdb_*` models do the same for the backfill from ohhsfbdb.net.
+row, and records which of the two teams listed it. `int_schedule_observations` holds each schedule
+that a successful run read. The `int_ohhsfbdb_*` models do the same for the backfill from
+ohhsfbdb.net.
 
 The marts are Type II. `dim_teams` and `fct_games` write a new version of a row when its content
 changes, and each version holds `valid_from`, `valid_to` and `is_current`. `dim_dates` holds each
 date between the first and the last game.
+
+The key of a game is made from its season, its date and its two teams. So a game that moves to
+another date gets a new key, and the site no longer lists the old one. A version of a game also
+ends when a later successful run read the schedule of a team that listed the game, and that
+schedule no longer held it. The time of that run is its `valid_to`. Such a game has no current
+version, and a moved game is current under its new key. A game that is listed again gets a new
+version, so two versions of a game can have a gap between them. An empty page of a team writes no
+game row, so it does not count as a read and ends no game. A run that failed ends no game.
 
 `generate_schema_name` gives each layer the schema named in `dbt_project.yml`, with no prefix.
 Staging has no schema of its own, so it uses the schema of the profile.
@@ -87,9 +97,14 @@ root `.env.example` lists them.
 The YAML files of each layer hold the generic tests, such as `unique`, `not_null`,
 `accepted_values` and `relationships`. The files in `tests/` are singular tests. Each one is a
 query that returns the rows that break a rule, and it passes when it returns no row. They check
-that versions do not overlap, that each key has one current version, that the two results of a
-game agree, that the two schools of a game are different, and that a Roman numeral reads as the
-right number.
+that versions do not overlap, that each key has at most one current version, that a current game
+is still listed by each team that listed it, that the two results of a game agree, that the two
+schools of a game are different, and that a Roman numeral reads as the right number.
+
+The `_*_unit_tests.yml` files hold unit tests. Each one gives a model a few fixed rows and checks
+the rows it returns. dbt takes the types of the fixture columns from the models that the database
+already holds. So run them with `make dbt-build`, or select a model with its parents, such as
+`make dbt ARGS="build --select +fct_games"`. A database that holds older views fails them.
 
 `make dbt-test` runs them all. They need data, so CI does not run them.
 

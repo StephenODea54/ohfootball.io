@@ -1,3 +1,5 @@
+-- A game that is gone and then listed again leaves a gap between two versions,
+-- so versions need not touch. They must not overlap.
 WITH versions AS (
     SELECT
         game_key,
@@ -12,4 +14,6 @@ WITH versions AS (
 
 SELECT *
 FROM versions
-WHERE valid_to IS DISTINCT FROM next_valid_from
+WHERE
+    next_valid_from IS NOT NULL
+    AND (valid_to IS NULL OR valid_to > next_valid_from)

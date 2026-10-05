@@ -27,7 +27,9 @@ the dataset does not publish.
 
 Two of the marts keep a version of every observation. The dataset carries the current version only
 and drops `valid_from`, `valid_to`, and `is_current`, because a reader wants the record of a game
-rather than the record of the scrapes that found it.
+rather than the record of the scrapes that found it. A game that the source dropped or moved to
+another date has no current version, so it is not in the file. A moved game is in the file under
+its new date.
 
 The record covers games played by Ohio teams. An opponent from another state appears in `dim_teams`
 with its own `state_code`, and its games are in `fct_games`. The site filters those teams out of

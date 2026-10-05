@@ -1,0 +1,120 @@
+version: 2
+
+# Teams 100 and 200 are two schools. Runs 1 to 3 are read one week apart. A
+# schedule row says that the run read the schedule of that team.
+unit_tests:
+  - name: fct_games_ends_the_old_date_of_a_moved_game
+    model: fct_games
+    given:
+      - input: ref('int_games_canonicalized')
+        rows:
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+          - {game_key: "10000000-0000-0000-0000-000000000002", scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, game_date: "2026-09-05", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+      - input: ref('int_schedule_observations')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "200"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "200"}
+    expect:
+      rows:
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-02 13:00:00+00", valid_to: "2026-09-09 13:00:00+00", is_current: false}
+        - {game_key: "10000000-0000-0000-0000-000000000002", valid_from: "2026-09-09 13:00:00+00", valid_to: null, is_current: true}
+
+  - name: fct_games_ends_a_removed_game
+    model: fct_games
+    given:
+      - input: ref('int_games_canonicalized')
+        rows:
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+      - input: ref('int_schedule_observations')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "200"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000003", observed_at: "2026-09-16 13:00:00+00", season: 2026, team_id: "100"}
+    expect:
+      rows:
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-02 13:00:00+00", valid_to: "2026-09-09 13:00:00+00", is_current: false}
+
+  # Only team 100 listed the game. A run that read only the schedule of team 200
+  # says nothing about it, so the game ends at the next read of team 100.
+  - name: fct_games_ends_a_game_only_by_a_team_that_listed_it
+    model: fct_games
+    given:
+      - input: ref('int_games_canonicalized')
+        rows:
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: false, state_hash: a}
+      - input: ref('int_schedule_observations')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "200"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000003", observed_at: "2026-09-16 13:00:00+00", season: 2026, team_id: "100"}
+    expect:
+      rows:
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-02 13:00:00+00", valid_to: "2026-09-16 13:00:00+00", is_current: false}
+
+  # Team 100 has an empty page in run 2, so run 2 read no schedule of it.
+  - name: fct_games_keeps_a_game_when_the_page_of_its_team_is_empty
+    model: fct_games
+    given:
+      - input: ref('int_games_canonicalized')
+        rows:
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: false, state_hash: a}
+      - input: ref('int_schedule_observations')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "200"}
+    expect:
+      rows:
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-02 13:00:00+00", valid_to: null, is_current: true}
+
+  - name: fct_games_opens_a_new_version_when_a_gone_game_returns
+    model: fct_games
+    given:
+      - input: ref('int_games_canonicalized')
+        rows:
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000003", observed_at: "2026-09-16 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+      - input: ref('int_schedule_observations')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000003", observed_at: "2026-09-16 13:00:00+00", season: 2026, team_id: "100"}
+    expect:
+      rows:
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-02 13:00:00+00", valid_to: "2026-09-09 13:00:00+00", is_current: false}
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-16 13:00:00+00", valid_to: null, is_current: true}
+
+  - name: fct_games_keeps_one_version_of_an_unchanged_game
+    model: fct_games
+    given:
+      - input: ref('int_games_canonicalized')
+        rows:
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+      - input: ref('int_schedule_observations')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "200"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "200"}
+    expect:
+      rows:
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-02 13:00:00+00", valid_to: null, is_current: true}
+
+  - name: fct_games_opens_a_new_version_when_a_game_changes
+    model: fct_games
+    given:
+      - input: ref('int_games_canonicalized')
+        rows:
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: unknown, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: a}
+          - {game_key: "10000000-0000-0000-0000-000000000001", scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, game_date: "2026-09-04", team_a_id: "100", team_b_id: "200", team_a_result: W, is_listed_by_team_a: true, is_listed_by_team_b: true, state_hash: b}
+      - input: ref('int_schedule_observations')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", observed_at: "2026-09-09 13:00:00+00", season: 2026, team_id: "100"}
+    expect:
+      rows:
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-02 13:00:00+00", valid_to: "2026-09-09 13:00:00+00", is_current: false}
+        - {game_key: "10000000-0000-0000-0000-000000000001", valid_from: "2026-09-09 13:00:00+00", valid_to: null, is_current: true}

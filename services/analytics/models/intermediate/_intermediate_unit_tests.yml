@@ -1,0 +1,48 @@
+version: 2
+
+unit_tests:
+  # Run 2 failed and run 3 never finished, so neither read a schedule. A row of
+  # a run with no team is not a schedule either.
+  - name: int_schedule_observations_holds_only_successful_runs
+    model: int_schedule_observations
+    given:
+      - input: source('ohfootball_metadata', 'scrape_runs')
+        rows:
+          - {id: "00000000-0000-0000-0000-000000000001", status: succeeded, started_at: "2026-09-02 12:00:00+00", finished_at: "2026-09-02 13:00:00+00"}
+          - {id: "00000000-0000-0000-0000-000000000002", status: failed, started_at: "2026-09-09 12:00:00+00", finished_at: "2026-09-09 13:00:00+00"}
+          - {id: "00000000-0000-0000-0000-000000000003", status: running, started_at: "2026-09-16 12:00:00+00"}
+          - {id: "00000000-0000-0000-0000-000000000004", status: succeeded, started_at: "2026-09-23 12:00:00+00", finished_at: "2026-09-23 13:00:00+00"}
+      - input: ref('stg_games')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, source_team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, source_team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, source_team_id: "200"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", season: 2026, source_team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000003", season: 2026, source_team_id: "100"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000004", season: 2026, source_team_id: "200"}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000004", season: 2026, source_team_id: null}
+    expect:
+      rows:
+        - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "100"}
+        - {scrape_run_id: "00000000-0000-0000-0000-000000000001", observed_at: "2026-09-02 13:00:00+00", season: 2026, team_id: "200"}
+        - {scrape_run_id: "00000000-0000-0000-0000-000000000004", observed_at: "2026-09-23 13:00:00+00", season: 2026, team_id: "200"}
+
+  # Teams 100 and 200 both list their game. Only team 300 lists its game with
+  # team 100.
+  - name: int_games_canonicalized_records_which_teams_listed_a_game
+    model: int_games_canonicalized
+    given:
+      - input: source('ohfootball_metadata', 'scrape_runs')
+        rows:
+          - {id: "00000000-0000-0000-0000-000000000001", status: succeeded, started_at: "2026-09-02 12:00:00+00", finished_at: "2026-09-02 13:00:00+00"}
+      - input: ref('stg_games')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, game_date: "2026-09-04", source_team_id: "100", opponent_team_id: "200", result: unknown, is_source_team_home: true, is_opponent_team_home: false, is_playoff_game: false}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, game_date: "2026-09-04", source_team_id: "200", opponent_team_id: "100", result: unknown, is_source_team_home: false, is_opponent_team_home: true, is_playoff_game: false}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, game_date: "2026-09-11", source_team_id: "300", opponent_team_id: "100", result: unknown, is_source_team_home: true, is_opponent_team_home: false, is_playoff_game: false}
+      - input: ref('int_ohhsfbdb_games_canonicalized')
+        rows: []
+    expect:
+      rows:
+        - {team_a_id: "100", team_b_id: "200", is_listed_by_team_a: true, is_listed_by_team_b: true}
+        - {team_a_id: "100", team_b_id: "300", is_listed_by_team_a: false, is_listed_by_team_b: true}
