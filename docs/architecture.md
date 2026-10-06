@@ -414,11 +414,25 @@ workflow reads them only in its run on main.
 
 | Secret | Value |
 | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | a Cloudflare API token with the permission Account, Cloudflare Pages, Edit |
+| `CLOUDFLARE_API_TOKEN` | a Cloudflare API token with the permissions Account, Cloudflare Pages, Edit and Account, D1, Edit |
 | `CLOUDFLARE_ACCOUNT_ID` | the ID of the Cloudflare account that holds the Pages project |
 | `GRAPHQL_API_KEY` | the build key. It must equal `SITE_BUILD_KEY` of the `api` application. |
 
 `.github/workflows/site.yml` names the Pages project `ohfootball` and the address of the API.
+
+### Pages project
+
+`services/frontend/wrangler.toml` holds the settings of the Pages project, and the dashboard shows
+them read only. It binds `PICKS_DB` to the D1 database `ohfootball-picks` and sets `PICKS_ORIGIN` to
+`https://ohfootball.io`. The one secret is set from a workstation, with a value no one needs to
+keep:
+
+```sh
+openssl rand -hex 32 | npx wrangler@4 pages secret put PICKS_HASH_SECRET --project-name ohfootball
+```
+
+A new secret makes the open picks of each visitor unknown to that visitor, who can then pick again
+until the game locks. The counts stay.
 
 ### `pipeline`
 
@@ -499,6 +513,14 @@ project of their own. Do these steps in this order.
     `cd /app && make pipeline` with the cron expression `0 13 * * 2`. Until the R2 and the Kaggle
     settings are in place, run `cd /app && make snapshot-recruits scrape transform rate publish-site`
     instead, because `make pipeline` ends with the two publications and fails without them.
+
+13. For Pick 'Em, add the WAF rate limiting rule that "The picks Function needs a rate limit before
+    it gets a database" describes. Then, from a workstation logged in with `npx wrangler@4 login`,
+    create the database with `npx wrangler@4 d1 create ohfootball-picks` and write its ID into
+    `services/frontend/wrangler.toml`. Set the secret as the settings of the Pages project show.
+    Add the permission Account, D1, Edit to `CLOUDFLARE_API_TOKEN`. Then, in `services/frontend`,
+    run `npx wrangler@4 d1 migrations apply ohfootball-picks --remote`.
+    `https://ohfootball.io/picks/board` answers 200 when it worked.
 
 After the first deploy, a push to main deploys each application on the host and publishes the site
 when the site changed, and the schedule rebuilds the data and the site each week.

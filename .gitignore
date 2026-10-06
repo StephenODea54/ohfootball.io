@@ -14,6 +14,7 @@
 !.githooks/*
 !.dockerignore
 !.env.example
+!.dev.vars.example
 !.gitignore
 !_headers
 !robots.txt

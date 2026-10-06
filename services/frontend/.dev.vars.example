@@ -1,0 +1,4 @@
+# Copy this file to .dev.vars for `pnpm exec wrangler pages dev dist`. Git ignores .dev.vars.
+# Wrangler serves the site on port 8788, so the origin that may write is that address.
+PICKS_HASH_SECRET=local-development-secret-of-at-least-32-characters
+PICKS_ORIGIN=http://localhost:8788

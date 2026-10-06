@@ -1,0 +1,18 @@
+# The settings of the Pages project ohfootball. Once this file is in the repository, it is the only
+# source of the variables and the bindings of the project, and the dashboard shows them read only.
+# The secret PICKS_HASH_SECRET is not here. It is set with `wrangler pages secret put`.
+name = "ohfootball"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-09-27"
+
+[vars]
+# The only origin that may write a pick.
+PICKS_ORIGIN = "https://ohfootball.io"
+
+# The picks of Pick 'Em. `wrangler d1 migrations apply ohfootball-picks --remote` applies the
+# files in d1/migrations to it.
+[[d1_databases]]
+binding = "PICKS_DB"
+database_name = "ohfootball-picks"
+database_id = "c84bd6c9-2e89-4b35-8141-cad3d3e7f5b9"
+migrations_dir = "d1/migrations"

@@ -135,7 +135,10 @@ removal that fails is tried again on the next write. The tallies stay.
 When the Function answers 503, it writes the cause to its log with `console.error`. The log never
 holds the address, its hash, the secret, or the body of the request.
 
-`d1/migrations/0001_picks.sql` makes the tables. The Function reads these settings:
+`d1/migrations/0001_picks.sql` makes the tables. The Function reads these settings.
+`wrangler.toml` binds `PICKS_DB` to the database `ohfootball-picks` and sets `PICKS_ORIGIN`. Once
+that file is in the repository, it is the only source of the variables and the bindings of the
+Pages project, and the dashboard shows them read only. The secret is not in the file:
 
 | Setting | Meaning |
 | --- | --- |
@@ -151,8 +154,16 @@ rule on the zone `ohfootball.io`: URI Path starts with `/picks/`, counted per IP
 seconds, blocked for 10 seconds. Without it, one address could spend the free daily D1 writes and
 the free daily Function requests, and Pick 'Em would stop for every visitor until the next day.
 
-`package.json` pins the version of Wrangler. `pnpm exec wrangler pages dev dist` serves the build
-and runs the Function next to it. Without the settings, the Function answers 503.
+`package.json` pins the version of Wrangler. To run the Function on a workstation, copy
+`.dev.vars.example` to `.dev.vars`, which Git ignores, and make the local database:
+
+```sh
+pnpm exec wrangler d1 migrations apply ohfootball-picks --local
+pnpm exec wrangler pages dev dist
+```
+
+Wrangler serves the build on port 8788 with a local copy of the database under `.wrangler/`. A
+request may set `CF-Connecting-IP` to act as another address.
 `pnpm exec wrangler pages functions build --outdir .wrangler/functions-check` bundles the Function
 the way the upload does. CI runs it in the checks and before each upload.
 
