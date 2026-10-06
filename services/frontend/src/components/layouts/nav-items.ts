@@ -12,9 +12,10 @@ export const navItems = [
   { label: "API", ...paths.api },
 ]
 
-/** A team page belongs to Home, because a school is found from the home page. */
+/**
+ * A page is current only on its own address. A team page has no item, because many pages link to
+ * it.
+ */
 export function isCurrentPage(itemPath: string, pathname: string) {
-  return itemPath === "/"
-    ? pathname === "/" || pathname.startsWith("/teams/")
-    : pathname === itemPath
+  return pathname === itemPath
 }

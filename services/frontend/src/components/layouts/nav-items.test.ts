@@ -16,10 +16,13 @@ describe("the navigation bar", () => {
     expect(navItems.find((item) => item.label === "Data")?.getHref()).toBe("/data")
   })
 
-  it("marks Home on the home page and on a team page", () => {
+  it("marks Home only on the home page", () => {
     expect(isCurrentPage("/", "/")).toBe(true)
-    expect(isCurrentPage("/", "/teams/abc")).toBe(true)
     expect(isCurrentPage("/", "/data")).toBe(false)
+  })
+
+  it("marks no page on a team page", () => {
+    expect(navItems.some((item) => isCurrentPage(item.path, "/teams/abc"))).toBe(false)
   })
 
   it("marks Compare on the compare page", () => {
