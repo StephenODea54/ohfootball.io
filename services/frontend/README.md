@@ -68,6 +68,21 @@ A small limit can hide a rivalry link.
 Two schools that merged have different `sourceId` values, and the page does not join them. A school
 that did not play the current season has no page and no history file, so it cannot be compared.
 
+## The games file of Pick 'Em
+
+The build writes `/pickem/games.json`. It holds each game between two Ohio teams from ten days
+before the build to the end of the week after it. Weeks run from Wednesday to Tuesday, by the same
+rule as the API. Each game has a side `a` and a side `b`, and a pick names a side. The file gives
+each game the moment its picks close, which is midnight in Ohio at the end of the game day.
+
+The file comes from the schedule of each team that has a page. The team pages read the same teams,
+and the build keeps each answer, so the file costs no extra request. The build reads the teams
+eight at a time. A game is in the file only when both of its teams have a page, so
+`PRERENDER_TEAM_LIMIT` makes the file short too. With a small limit, no week may hold the 50 games
+that start the season, so the week numbers of such a build can differ from the API. The
+development server keeps no answer, so it reads every team for each request of the file. The file
+is not a page, so the sitemap leaves it out.
+
 ## Settings
 
 Copy `.env.example` to `.env` and set the values. An empty value is the same as no value.
