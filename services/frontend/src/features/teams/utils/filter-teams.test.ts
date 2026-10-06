@@ -4,6 +4,10 @@ import {
   EMPTY_TEAM_FILTERS,
   filterTeams,
   INDEPENDENT_DIVISION,
+  matchesCounty,
+  matchesDivision,
+  matchesQuery,
+  matchesRegion,
   UNASSIGNED_REGION,
 } from "@/features/teams/utils/filter-teams"
 import type { TeamSummary } from "@/types/api"
@@ -81,5 +85,37 @@ describe("filterTeams", () => {
     expect(
       names(filterTeams(teams, { query: "canton", region: "7", division: "2", county: "Stark" })),
     ).toEqual(["Canton McKinley"])
+  })
+})
+
+describe("each filter test", () => {
+  const hoban = team("Hoban", 5, 3, "Summit")
+  const toledo = team("Toledo Christian", null, null, null)
+
+  it.each([
+    ["the name query", () => matchesQuery(hoban, " HOB "), () => matchesQuery(hoban, "Tigers")],
+    ["the region", () => matchesRegion(hoban, "5"), () => matchesRegion(hoban, "7")],
+    [
+      "no region",
+      () => matchesRegion(toledo, UNASSIGNED_REGION),
+      () => matchesRegion(hoban, UNASSIGNED_REGION),
+    ],
+    ["the division", () => matchesDivision(hoban, "3"), () => matchesDivision(hoban, "2")],
+    [
+      "no division",
+      () => matchesDivision(toledo, INDEPENDENT_DIVISION),
+      () => matchesDivision(hoban, INDEPENDENT_DIVISION),
+    ],
+    ["the county", () => matchesCounty(hoban, "Summit"), () => matchesCounty(toledo, "Summit")],
+  ])("passes and fails on %s", (_name, passes, fails) => {
+    expect(passes()).toBe(true)
+    expect(fails()).toBe(false)
+  })
+
+  it("passes every team when set to all", () => {
+    expect(matchesQuery(toledo, "  ")).toBe(true)
+    expect(matchesRegion(toledo, "all")).toBe(true)
+    expect(matchesDivision(toledo, "all")).toBe(true)
+    expect(matchesCounty(toledo, ALL_COUNTIES)).toBe(true)
   })
 })
