@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.34.5",
   "scripts": {
     "dev": "astro dev",
-    "typecheck": "astro check",
+    "typecheck": "astro check && tsc -p picks/tsconfig.json --noEmit",
     "test": "vitest run",
     "build": "astro build",
     "preview": "astro preview",
@@ -37,6 +37,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@biomejs/biome": "2.5.14",
+    "@cloudflare/workers-types": "^5.20261006.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
@@ -53,7 +54,8 @@
     "prettier": "3.9.9",
     "prettier-plugin-astro": "1.1.0",
     "typescript": "^6.0.2",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.2",
+    "wrangler": "4.147.0"
   },
   "prettier": {
     "plugins": [

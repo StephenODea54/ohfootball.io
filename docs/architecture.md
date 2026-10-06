@@ -7,8 +7,9 @@ builds each of them from this repository and runs it as a Docker Swarm service. 
 Dokploy installs, holds the name `api.ohfootball.io` and its certificate.
 
 The site is on Cloudflare Pages. GitHub Actions builds it against the public API and sends the
-files to Pages. Cloudflare holds the DNS of `ohfootball.io`, the name of the site, and its
-certificate.
+files to Pages. Pages also runs one Pages Function, for the addresses under `/picks/` only. It
+stores the picks of Pick 'Em. Every other address is a static file. Cloudflare holds the DNS of
+`ohfootball.io`, the name of the site, and its certificate.
 
 The download of the data is in a Cloudflare R2 bucket, which serves it on `data.ohfootball.io`.
 
@@ -84,7 +85,7 @@ main is deployed even when a check fails.
 | --- | --- |
 | `go` | format, vet, and test the API and the scraper |
 | `python` | lint and format check the Python and the SQL, then vet and test the rating, the dataset, the recruiting snapshot, the request that builds the site, the output of the site build, and the migration files |
-| `frontend` | lint and format check the site, type check the site and its Astro pages, and run its unit tests |
+| `frontend` | lint and format check the site, type check the site, its Astro pages, and the picks Function, run its unit tests, and bundle the picks Function |
 | `migrations` | build the migration image, apply every migration to an empty database, apply them again, and validate the record |
 
 Each application has automatic deploys on. A push to main builds every application again and
@@ -101,11 +102,14 @@ It also starts from the Actions tab of the repository, or with
 The workflow type checks the site, builds it against `https://api.ohfootball.io/graphql`, and runs
 `make pages` in `services/frontend`. That target checks that the build wrote each page as a file,
 that it wrote a real not-found page in `404.html`, that `robots.txt` names the sitemap, that the
-sitemap lists only the addresses that Pages serves, that no file names the API except the API page,
-and that no file holds its key.
-It then writes the 404 page for missing assets. Wrangler then sends `services/frontend/dist` to the
-Pages project `ohfootball` as a production deployment. A step that fails stops the run before the
-upload, and Pages keeps the deployment it served before.
+sitemap lists only the addresses that Pages serves, that `_routes.json` sends only `/picks/*` to the
+Function, that no file names the API except the API page, and that no file holds its key. It then
+writes the 404 page for missing assets. Wrangler then bundles the Function, so a fault in it stops
+the run before the upload. Wrangler then runs in `services/frontend` and sends `dist`, with the
+Function in `functions/`, to the Pages project `ohfootball` as a production deployment. Wrangler
+finds the Function only in the directory it runs in. `package.json` of the site pins the version
+of Wrangler. A step that fails stops the run before the upload, and Pages keeps the deployment it
+served before.
 
 One run goes at a time. A new run waits for the run in progress and does not stop it. The workflow
 runs only on main, because the upload names main as its branch and a run on another branch would
@@ -240,6 +244,7 @@ manifests and `snapshots.json` come from the bucket each time. No Cache Rule is 
 ```mermaid
 flowchart LR
     visitor(["Visitor"]) --> pages["Cloudflare Pages<br/>ohfootball.io"] --> files[["prerendered HTML"]]
+    pages --> function["picks Function<br/>/picks/*"]
     caller(["API user"]) --> proxy["Traefik<br/>api.ohfootball.io"] --> api["api"] --> warehouse[("PostgreSQL")]
     reader(["Data user"]) --> r2[("Cloudflare R2<br/>data.ohfootball.io")]
 ```
@@ -254,6 +259,13 @@ not play the current season is not written.
 | the same address with a slash at the end or with `.html` | 308 to the address without them, path only |
 | an address with no page, such as a team that did not play the current season | `404.html`, the not-found page, with 404 |
 | a missing file under `/assets/` | one line of plain text, with 404 |
+
+Pages answers each address under `/picks/` with the picks Function and not with a file.
+`services/frontend/public/_routes.json` sets this. The Function reads and writes the picks of
+Pick 'Em in a D1 database. Until the database and the secret of the Function are set, it answers
+503 with the code `PICKS_UNAVAILABLE`, and every page works as before. A WAF rate limiting rule
+must be in place before the database is bound. See the rate limit of the picks Function below.
+`services/frontend/README.md` describes the Function.
 
 The site shows only the current season. An old address with `?season=` in its search gets the page
 of the current season, because no page reads a season from the search.
@@ -292,13 +304,14 @@ fields, and a request body may have at most 1 MiB. The health endpoints and the 
 name, and the warehouse must hold data, before the first build of the site. A build that cannot
 read the API fails, and Pages keeps the site it served before.
 
-**Only the build reads the API.** Every page is drawn while the site is built, and the browser
-never calls the API. The API sends no CORS headers, so no page on another origin can read it. No
-script holds the address of the API, no page except the API page `/api` names it, and no file holds
-its key. `make pages` stops the upload when a file does. The addresses that Pages gives the project, such as `ohfootball.pages.dev`, show the same
-pages as `ohfootball.io`. Each page has a canonical link to its address on `ohfootball.io`, so
-search engines index that copy only. A Redirect Rule of the zone sends `www.ohfootball.io` to
-`ohfootball.io` with a 301.
+**Only the build reads the API.** Every page is drawn while the site is built, and the browser never
+calls the GraphQL API. The picks Function does not call it either. The API sends no CORS headers, so
+no page on another origin can read it. No script holds the address of the API, no page except the
+API page `/api` names it, and no file holds its key. `make pages` stops the upload when a file does.
+The addresses that Pages gives the project, such as `ohfootball.pages.dev`, show the same pages as
+`ohfootball.io`. Each page has a canonical link to its address on `ohfootball.io`, so search engines
+index that copy only. A Redirect Rule of the zone sends `www.ohfootball.io` to `ohfootball.io` with
+a 301.
 
 **The build key is set on both sides.** The build makes about 1,400 requests in a few minutes,
 one for the team and one for the program of each school. That is more than the rate limits
@@ -309,6 +322,13 @@ request skip the contact rule and the rate limits when the token equals its sett
 builds the site at the same time, so set both values before the push that first deploys an API
 with the rate limits. To change the key later, set the new value in both places, then deploy the
 API again and run the site workflow.
+
+**The picks Function needs a rate limit before it gets a database.** The Function has no rate limit
+of its own. Without one, a single address could spend the free daily D1 writes and the free daily
+Function requests of the account, and Pick 'Em would stop for every visitor until the next day. So,
+before `PICKS_DB` is bound, add one WAF rate limiting rule on the zone `ohfootball.io`. It matches
+when URI Path starts with `/picks/`, counts per IP, allows 20 requests in 10 seconds, and blocks for
+10 seconds.
 
 **The limits count in memory.** Each container of the API counts on its own, and a restart or a
 deploy starts every count again. The API is one container, so the limits hold as written.

@@ -1,18 +1,14 @@
-import type {
-  PickemGame,
-  PickemGamesFile,
-  PickemResult,
-  PickemTeam,
+import {
+  FINAL_DAYS,
+  OHIO_TIME_ZONE,
+  type PickemGame,
+  type PickemGamesFile,
+  type PickemResult,
+  type PickemTeam,
 } from "@/features/pickem/contract"
 import { addDays, dateIn, lockAt } from "@/features/pickem/utils/dates"
 import { seasonStart, type WeekGame, weekNumber, weekStart } from "@/features/pickem/utils/week"
 import type { Game, Team, TeamSummary } from "@/types/api"
-
-/** How many days after its date a game stays in the file, so the page can show how picks did. */
-export const FINAL_DAYS = 10
-
-/** The time zone of Ohio. Game days and the lock of each game follow its clock. */
-export const OHIO_TIME_ZONE = "America/New_York"
 
 /**
  * The first and the last game date of the file. It holds the games of the last ten days, and the

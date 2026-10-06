@@ -15,6 +15,9 @@ API_DOCS_PAGE ?= api.html
 # The sitemap index that the build writes. robots.txt names it.
 SITEMAP ?= sitemap-index.xml
 
+# What _routes.json must hold, with all white space removed.
+ROUTES := {"version":1,"include":["/picks/*"],"exclude":[]}
+
 # The address of the site, as site in astro.config.ts sets it. The sitemap may list only addresses
 # that start with it.
 SITE_ADDRESS ?= https://ohfootball.io/
@@ -43,8 +46,18 @@ SITE_ADDRESS ?= https://ohfootball.io/
 # with a space, fails the check. Each case pattern starts with a parenthesis, because the sh of
 # macOS cannot read a case inside $( ) without one.
 #
-# Every page is drawn while the site is built, and the browser never calls the API. So no file of
-# the output may name the API except API_DOCS_PAGE, the page that tells people how to call it.
+# Pages runs the picks Function in functions/ for each address that _routes.json includes, and
+# serves every other address from the files. The build copies _routes.json from public/. It must
+# send only /picks/* to the Function, so that no page waits for the Function or counts toward its
+# limits. The check removes all white space before it compares the file.
+#
+# Wrangler finds the Function in functions/ next to OUTPUT, and not in OUTPUT. A functions
+# directory in OUTPUT would be served as files. A _worker.js in OUTPUT would run for every address
+# in place of the Function and the files. So OUTPUT may hold neither.
+#
+# Every page is drawn while the site is built, and the browser never calls the GraphQL API. So no
+# file of the output may name the API except API_DOCS_PAGE, the page that tells people how to call
+# it.
 # That keeps the name out of every script and stylesheet under assets/ and out of every other page.
 # The search looks for the name of the API host and for "graphql", in any case. When GRAPHQL_API_KEY is set, no file of the output may hold the key,
 # the API page included. The check prints only the names of such files and never the key. A key
@@ -64,6 +77,23 @@ pages:
 		echo "$(OUTPUT)/_headers is missing. The build copies it from public/_headers." >&2; \
 		exit 1; \
 	}
+	@test -f "$(OUTPUT)/_routes.json" || { \
+		echo "$(OUTPUT)/_routes.json is missing. The build copies it from public/_routes.json." >&2; \
+		exit 1; \
+	}
+	@routes=$$(tr -d '[:space:]' < "$(OUTPUT)/_routes.json"); \
+	if [ "$$routes" != '$(ROUTES)' ]; then \
+		echo "_routes.json must send only /picks/* to the Function" >&2; \
+		exit 1; \
+	fi
+	@if [ -e "$(OUTPUT)/functions" ]; then \
+		echo "$(OUTPUT)/functions must not exist. The Function is in functions/ next to $(OUTPUT)." >&2; \
+		exit 1; \
+	fi
+	@if [ -e "$(OUTPUT)/_worker.js" ]; then \
+		echo "$(OUTPUT)/_worker.js must not exist. It would replace the Function and the files." >&2; \
+		exit 1; \
+	fi
 	@test -f "$(OUTPUT)/404.html" || { \
 		echo "the build wrote no 404.html. src/pages/404.astro writes it." >&2; \
 		exit 1; \

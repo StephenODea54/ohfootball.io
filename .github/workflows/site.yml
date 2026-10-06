@@ -60,20 +60,27 @@ jobs:
         working-directory: services/frontend
       - run: pnpm build
         working-directory: services/frontend
-      # Checks that the build wrote the pages in the form Pages serves, that no file except the API
-      # page names the API, and that no file holds its key. Then writes the 404 page for assets.
+      # Checks that the build wrote the pages in the form Pages serves, that only /picks/* goes to
+      # the Function, that no file except the API page names the API, and that no file holds its
+      # key. Then writes the 404 page for assets.
       - run: make pages
         working-directory: services/frontend
+      # Bundles the picks Function the way the upload does, so a fault in it stops the run here.
+      - run: pnpm exec wrangler pages functions build --outdir .wrangler/functions-check
+        working-directory: services/frontend
       # The project has to exist in Pages before the first run. docs/architecture.md tells how to
-      # make it. --commit-dirty stops a warning about the files the action installs Wrangler with.
+      # make it. --commit-dirty stops a warning when the checkout holds changes that are not
+      # committed. Wrangler runs in services/frontend, because it reads the picks Function from
+      # functions/ in the directory it runs in. It bundles the Function and sends it with the files.
+      # The action uses the Wrangler that package.json pins and installs no other version.
       - name: upload
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4"
+          workingDirectory: services/frontend
           command: >-
-            pages deploy services/frontend/dist
+            pages deploy dist
             --project-name=ohfootball
             --branch=main
             --commit-dirty=true

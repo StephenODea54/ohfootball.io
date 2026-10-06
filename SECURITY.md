@@ -14,7 +14,7 @@ days. We tell you when the fault is fixed, and we credit you in the fix if you w
 
 - The code on the `main` branch of this repository.
 - The API at `api.ohfootball.io`.
-- The site at `ohfootball.io`.
+- The site at `ohfootball.io`, with the picks Function that answers `/picks/*`.
 - The dataset that the weekly run publishes to Kaggle.
 
 ## What the API does to protect itself

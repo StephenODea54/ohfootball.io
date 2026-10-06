@@ -5,11 +5,13 @@ check that fails stops the upload, and Pages keeps the site it served before. A 
 when it should not publishes a site that sends each page through a redirect, that answers an
 unknown address with the home page, or that tells a browser where the API is. Only the API page,
 which tells people how to call the API, may name it. It can also publish a sitemap that sends
-search engines to addresses that Pages does not serve, or that leaves pages out.
+search engines to addresses that Pages does not serve, or that leaves pages out. And it can send
+pages to the picks Function, or replace the Function with a worker.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
@@ -19,6 +21,7 @@ from pathlib import Path
 SITE_DIRECTORY = Path(__file__).resolve().parent.parent
 SITE = SITE_DIRECTORY / "Makefile"
 HEADERS = SITE_DIRECTORY / "public" / "_headers"
+ROUTES = SITE_DIRECTORY / "public" / "_routes.json"
 ROBOTS = SITE_DIRECTORY / "public" / "robots.txt"
 
 HOME = "<!DOCTYPE html><html><body>home<script src=/assets/main.js></script></body></html>"
@@ -47,11 +50,13 @@ def sitemap(output: Path, *addresses: str, name: str = "sitemap-0.xml", joint: s
 
 def build(directory: Path, *pages: str) -> Path:
     """Writes the files a build writes: the home page, the not-found page, a script, the headers,
-    robots.txt, and a sitemap that lists the home page and each other page."""
+    the routes of the Function, robots.txt, and a sitemap that lists the home page and each other
+    page."""
     output = directory / "dist"
     (output / "assets").mkdir(parents=True)
     (output / "assets" / "main-abc123.js").write_text("console.log(1)")
     (output / "_headers").write_text(HEADERS.read_text())
+    (output / "_routes.json").write_text(ROUTES.read_text())
     (output / "robots.txt").write_text(ROBOTS.read_text())
     (output / "index.html").write_text(HOME)
     (output / "404.html").write_text(NOT_FOUND)
@@ -151,6 +156,66 @@ class TheOutputOfTheBuild(unittest.TestCase):
 
         self.assertNotEqual(finished.returncode, 0)
         self.assertIn("_headers is missing", finished.stderr)
+
+    def test_fails_when_the_routes_are_missing(self) -> None:
+        output = build(self.directory)
+        (output / "_routes.json").unlink()
+
+        finished = pages(output)
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("_routes.json is missing", finished.stderr)
+        self.assertFalse((output / "assets" / "404.html").exists())
+
+    def test_fails_when_the_routes_send_more_than_the_picks_to_the_function(self) -> None:
+        # Every page would wait for the Function and count toward its limits.
+        for routes in (
+            '{"version":1,"include":["/*"],"exclude":[]}',
+            '{"version":1,"include":["/picks/*"],"exclude":["/picks/board"]}',
+            '{"version":1,"include":["/picks/*","/api/*"],"exclude":[]}',
+            "",
+        ):
+            with self.subTest(routes=routes):
+                output = build(Path(tempfile.mkdtemp(dir=self.directory)))
+                (output / "_routes.json").write_text(routes)
+
+                finished = pages(output)
+
+                self.assertNotEqual(finished.returncode, 0)
+                self.assertIn("must send only /picks/* to the Function", finished.stderr)
+                self.assertFalse((output / "assets" / "404.html").exists())
+
+    def test_reads_the_routes_in_any_layout(self) -> None:
+        output = build(self.directory)
+        (output / "_routes.json").write_text(
+            '{\n  "version": 1,\n  "include": [\n    "/picks/*"\n  ],\n  "exclude": []\n}\n'
+        )
+
+        finished = pages(output)
+
+        self.assertEqual(finished.returncode, 0, finished.stderr)
+
+    def test_fails_when_the_output_holds_a_functions_directory(self) -> None:
+        output = build(self.directory)
+        (output / "functions" / "picks").mkdir(parents=True)
+        (output / "functions" / "picks" / "board.ts").write_text("export {}")
+
+        finished = pages(output)
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("functions must not exist", finished.stderr)
+        self.assertFalse((output / "assets" / "404.html").exists())
+
+    def test_fails_when_the_output_holds_a_worker(self) -> None:
+        # Pages would run the worker for every address, in place of the Function and the files.
+        output = build(self.directory)
+        (output / "_worker.js").write_text("export default {}")
+
+        finished = pages(output)
+
+        self.assertNotEqual(finished.returncode, 0)
+        self.assertIn("_worker.js must not exist", finished.stderr)
+        self.assertFalse((output / "assets" / "404.html").exists())
 
     def test_fails_when_a_page_is_a_directory(self) -> None:
         # Pages would send /leaderboard to /leaderboard/ with a 308.
@@ -539,6 +604,14 @@ class TheOutputOfTheBuild(unittest.TestCase):
 
         self.assertEqual(finished.returncode, 0, finished.stderr)
         self.assertIn("3 pages", finished.stdout)
+
+
+class TheRoutes(unittest.TestCase):
+    def test_send_only_the_picks_to_the_function(self) -> None:
+        self.assertEqual(
+            json.loads(ROUTES.read_text()),
+            {"version": 1, "include": ["/picks/*"], "exclude": []},
+        )
 
 
 def rules(text: str) -> dict[str, list[tuple[str, str]]]:

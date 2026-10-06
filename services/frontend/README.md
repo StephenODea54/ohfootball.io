@@ -4,7 +4,8 @@ The site of ohfootball.io. It is an Astro site with React islands, Tailwind CSS,
 components.
 
 Every page is drawn from the API when the site is built. The deployed site is files that
-Cloudflare Pages serves, and nothing runs to answer a visitor. The browser never calls the API.
+Cloudflare Pages serves. Only the addresses under `/picks/` run code to answer a visitor: the picks
+Function. The browser never calls the GraphQL API.
 Only a few parts of a page run in the browser: the navigation bar, the team finder on the home
 page, the leaderboard table, the rating chart and the program history of a team, the charts and
 tables of the Accuracy page, and the compare page.
@@ -83,6 +84,78 @@ that start the season, so the week numbers of such a build can differ from the A
 development server keeps no answer, so it reads every team for each request of the file. The file
 is not a page, so the sitemap leaves it out.
 
+## The picks Function
+
+Pick 'Em stores picks with a Cloudflare Pages Function and a D1 database. Pages runs the Function
+for the addresses that `public/_routes.json` includes, which is `/picks/*` only. Every other
+address is a file, as before.
+
+Pages makes a route of each file under `functions/`. So the files there only pass the request on,
+and the code and its tests are in `picks/`.
+
+| Request | Answer |
+| --- | --- |
+| `GET /picks/board` or `HEAD /picks/board` | `{ "address", "cutoff", "picks", "tallies" }`. A HEAD gets the status and the headers with no body. `cutoff` is ten days before today in Ohio, as `YYYY-MM-DD`. `tallies` holds `{ "a", "b" }` for each game on or after the cutoff that has a tally. `picks` holds the side the caller picked for each such game. `address` is `unknown` when the Function cannot read the address of the caller, and then `picks` is empty. |
+| `PUT /picks/:gameKey` with `{"side":"a"}` or `{"side":"b"}` | `{ "gameKey", "myPick", "tally" }`. It stores the pick, or changes it. When the address already picked that side, it writes nothing. |
+| `DELETE /picks/:gameKey` | `{ "gameKey", "myPick": null, "tally" }`. It removes the pick, if there is one. |
+| another method | 405 with an `Allow` header |
+
+An error is `{ "error": { "code", "message" } }`. A write is checked in this order, and the first
+check that fails gives the answer:
+
+| Status | Code | When |
+| --- | --- | --- |
+| 403 | `ORIGIN_REFUSED` | The `Origin` header or the origin of the request address is not the origin of `PICKS_ORIGIN`. The header must match exactly, so a slash at its end is refused. A page on `ohfootball.pages.dev` cannot write. |
+| 400 | `INVALID_GAME_KEY` | The game key is not a UUID in lower case. |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | A PUT is not `application/json`. |
+| 413 | `BODY_TOO_LARGE` | The body of a PUT is over 1024 bytes. The Function counts the bytes as it reads them, so a body without `Content-Length` is stopped too. |
+| 400 | `INVALID_BODY` | The body of a PUT does not name side `a` or side `b`. |
+| 400 | `CLIENT_ADDRESS_UNKNOWN` | The Function cannot read the address of the caller. |
+| 404 | `GAME_UNKNOWN` | The games file has no game with this key. |
+| 409 | `GAME_CANCELED`, `GAME_FINAL`, `GAME_LOCKED` | The game was canceled, has a result, or is past its lock. |
+| 503 | `PICKS_UNAVAILABLE` | A binding or a setting is missing, or D1 or the games file failed. |
+
+Each answer is JSON with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+`public/_headers` does not apply to an answer of a Function. The site must never send
+`Referrer-Policy: no-referrer`, because then a browser sends `Origin: null` and every write is
+refused.
+
+One address gets one pick for each game. The Function reads the address from `CF-Connecting-IP`.
+An IPv4 address counts on its own. An IPv6 address counts by its first 64 bits, because one home
+usually gets a whole /64. The database holds no address. It holds an HMAC-SHA256 of the address,
+made with the secret `PICKS_HASH_SECRET`.
+
+The Function reads the games file from the files of its own deployment and keeps it for one
+minute. It checks each write against the lock rule in `src/features/pickem/contract.ts`, the same
+rule that the page uses. Each write counts the picks of its game again in the same transaction, so
+a tally is always the count of the stored picks. After a write, the Function removes the picks of
+each game before the cutoff. It does this at most once an hour after a removal that worked. A
+removal that fails is tried again on the next write. The tallies stay.
+
+When the Function answers 503, it writes the cause to its log with `console.error`. The log never
+holds the address, its hash, the secret, or the body of the request.
+
+`d1/migrations/0001_picks.sql` makes the tables. The Function reads these settings:
+
+| Setting | Meaning |
+| --- | --- |
+| `PICKS_DB` | The D1 database of the picks. |
+| `PICKS_HASH_SECRET` | A Pages secret of at least 32 characters. A shorter secret counts as no secret. |
+| `PICKS_ORIGIN` | The only origin that may write: `https://ohfootball.io`. The Function reads the origin of the value, so a slash at the end or capital letters in the host do not matter. A value that is not an http(s) URL counts as no value. |
+
+Until all three are set, every request to `/picks/*` gets 503 `PICKS_UNAVAILABLE`, and the rest of
+the site works as before.
+
+The Function has no rate limit of its own. Before `PICKS_DB` is bound, add one WAF rate limiting
+rule on the zone `ohfootball.io`: URI Path starts with `/picks/`, counted per IP, 20 requests in 10
+seconds, blocked for 10 seconds. Without it, one address could spend the free daily D1 writes and
+the free daily Function requests, and Pick 'Em would stop for every visitor until the next day.
+
+`package.json` pins the version of Wrangler. `pnpm exec wrangler pages dev dist` serves the build
+and runs the Function next to it. Without the settings, the Function answers 503.
+`pnpm exec wrangler pages functions build --outdir .wrangler/functions-check` bundles the Function
+the way the upload does. CI runs it in the checks and before each upload.
+
 ## Settings
 
 Copy `.env.example` to `.env` and set the values. An empty value is the same as no value.
@@ -143,9 +216,14 @@ The tools do not read two parts of the site. The components in `src/components/u
 Intent UI registry, and the shadcn command line writes over them, so they keep the layout of the
 registry. The stylesheet uses the variant rules of Tailwind v4, and Biome cannot parse them.
 
-`pnpm typecheck` runs `astro check`, which checks the Astro pages and the React components.
+`pnpm typecheck` runs `astro check`, which checks the Astro pages and the React components. It then
+runs `tsc -p picks/tsconfig.json`, which checks `functions/` and `picks/` with the types of the
+Workers runtime. The main `tsconfig.json` leaves those two directories out, so the types of the
+Workers runtime do not mix with the types of the browser.
 `pnpm test` runs the unit tests with Vitest. The tests need no API and no build. They replace the
-settings that Astro gives the build with the fixed values in `src/test/astro-env-server.ts`.
+settings that Astro gives the build with the fixed values in `src/test/astro-env-server.ts`. The
+tests of the picks Function run in Node and not in the Workers runtime. They run the real SQL and
+the migration against a D1 stand-in over `node:sqlite`, in `picks/test/sqlite-d1.ts`.
 
 From the root of the repository, `make site-lint` and `make site-fmt` run `pnpm lint` and
 `pnpm fmt`. `make site-check` runs the type check and the tests, and `make site-test` checks
@@ -166,6 +244,8 @@ each address, such as `leaderboard.html` for `/leaderboard`.
 
 `make pages` makes `dist` ready for Cloudflare Pages. It stops when the build wrote no pages, no
 assets, no `_headers`, or no `404.html`, or when `404.html` is a copy of the home page. It stops
+when `_routes.json` is missing or sends more than `/picks/*` to the Function, and when `dist` holds
+a `functions` directory or a `_worker.js`. It stops
 when a page is a directory, because Pages would send each such address through a redirect. It stops
 when `robots.txt` or the sitemap is missing, when `robots.txt` does not name `sitemap-index.xml`,
 and when the sitemap lists an address that Pages does not serve as written. Such an address ends
@@ -197,11 +277,12 @@ link keeps the copy on `www.ohfootball.io` out of search results.
 To see how Pages answers, serve the directory with Wrangler:
 
 ```sh
-npx wrangler pages dev dist
+pnpm exec wrangler pages dev dist
 ```
 
 ## Publish the site
 
 `.github/workflows/site.yml` runs the same build against `https://api.ohfootball.io/graphql` and
-sends `dist` to Cloudflare Pages. It starts on a push to main that changes the site, and when the
+sends `dist` to Cloudflare Pages. Wrangler runs in this directory, so it finds `functions/`, and it
+sends the Function with the files. It starts on a push to main that changes the site, and when the
 weekly run asks for it. `docs/architecture.md` describes the workflow and its settings.

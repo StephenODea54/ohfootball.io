@@ -62,8 +62,8 @@ jobs:
   # The site is drawn ahead of time against the API. Biome and Prettier check the format and the
   # lint rules of the site. astro check checks the types of the Astro pages and of the React
   # components, and Vitest runs the unit tests, so a mistake there is found before the site is
-  # built. A build is not run here, because it needs an API to read. site.yml builds the site
-  # against the public API before it publishes it.
+  # built. Wrangler bundles the picks Function. A build is not run here, because it needs an API
+  # to read. site.yml builds the site against the public API before it publishes it.
   frontend:
     name: frontend
     runs-on: ubuntu-latest
@@ -86,6 +86,9 @@ jobs:
       - run: pnpm typecheck
         working-directory: services/frontend
       - run: pnpm test
+        working-directory: services/frontend
+      # Bundles the picks Function the way the upload in site.yml does.
+      - run: pnpm exec wrangler pages functions build --outdir .wrangler/functions-check
         working-directory: services/frontend
 
   # Builds the image that applies the migrations and runs it two times on an empty database. The

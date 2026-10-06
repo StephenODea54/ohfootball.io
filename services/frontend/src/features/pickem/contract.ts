@@ -60,6 +60,12 @@ export interface PickemGamesFile {
   games: PickemGame[]
 }
 
+/** How many days after its date a game stays in the file, so the page can show how picks did. */
+export const FINAL_DAYS = 10
+
+/** The time zone of Ohio. Game days and the lock of each game follow its clock. */
+export const OHIO_TIME_ZONE = "America/New_York"
+
 export type PickSide = "a" | "b"
 
 export type PickStatus = "open" | "locked" | "final" | "canceled"
