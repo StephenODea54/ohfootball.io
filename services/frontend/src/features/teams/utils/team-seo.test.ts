@@ -8,30 +8,12 @@ import {
   teamPageTitle,
   teamSocialTitle,
 } from "@/features/teams/utils/team-seo"
-import type { TeamSummary } from "@/types/api"
+import { teamSummary } from "@/test/team-summary"
 import { jsonLdScript } from "@/utils/seo"
 
 const site = new URL("https://ohfootball.io")
 
-function team(overrides: Partial<TeamSummary> = {}): TeamSummary {
-  return {
-    id: "canfield",
-    season: 2026,
-    sourceId: "248",
-    name: "Canfield",
-    mascot: "Cardinals",
-    city: "Canfield",
-    county: "Mahoning",
-    division: 3,
-    region: 9,
-    primaryColor: null,
-    secondaryColor: null,
-    record: { wins: 2, losses: 4, ties: 0 },
-    outOfStateGamesPlayed: 0,
-    rating: { season: 2026, value: 3.6, rank: 149, previousRank: null, asOf: "2026-09-27" },
-    ...overrides,
-  }
-}
+const team = teamSummary
 
 describe("teamFullName", () => {
   it("adds the mascot to the name", () => {

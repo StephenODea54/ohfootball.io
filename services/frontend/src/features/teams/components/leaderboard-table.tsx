@@ -33,6 +33,7 @@ import {
   ratingTone,
   teamMeta,
 } from "@/features/teams/utils/format"
+import { isBlank, useDebouncedValue } from "@/hooks/use-debounced-value"
 import type { TeamRating, TeamSummary } from "@/types/api"
 
 type RatedTeam = TeamSummary & { rating: TeamRating }
@@ -40,9 +41,18 @@ type RatedTeam = TeamSummary & { rating: TeamRating }
 /** Every rated school for a season, ranked, with the filters that narrow the list. */
 export function LeaderboardTable({ season, teams }: { season: number; teams: TeamSummary[] }) {
   const [filters, setFilters] = useState<TeamFilterState>(EMPTY_TEAM_FILTERS)
+  // The name search applies after a short pause, so the table does not draw every row again on
+  // each key. The selects and a cleared search apply at once.
+  const query = useDebouncedValue(filters.query, { applyAtOnce: isBlank })
+  const { county, division, region } = filters
+  // The memo reads each field and not the filters object, which is new on every key. The list then
+  // keeps its identity until the search text settles.
   const ratedTeams = useMemo(
-    () => filterTeams(teams, filters).filter((team): team is RatedTeam => team.rating !== null),
-    [teams, filters],
+    () =>
+      filterTeams(teams, { county, division, query, region }).filter(
+        (team): team is RatedTeam => team.rating !== null,
+      ),
+    [teams, county, division, query, region],
   )
 
   // The bar in each row is drawn against the range of the teams currently on screen, so a narrow

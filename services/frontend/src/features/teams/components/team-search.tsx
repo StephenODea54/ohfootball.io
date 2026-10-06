@@ -5,6 +5,7 @@ import { ComboBox, ComboBoxContent, ComboBoxInput, ComboBoxItem } from "@/compon
 import { Label } from "@/components/ui/field"
 import { openTeam } from "@/features/teams/utils/open-team"
 import { rankTeams } from "@/features/teams/utils/rank-teams"
+import { isBlank, useDebouncedValue } from "@/hooks/use-debounced-value"
 import type { TeamSummary } from "@/types/api"
 
 /** Enough matches to find the right school without rendering the whole state. */
@@ -17,10 +18,13 @@ interface TeamSearchProps {
 /** A name search over every school in the loaded season. */
 export function TeamSearch({ teams }: TeamSearchProps) {
   const [query, setQuery] = useState("")
+  // The list follows the text after a short pause, so a fast typist does not rank the schools on
+  // each key. A cleared field shows the first schools at once.
+  const search = useDebouncedValue(query, { applyAtOnce: isBlank })
 
   // Matching happens here rather than inside the ComboBox so that the list can be ranked by how
   // well each school name matches, and so that only the best matches are rendered.
-  const matches = useMemo(() => rankTeams(teams, query, MAX_MATCHES), [query, teams])
+  const matches = useMemo(() => rankTeams(teams, search, MAX_MATCHES), [search, teams])
 
   return (
     // The matched teams are passed to the ComboBox itself, which tells React Aria that filtering is
