@@ -34,6 +34,11 @@ export const paths = {
     path: "/api",
     getHref: () => "/api",
   },
+  // What the site keeps about a visitor, and what Pick 'Em stores.
+  privacy: {
+    path: "/privacy",
+    getHref: () => "/privacy",
+  },
   team: {
     path: "/teams/[teamId]",
     getHref: (teamId: string) => `/teams/${teamId}`,

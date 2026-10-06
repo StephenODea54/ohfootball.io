@@ -9,6 +9,7 @@ it("builds every address without a season", () => {
   expect(paths.accuracy.getHref()).toBe("/accuracy")
   expect(paths.data.getHref()).toBe("/data")
   expect(paths.api.getHref()).toBe("/api")
+  expect(paths.privacy.getHref()).toBe("/privacy")
   expect(paths.team.getHref("abc")).toBe("/teams/abc")
   expect(paths.program.getHref("1624")).toBe("/programs/1624.json")
 })

@@ -7,11 +7,13 @@ const projectLinks = [
   { label: "GitHub", href: links.repository },
   { label: "Report An Issue", href: links.issues },
   { label: "Contact", href: links.contact },
+  { label: "Privacy", href: paths.privacy.getHref() },
 ]
 
 /**
- * The foot of every page, with the links to the code, the issue tracker, and the author. Nothing
- * in it runs in the browser. The data pages link to the dataset, so the foot does not.
+ * The foot of every page, with the links to the code, the issue tracker, the author, and the
+ * privacy page. Nothing in it runs in the browser. The data pages link to the dataset, so the foot
+ * does not.
  */
 export function AppFooter() {
   return (
