@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it } from "vitest"
 import { LeaderboardTable } from "@/features/teams/components/leaderboard-table"
 import { countySummary } from "@/features/teams/utils/format"
+import { hydrateTyped } from "@/test/hydrate-typed"
 import { teamSummary } from "@/test/team-summary"
 
 function rating(rank: number, value: number) {
@@ -26,7 +27,10 @@ const teams = [
   teamSummary({ id: "unrated", name: "Unrated Academy", county: "Stark", rating: null }),
 ]
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  document.body.innerHTML = ""
+})
 
 function renderTable() {
   render(<LeaderboardTable season={2026} teams={teams} />)
@@ -78,5 +82,12 @@ describe("LeaderboardTable", () => {
 
     expect(screen.getByText(countySummary(2, "Stark"))).toBeTruthy()
     expect(bodyRows()).toHaveLength(2)
+  })
+
+  it("keeps the text typed before the page hydrated and narrows the table to it", async () => {
+    const { input } = hydrateTyped(<LeaderboardTable season={2026} teams={teams} />, "Troy")
+
+    await waitFor(() => expect(bodyRows()).toHaveLength(1))
+    expect(input.value).toBe("Troy")
   })
 })

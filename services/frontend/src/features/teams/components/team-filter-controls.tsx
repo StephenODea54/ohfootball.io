@@ -11,6 +11,7 @@ import {
   UNASSIGNED_REGION,
 } from "@/features/teams/utils/filter-teams"
 import { formatDivision } from "@/features/teams/utils/format"
+import { useTypedBeforeHydration } from "@/hooks/use-typed-before-hydration"
 import type { TeamSummary } from "@/types/api"
 
 interface FilterSelectProps {
@@ -109,15 +110,21 @@ interface TeamFilterControlsProps {
 }
 
 export function TeamFilterControls({ filters, onChange, teams }: TeamFilterControlsProps) {
+  const searchRef = useTypedBeforeHydration<HTMLDivElement>((query) =>
+    onChange({ ...filters, query }),
+  )
+
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_11rem_11rem_12rem]">
-      <SearchField
-        aria-label="Search By School Name"
-        value={filters.query}
-        onChange={(query) => onChange({ ...filters, query })}
-      >
-        <SearchInput placeholder="Search by school name…" />
-      </SearchField>
+      <div ref={searchRef}>
+        <SearchField
+          aria-label="Search By School Name"
+          value={filters.query}
+          onChange={(query) => onChange({ ...filters, query })}
+        >
+          <SearchInput placeholder="Search by school name…" />
+        </SearchField>
+      </div>
 
       <RegionSelect
         onChange={(region) => onChange({ ...filters, region })}

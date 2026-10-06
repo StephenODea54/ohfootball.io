@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { TeamSearch } from "@/features/teams/components/team-search"
 import { openTeam } from "@/features/teams/utils/open-team"
+import { hydrateTyped } from "@/test/hydrate-typed"
 import { teamSummary } from "@/test/team-summary"
 
 vi.mock("@/features/teams/utils/open-team", () => ({ openTeam: vi.fn() }))
@@ -15,6 +16,7 @@ const teams = [
 
 afterEach(() => {
   cleanup()
+  document.body.innerHTML = ""
   vi.clearAllMocks()
 })
 
@@ -76,5 +78,12 @@ describe("TeamSearch", () => {
     fireEvent.click(screen.getByRole("option", { name: "Troy" }))
 
     expect(openTeam).toHaveBeenCalledWith("troy")
+  })
+
+  it("keeps the text typed before the page hydrated and lists its matches", async () => {
+    const { input } = hydrateTyped(<TeamSearch teams={teams} />, "Mas")
+
+    await waitFor(() => expect(optionNames()).toEqual(["Massillon Washington"]))
+    expect(input.value).toBe("Mas")
   })
 })
