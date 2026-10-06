@@ -42,6 +42,9 @@ jobs:
       # contact rule and the rate limits. Without it, the build gets 429 and fails.
       GRAPHQL_API_KEY: ${{ secrets.GRAPHQL_API_KEY }}
       ASTRO_TELEMETRY_DISABLED: "1"
+      # Shows the Pick column on the team pages. The picks Function, its database and its secret
+      # must be in place, or every pick answers that picks are not available.
+      PUBLIC_PICKEM: "true"
     steps:
       - uses: actions/checkout@v4
       # The repository root has no package.json. This step reads the pnpm version from the
