@@ -8,8 +8,10 @@ Dokploy installs, holds the name `api.ohfootball.io` and its certificate.
 
 The site is on Cloudflare Pages. GitHub Actions builds it against the public API and sends the
 files to Pages. Pages also runs one Pages Function, for the addresses under `/picks/` only. It
-stores the picks of Pick 'Em. Every other address is a static file. Cloudflare holds the DNS of
-`ohfootball.io`, the name of the site, and its certificate.
+stores the picks of Pick 'Em. The schedule on each team page shows the pick controls when the
+build sets `PUBLIC_PICKEM`, and the browser calls the Function from there. Every other address is
+a static file. Cloudflare holds the DNS of `ohfootball.io`, the name of the site, and its
+certificate.
 
 The download of the data is in a Cloudflare R2 bucket, which serves it on `data.ohfootball.io`.
 

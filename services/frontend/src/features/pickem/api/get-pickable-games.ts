@@ -4,6 +4,7 @@ import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
 import { getTeam } from "@/features/teams/api/get-team"
 import { getTeams } from "@/features/teams/api/get-teams"
 import { prerenderedTeams } from "@/features/teams/api/prerendered-teams"
+import { once } from "@/lib/build-cache"
 import { mapLimit } from "@/lib/map-limit"
 
 /**
@@ -24,4 +25,13 @@ export async function getPickableGames(now: Date = new Date()): Promise<PickemGa
   ])
   const teams = await mapLimit(drawn, TEAM_REQUESTS_AT_ONCE, (team) => getTeam(team.id, season))
   return pickableGames(teams, allTeams, season, now)
+}
+
+/**
+ * The games file of this build. The games file and each team page read it, so the build makes it
+ * once, and the pick controls of a team page agree with the file. The development server makes it
+ * again for each page, so there a team page reads every team.
+ */
+export function getPickemGames(): Promise<PickemGamesFile> {
+  return once("pickem:games", () => getPickableGames())
 }

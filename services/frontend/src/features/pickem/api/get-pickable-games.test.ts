@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi } from "vitest"
 import type { Team, TeamSummary } from "@/types/api"
 
 const getTeam = vi.hoisted(() => vi.fn())
@@ -14,7 +14,13 @@ vi.mock("@/features/teams/api/get-teams", () => ({ getTeams: async () => teams }
 vi.mock("@/features/teams/api/prerendered-teams", () => ({ prerenderedTeams: async () => teams }))
 vi.mock("@/features/teams/api/get-team", () => ({ getTeam }))
 
-const { getPickableGames } = await import("@/features/pickem/api/get-pickable-games")
+const { getPickableGames, getPickemGames } = await import(
+  "@/features/pickem/api/get-pickable-games"
+)
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 it("reads each team that gets a page and writes the games between them", async () => {
   getTeam.mockImplementation(
@@ -49,4 +55,21 @@ it("reads each team that gets a page and writes the games between them", async (
   expect(file.games.map((game) => [game.gameKey, game.a.name, game.b.name])).toEqual([
     ["g1", "McKinley", "Massillon"],
   ])
+})
+
+it("makes the games file once for each build", async () => {
+  vi.stubEnv("DEV", false)
+  getTeam.mockReset()
+  getTeam.mockImplementation(
+    async (id: string) =>
+      ({
+        ...(teams.find((entry) => entry.id === id) as TeamSummary),
+        schedule: [],
+      }) as unknown as Team,
+  )
+
+  const [first, second] = await Promise.all([getPickemGames(), getPickemGames()])
+
+  expect(second).toBe(first)
+  expect(getTeam).toHaveBeenCalledTimes(teams.length)
 })

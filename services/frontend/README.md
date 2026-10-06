@@ -84,6 +84,45 @@ that start the season, so the week numbers of such a build can differ from the A
 development server keeps no answer, so it reads every team for each request of the file. The file
 is not a page, so the sitemap leaves it out.
 
+## Pick 'Em on the team pages
+
+Pick 'Em is off until `PUBLIC_PICKEM` is `true` for the build. When it is on, each team page reads
+the games file once more from the cache of the build, so it adds no request to the API. The
+schedule of the team then gets a Pick column at its end. On a phone the table scrolls to the side
+to show it, as it does for the other columns at the end. The column is there only when a game of
+the schedule shows a pick. A canceled game shows none.
+
+A game with no result shows two toggle buttons in its Pick cell. Thumbs up picks the team of the
+page, and thumbs down picks the opponent. The count of picks for each side is under its button. A
+press on the picked button removes the pick. The buttons turn read only at the lock of the game,
+and they still show the pick of the visitor and the counts then. A game with a result shows its
+cell only when the visitor picked it. The cell then shows the pick, the final counts, and a mark
+for a correct pick, a missed pick, or a game with no winner.
+
+The schedule is a table that moves focus with the arrow keys. The left and right arrow keys move
+between the two buttons of a cell, the up and down arrow keys move to the next row, and the space
+key presses a button.
+
+The page asks for `GET /picks/board` one time, when the first game of the schedule that takes
+picks comes into view. Every cell of the page reads that one answer. A pick shows at once, and the
+tally that the Function sends back replaces the guess of the page. When a write fails, the cell
+goes back to the last pick that the Function confirmed. When the board does not load, or the
+Function cannot read the address of the visitor, every button is read only. Over the free quota,
+Cloudflare answers `/picks/*` with the 404 page of the site, so the page counts any answer that is
+not JSON as "picks unavailable".
+
+The line above the schedule tells how to pick and links to `/privacy`, which says what the site
+stores for a pick. It also holds the one live region of the picks: it says when the picks load,
+why the visitor cannot pick, and which pick did not save. The privacy page is built whether Pick
+'Em is on or off.
+
+`src/features/pickem/api/picks-client.ts` calls the Function, and the controls are in
+`src/features/pickem/components`. The controls are a separate script, which the browser loads only
+for a schedule with a game that takes picks. With `PUBLIC_PICKEM` off, the build still writes that
+script to `assets/`, but no page or script names it, so no browser loads it. The development
+server makes the games file again for each team page, so with `PUBLIC_PICKEM` on it reads every
+team for each page.
+
 ## The picks Function
 
 Pick 'Em stores picks with a Cloudflare Pages Function and a D1 database. Pages runs the Function
@@ -176,6 +215,7 @@ Copy `.env.example` to `.env` and set the values. An empty value is the same as 
 | `GRAPHQL_URL` | the build and the development server | The address of the GraphQL API. No page or script holds it. |
 | `GRAPHQL_API_KEY` | the build and the development server | A secret. The build key, sent as a bearer token. It must equal `SITE_BUILD_KEY` of the API, which then lets the build skip the contact rule and the rate limits. Without it, a full build gets 429. |
 | `PRERENDER_TEAM_LIMIT` | the build | The largest number of team pages and history files to draw. Use it to keep a local build short. Leave it unset for a build that is published. |
+| `PUBLIC_PICKEM` | the build, the development server, and the browser | Set to `true` to show the Pick 'Em controls on the team pages. The value goes into the scripts of the site, so it is public. It is off when it is unset. |
 | `REGISTRY_TOKEN` | the shadcn command line | The token of the Intent UI registry. Only the command that adds a component reads it. |
 
 ## Work on the site

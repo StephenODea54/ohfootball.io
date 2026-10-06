@@ -71,7 +71,10 @@ export type PickSide = "a" | "b"
 export type PickStatus = "open" | "locked" | "final" | "canceled"
 
 /** Whether a game takes picks at the moment `now`. A game with a result takes none. */
-export function gameStatus(game: PickemGame, now: Date): PickStatus {
+export function gameStatus(
+  game: Pick<PickemGame, "canceled" | "result" | "lockAt">,
+  now: Date,
+): PickStatus {
   if (game.canceled) return "canceled"
   if (game.result) return "final"
   if (now.getTime() >= Date.parse(game.lockAt)) return "locked"

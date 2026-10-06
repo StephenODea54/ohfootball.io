@@ -1,5 +1,6 @@
 ---
 import type { GetStaticPaths, InferGetStaticPropsType } from "astro"
+import { PUBLIC_PICKEM } from "astro:env/client"
 import SiteLayout from "@/layouts/site-layout.astro"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
@@ -7,6 +8,8 @@ import { Link } from "@/components/ui/link"
 import { paths } from "@/config/paths"
 import { rivalriesOf, rivalryName } from "@/features/compare/rivalries"
 import { isSafeSourceId } from "@/features/compare/utils/program-history"
+import { getPickemGames } from "@/features/pickem/api/get-pickable-games"
+import { addTeamPicks, type TeamPick, teamPicks } from "@/features/pickem/utils/team-picks"
 import { getCurrentSeason } from "@/features/seasons/api/get-current-season"
 import { getTeam } from "@/features/teams/api/get-team"
 import { getTeams } from "@/features/teams/api/get-teams"
@@ -37,7 +40,16 @@ export const getStaticPaths = (async () => {
 const { teamId } = Astro.params
 const { season, pageTeamIds } = Astro.props as InferGetStaticPropsType<typeof getStaticPaths>
 // In the build, getStaticPaths already holds the list of teams, so this asks the API only once.
-const [team, teams] = await Promise.all([getTeam(teamId, season), getTeams()])
+// The games file of Pick 'Em reads only teams that the build reads anyway, and the build makes it
+// once, so it adds no request.
+const [team, teams, pickemGames] = await Promise.all([
+  getTeam(teamId, season),
+  getTeams(),
+  PUBLIC_PICKEM ? getPickemGames() : null,
+])
+// The games of this team that take picks, or took them in the last days. Only these go to the
+// browser.
+const picks = pickemGames ? teamPicks(pickemGames, team.id) : new Map<string, TeamPick>()
 
 // The chart, the schedule, and the program history run in the browser, so each is sent only the
 // data it draws. Each opponent gets its current rank and rating, and its number for the logo, from
@@ -45,9 +57,12 @@ const [team, teams] = await Promise.all([getTeam(teamId, season), getTeams()])
 const ratingChart = { season: team.season, rating: team.rating, ratingHistory: team.ratingHistory }
 const schedule = {
   name: team.name,
-  schedule: addOpponentSourceIds(
-    addOpponentStandings(linkOpponents(team.schedule, new Set(pageTeamIds)), teams),
-    teams,
+  schedule: addTeamPicks(
+    addOpponentSourceIds(
+      addOpponentStandings(linkOpponents(team.schedule, new Set(pageTeamIds)), teams),
+      teams,
+    ),
+    picks,
   ),
 }
 const programHistory = { name: team.name, rows: toSeasonRows(team) }

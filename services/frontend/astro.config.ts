@@ -35,8 +35,8 @@ export default defineConfig({
     plugins: [tailwindcss(), babel({ presets: [reactCompilerPreset()] })],
   },
   env: {
-    // Only the build and the development server read these values. None of them goes into a page
-    // or a script.
+    // The build and the development server read these values. Only a value with the context
+    // "client" goes into a page or a script. Each of those is public, so it holds no secret.
     schema: {
       GRAPHQL_URL: envField.string({ context: "server", access: "public", url: true }),
       // The build key. With it, the API lets the build skip the contact rule and the rate limits.
@@ -51,6 +51,9 @@ export default defineConfig({
         int: true,
         gt: 0,
       }),
+      // Shows the Pick 'Em controls in the schedule of each team page. The build reads the value,
+      // and the browser gets it in the script of the schedule. Leave it unset to hide Pick 'Em.
+      PUBLIC_PICKEM: envField.boolean({ context: "client", access: "public", default: false }),
     },
     validateSecrets: true,
   },
