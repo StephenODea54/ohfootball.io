@@ -4,33 +4,32 @@ import { links } from "@/config/paths"
 import { PrivacyContent } from "@/features/privacy/components/privacy-content"
 
 describe("PrivacyContent", () => {
-  const html = renderToStaticMarkup(<PrivacyContent />)
+  // React writes a number in text with comment markers around it, so they are removed first.
+  const text = renderToStaticMarkup(<PrivacyContent />)
+    .replace(/<!-- -->/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
 
-  it("says the site sets no cookie and needs no account", () => {
-    expect(html).toContain("The site sets no cookie, and you do not need an account.")
-    expect(html).toContain("light or a dark theme in your browser")
-    expect(html).toContain("Cloudflare hosts the site.")
+  it("says the site has no accounts and no cookies", () => {
+    expect(text).toContain(
+      "ohfootball.io has no accounts and sets no cookies. Your browser remembers whether you chose light or dark mode. That setting never leaves your device.",
+    )
   })
 
-  it("tells what Pick 'Em stores and for how long", () => {
-    expect(html).toContain("HMAC-SHA256")
-    expect(html).toContain("never stores the address itself")
-    expect(html).toContain("first 64 bits")
-    expect(html).toContain("people on one network")
-    expect(html).toContain("until midnight in Ohio after the game day")
-    expect(html).toContain("the season, and the date of the game")
-    expect(html).toContain("deletes the hash and the pick about 10 days after the game")
-    expect(html).toContain("at most once an hour")
-    expect(html).toContain("backups for up to 30 days")
+  it("says what a vote stores and for how long", () => {
+    expect(text).toContain(
+      "When you vote on a game, we store your vote with a scrambled form of your network address. We never store the address itself, and nothing else about you. Everyone on the same network shares one vote. We delete the scrambled address about 10 days after the game and keep only the vote totals.",
+    )
   })
 
-  it("gives the address to write to", () => {
+  it("gives the address for questions", () => {
+    const html = renderToStaticMarkup(<PrivacyContent />)
+    expect(text).toContain("Questions: hey@ohfootball.io")
     expect(html).toContain(`href="${links.contact}"`)
-    expect(html).toContain("hey@ohfootball.io")
   })
 
   it("does not name the API", () => {
-    expect(html.toLowerCase()).not.toContain("graphql")
-    expect(html).not.toContain("api.ohfootball.io")
+    expect(text.toLowerCase()).not.toContain("graphql")
+    expect(text).not.toContain("api.ohfootball.io")
   })
 })
