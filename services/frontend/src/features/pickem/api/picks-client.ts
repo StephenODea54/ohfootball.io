@@ -11,6 +11,11 @@ import type { PickSide } from "@/features/pickem/contract"
 /** The address of the board: the tallies, and the picks of the caller. */
 export const PICKS_BOARD = "/picks/board"
 
+/** The address of the board of `games`. The keys are sorted, so one list has one address. */
+export function boardAddress(games: readonly string[]): string {
+  return `${PICKS_BOARD}?games=${[...games].sort().join(",")}`
+}
+
 /** The address that stores or removes the pick of one game. */
 export function pickAddress(gameKey: string): string {
   return `/picks/${encodeURIComponent(gameKey)}`
@@ -115,8 +120,12 @@ export function createPicksClient(fetcher: Fetcher = (input, init) => fetch(inpu
   }
 
   return {
-    /** The tallies of the recent games, and the picks of the caller. */
-    loadBoard: () => call(PICKS_BOARD, { method: "GET" }, isBoard),
+    /**
+     * The tallies, and the picks of the caller. With `games`, the tallies of those games at any
+     * date. Without it, the tallies of the recent games.
+     */
+    loadBoard: (games?: readonly string[]) =>
+      call(games ? boardAddress(games) : PICKS_BOARD, { method: "GET" }, isBoard),
     /** Stores or changes the pick of one game. */
     putPick: (gameKey: string, side: PickSide) =>
       call(

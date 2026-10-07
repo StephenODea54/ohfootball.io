@@ -171,9 +171,15 @@ describe("PicksBoardProvider with writes that answer out of order", () => {
 })
 
 describe("the pick controls without a board", () => {
-  const pick = { gameKey: GAME, side: "a" as const, lockAt: "2999-01-01T00:00:00Z", winner: null }
+  const pick = {
+    gameKey: GAME,
+    side: "a" as const,
+    lockAt: "2999-01-01T00:00:00Z",
+    winner: null,
+    takesPicks: true,
+  }
 
-  it("shows the skeleton of an open game and nothing for a final game", () => {
+  it("shows a skeleton for an open game and for a final game", () => {
     const skeleton = render(
       <PickControl pick={pick} teamName="Massillon" opponentName="McKinley" />,
     ).container.querySelector("[data-slot=skeleton]")
@@ -184,6 +190,20 @@ describe("the pick controls without a board", () => {
     const { container } = render(
       <FinalPick pick={{ ...pick, winner: "a" }} teamName="Massillon" opponentName="McKinley" />,
     )
-    expect(container.innerHTML).toBe("")
+    expect(container.querySelector("[data-slot=skeleton]")).not.toBeNull()
+  })
+
+  it("draws no final for a game with no result", async () => {
+    let load = () => {}
+    const { container } = render(
+      <PicksBoardProvider client={client()}>
+        <Probe onBoard={(board) => (load = board.load)} />
+        <FinalPick pick={pick} teamName="Massillon" opponentName="McKinley" />
+      </PicksBoardProvider>,
+    )
+    await act(async () => load())
+
+    expect(container.querySelector("[data-slot=skeleton]")).toBeNull()
+    expect(screen.queryByRole("toolbar")).toBeNull()
   })
 })

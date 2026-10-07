@@ -40,16 +40,16 @@ export const getStaticPaths = (async () => {
 const { teamId } = Astro.params
 const { season, pageTeamIds } = Astro.props as InferGetStaticPropsType<typeof getStaticPaths>
 // In the build, getStaticPaths already holds the list of teams, so this asks the API only once.
-// The games file of Pick 'Em reads only teams that the build reads anyway, and the build makes it
-// once, so it adds no request.
+// The games of Pick 'Em read only teams that the build reads anyway, and the build makes them
+// once, so they add no request.
 const [team, teams, pickemGames] = await Promise.all([
   getTeam(teamId, season),
   getTeams(),
   PUBLIC_PICKEM ? getPickemGames() : null,
 ])
-// The games of this team that take picks, or took them in the last days. Only these go to the
-// browser.
-const picks = pickemGames ? teamPicks(pickemGames, team.id) : new Map<string, TeamPick>()
+// The games of this team that can have a tally: each game against an Ohio team that is not
+// canceled. Only these go to the browser, with what their Pick cells need.
+const picks = pickemGames ? teamPicks(pickemGames, team, teams) : new Map<string, TeamPick>()
 
 // The chart, the schedule, and the program history run in the browser, so each is sent only the
 // data it draws. Each opponent gets its current rank and rating, and its number for the logo, from

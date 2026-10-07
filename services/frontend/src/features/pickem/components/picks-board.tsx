@@ -71,14 +71,17 @@ function withGame(state: Picks, gameKey: string, pick: PickSide | null, tally: P
 
 /**
  * Holds the board of the picks Function for one page. Every pick control of the page reads it, so
- * the page asks for the board one time. It asks only when `load` is first called, which a control
- * does when it comes into view.
+ * the page asks for the board one time. It asks only when `load` is first called, which the page
+ * does when the schedule comes into view. `games` are the keys of the games whose tallies the page
+ * shows.
  */
 export function PicksBoardProvider({
   client: givenClient,
+  games,
   children,
 }: {
   client?: PicksClient
+  games?: readonly string[]
   children: ReactNode
 }) {
   const [client] = useState(() => givenClient ?? createPicksClient())
@@ -101,7 +104,7 @@ export function PicksBoardProvider({
     if (started.current) return
     started.current = true
     setStatus("loading")
-    client.loadBoard().then(
+    client.loadBoard(games).then(
       (board) => {
         confirmed.current = { picks: board.picks, tallies: board.tallies }
         setShown(confirmed.current)
@@ -114,7 +117,7 @@ export function PicksBoardProvider({
         setStatus("failed")
       },
     )
-  }, [client])
+  }, [client, games])
 
   const choose = useCallback(
     (gameKey: string, side: PickSide | null) => {

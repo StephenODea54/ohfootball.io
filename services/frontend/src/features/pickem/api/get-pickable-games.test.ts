@@ -52,8 +52,9 @@ it("reads each team that gets a page and writes the games between them", async (
     ["m", 2026],
     ["k", 2026],
   ])
-  expect(file.games.map((game) => [game.gameKey, game.a.name, game.b.name])).toEqual([
-    ["g1", "McKinley", "Massillon"],
+  // McKinley has the lower number as text, so it is side a.
+  expect(file.games.map((game) => [game.gameKey, game.a.teamId, game.b.teamId])).toEqual([
+    ["g1", "k", "m"],
   ])
 })
 

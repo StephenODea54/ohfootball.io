@@ -1,4 +1,4 @@
-import type { PickemGame, PickSide } from "../src/features/pickem/contract"
+import type { PickemFileGame, PickSide } from "../src/features/pickem/contract"
 
 /**
  * The part of a D1 database that the Function uses. The tests give an object of the same shape
@@ -59,24 +59,57 @@ interface PickRow {
   side: PickSide
 }
 
-/** The tallies of each game on or after `cutoff`, and the picks of `ipHash` among them. */
+/** Which games the board reads: those on or after a date, or the games of a list of keys. */
+export type BoardScope = { cutoff: string } | { games: readonly string[] }
+
+/** `count` bound parameters for an IN list, such as `?, ?, ?`. */
+function placeholders(count: number): string {
+  return Array.from({ length: count }, () => "?").join(", ")
+}
+
+/** The statements that read the tallies, and the picks of `ipHash`, of the games in `scope`. */
+function boardStatements(db: Database, ipHash: string | null, scope: BoardScope): Statement[] {
+  if ("cutoff" in scope) {
+    const statements = [db.prepare(TALLIES).bind(scope.cutoff)]
+    if (ipHash) statements.push(db.prepare(PICKS).bind(ipHash, scope.cutoff))
+    return statements
+  }
+  const list = placeholders(scope.games.length)
+  const statements = [
+    db
+      .prepare(`SELECT game_key, a, b FROM tallies WHERE game_key IN (${list})`)
+      .bind(...scope.games),
+  ]
+  if (ipHash) {
+    const sql = `SELECT game_key, side FROM picks WHERE ip_hash = ? AND game_key IN (${list})`
+    statements.push(db.prepare(sql).bind(ipHash, ...scope.games))
+  }
+  return statements
+}
+
+/**
+ * The tallies of the games in `scope`, and the picks of `ipHash` among them. A list of keys reads
+ * the tallies of those games at any date, because the tallies stay when the picks are removed. The
+ * list is bound as parameters, so it must stay below the limit of D1 of 100 for each statement.
+ */
 export async function readBoard(
   db: Database,
   ipHash: string | null,
-  cutoff: string,
+  scope: BoardScope,
 ): Promise<Board> {
   const tallies: Record<string, Tally> = {}
   const picks: Record<string, PickSide> = {}
-  const statements = [db.prepare(TALLIES).bind(cutoff)]
-  if (ipHash) statements.push(db.prepare(PICKS).bind(ipHash, cutoff))
-  const [tallyRows, pickRows] = await db.batch<TallyRow & PickRow>(statements)
+  if ("games" in scope && scope.games.length === 0) return { picks, tallies }
+  const [tallyRows, pickRows] = await db.batch<TallyRow & PickRow>(
+    boardStatements(db, ipHash, scope),
+  )
   for (const row of tallyRows.results) tallies[row.game_key] = { a: row.a, b: row.b }
   for (const row of pickRows?.results ?? []) picks[row.game_key] = row.side
   return { picks, tallies }
 }
 
 /** Counts the picks of a game again and reads the new tally, after `change`. One transaction. */
-async function recount(db: Database, game: PickemGame, change: Statement): Promise<Tally> {
+async function recount(db: Database, game: PickemFileGame, change: Statement): Promise<Tally> {
   const results = await db.batch<Tally>([
     change,
     db.prepare(COUNT_TALLY).bind(game.gameKey, game.season, game.date, game.gameKey),
@@ -92,7 +125,7 @@ async function recount(db: Database, game: PickemGame, change: Statement): Promi
  */
 export async function savePick(
   db: Database,
-  game: PickemGame,
+  game: PickemFileGame,
   ipHash: string,
   side: PickSide,
   now: Date,
@@ -112,7 +145,7 @@ export async function savePick(
 }
 
 /** Removes the pick of `ipHash` for a game, if it has one, and returns the new tally. */
-export function removePick(db: Database, game: PickemGame, ipHash: string): Promise<Tally> {
+export function removePick(db: Database, game: PickemFileGame, ipHash: string): Promise<Tally> {
   return recount(db, game, db.prepare(DELETE_PICK).bind(game.gameKey, ipHash))
 }
 

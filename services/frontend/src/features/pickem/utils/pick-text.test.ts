@@ -8,10 +8,11 @@ import {
 
 describe("closesGame", () => {
   it("closes a game on the codes that say it takes no picks", () => {
-    for (const code of ["GAME_LOCKED", "GAME_FINAL", "GAME_CANCELED", "GAME_UNKNOWN"]) {
+    for (const code of ["GAME_LOCKED", "GAME_FINAL", "GAME_CANCELED"]) {
       expect(closesGame(code)).toBe(true)
     }
     expect(closesGame("PICKS_UNAVAILABLE")).toBe(false)
+    expect(closesGame("GAME_UNKNOWN")).toBe(false)
   })
 })
 
@@ -20,7 +21,9 @@ describe("pickErrorMessage", () => {
     expect(pickErrorMessage("GAME_LOCKED")).toBe("Picks for this game are closed.")
     expect(pickErrorMessage("GAME_FINAL")).toBe("This game is over, so it takes no picks.")
     expect(pickErrorMessage("GAME_CANCELED")).toBe("This game was canceled, so it takes no picks.")
-    expect(pickErrorMessage("GAME_UNKNOWN")).toBe("This game does not take picks.")
+    expect(pickErrorMessage("GAME_UNKNOWN")).toBe(
+      "This game does not take picks yet. Try again in a minute.",
+    )
     expect(pickErrorMessage("CLIENT_ADDRESS_UNKNOWN")).toContain("network address is not known")
     expect(pickErrorMessage("PICKS_UNAVAILABLE")).toBe(
       "Your pick did not save. Picks are not available right now.",

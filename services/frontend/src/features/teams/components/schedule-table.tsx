@@ -42,12 +42,8 @@ export interface ScheduleTeam {
 
 /** What the table shows for the picks of its games. */
 export interface SchedulePicks {
-  /** Whether the table has the Pick column. */
-  hasColumn: boolean
-  /** The Pick cell of a game. It is empty for a game that takes no picks. */
+  /** The Pick cell of a game. Every game has one. */
   cell: (game: ScheduleGame) => ReactNode
-  /** The week of a game, in the first cell of its row. */
-  week: (game: ScheduleGame) => ReactNode
 }
 
 /**
@@ -55,11 +51,11 @@ export interface SchedulePicks {
  * rating of each opponent. The name of an opponent that has a page links to that page. On a narrow
  * screen the rank and rating move under the name of the opponent, so the table stays narrow.
  *
- * With `picks`, the table can have a Pick column. It is the last column, so on a phone it is in
+ * With `picks`, the table has a Pick column. It is the last column, so on a phone it is in
  * view after a scroll to the side, as the other columns at the end are.
  */
 export function ScheduleTable({ team, picks }: { team: ScheduleTeam; picks?: SchedulePicks }) {
-  const hasPicks = picks?.hasColumn === true
+  const hasPicks = picks !== undefined
   return (
     <Card className="gap-0 overflow-hidden py-0 shadow-none [--gutter:--spacing(4)]">
       <CardContent>
@@ -85,9 +81,7 @@ export function ScheduleTable({ team, picks }: { team: ScheduleTeam; picks?: Sch
                 : null
               return (
                 <TableRow id={game.id}>
-                  <TableCell className="font-semibold text-muted-fg">
-                    {picks ? picks.week(game) : game.week}
-                  </TableCell>
+                  <TableCell className="font-semibold text-muted-fg">{game.week}</TableCell>
                   <TableCell className="text-muted-fg">{formatDayAndMonth(game.date)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2.5">

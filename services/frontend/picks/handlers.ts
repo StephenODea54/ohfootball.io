@@ -1,8 +1,9 @@
 import {
   FINAL_DAYS,
   gameStatus,
+  MAX_BOARD_GAMES,
   OHIO_TIME_ZONE,
-  type PickemGame,
+  type PickemFileGame,
   type PickSide,
   type PickStatus,
 } from "../src/features/pickem/contract"
@@ -19,7 +20,7 @@ export interface Deps {
   /** The only origin that may write, such as https://ohfootball.io. */
   origin: string
   now: Date
-  loadGames: () => Promise<Map<string, PickemGame>>
+  loadGames: () => Promise<Map<string, PickemFileGame>>
   /** Keeps the Function alive until `promise` settles, after the answer is sent. */
   waitUntil: (promise: Promise<unknown>) => void
   /**
@@ -138,12 +139,37 @@ function prune(deps: Deps): void {
   )
 }
 
-/** GET /picks/board: the tallies of the games since the cutoff, and the picks of the caller. */
+/**
+ * The game keys of the `games` parameter, with no key twice. Null when the request has no such
+ * parameter. The answer that refuses the parameter when it is not valid. The order of the keys
+ * does not change the answer, so they are not sorted.
+ */
+function boardGames(request: Request): string[] | null | Response {
+  const value = new URL(request.url).searchParams.get("games")
+  if (value === null) return null
+  const keys = [...new Set(value === "" ? [] : value.split(","))]
+  if (keys.length > MAX_BOARD_GAMES || !keys.every((key) => GAME_KEY.test(key))) {
+    return error(
+      400,
+      "INVALID_GAME_KEY",
+      `games must list at most ${MAX_BOARD_GAMES} UUIDs in lower case, split by commas.`,
+    )
+  }
+  return keys
+}
+
+/**
+ * GET /picks/board: the tallies and the picks of the caller. With `games`, it reads those games at
+ * any date. Without it, it reads the games since the cutoff, as the pages of older builds ask.
+ */
 export async function handleBoard(request: Request, deps: Deps): Promise<Response> {
   try {
+    const games = boardGames(request)
+    if (games instanceof Response) return games
     const key = clientKey(request)
     const since = cutoff(deps.now)
-    const board = await readBoard(deps.db, key ? await deps.hasher(key) : null, since)
+    const scope = games ? { games } : { cutoff: since }
+    const board = await readBoard(deps.db, key ? await deps.hasher(key) : null, scope)
     return json({ address: key ? "known" : "unknown", cutoff: since, ...board })
   } catch (cause) {
     logFailure("the board failed", cause)

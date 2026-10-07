@@ -1,7 +1,7 @@
 import {
   OHIO_TIME_ZONE,
-  type PickemGame,
-  type PickemGamesFile,
+  type PickemFile,
+  type PickemFileGame,
 } from "../../src/features/pickem/contract"
 import { lockAt } from "../../src/features/pickem/utils/dates"
 import type { Env } from "../env"
@@ -25,26 +25,20 @@ export const MISSING = "00000000-0000-4000-8000-0000000000ff"
 /** The moment the picks of OPEN close: midnight in Ohio after Friday 9 October. */
 export const OPEN_LOCK = Date.parse("2026-10-10T04:00:00.000Z")
 
-function game(gameKey: string, date: string, extra: Partial<PickemGame> = {}): PickemGame {
-  const team = { teamId: "t", sourceId: "1", name: "T", isHome: true, rank: null }
+/** One game as the build writes it to the games file. */
+function game(gameKey: string, date: string, extra: Partial<PickemFileGame> = {}): PickemFileGame {
   return {
     gameKey,
     season: 2026,
     date,
-    week: 7,
     lockAt: lockAt(date, OHIO_TIME_ZONE),
-    playoff: false,
-    notes: null,
     canceled: false,
-    a: team,
-    b: { ...team, sourceId: "2", isHome: false },
-    prediction: null,
     result: null,
     ...extra,
   }
 }
 
-export function gamesFile(): PickemGamesFile {
+export function gamesFile(): PickemFile {
   return {
     season: 2026,
     generatedAt: "2026-10-05T12:00:00.000Z",
@@ -52,7 +46,7 @@ export function gamesFile(): PickemGamesFile {
     games: [
       game(OPEN, "2026-10-09"),
       game(LOCKED, "2026-10-02"),
-      game(FINAL, "2026-10-02", { result: { winner: "a", aScore: 21, bScore: 7 } }),
+      game(FINAL, "2026-10-02", { result: { winner: "a" } }),
       game(CANCELED, "2026-10-09", { canceled: true }),
       game(OLD, "2026-09-20"),
     ],

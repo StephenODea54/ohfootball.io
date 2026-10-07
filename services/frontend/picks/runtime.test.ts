@@ -165,6 +165,91 @@ describe("the board", () => {
   })
 })
 
+describe("the board of a list of games", () => {
+  function boardOf(games: string, options: RequestOptions = {}) {
+    return runtime.board(context(request(`/picks/board?games=${games}`, options), env))
+  }
+
+  function tally(gameKey: string, date: string, a: number, b: number) {
+    env.PICKS_DB.query(
+      "INSERT INTO tallies (game_key, season, game_date, a, b) VALUES (?, 2026, ?, ?, ?)",
+      gameKey,
+      date,
+      a,
+      b,
+    )
+  }
+
+  it("reads the tallies of exactly those games, at any date", async () => {
+    tally(OLD, "2026-08-21", 3, 4)
+    await put(OPEN, "a")
+    await put(LOCKED, "b", { ip: "198.51.100.1" })
+
+    const body = await (await boardOf(`${OPEN},${OLD}`)).json()
+
+    expect(body).toEqual({
+      address: "known",
+      cutoff: "2026-09-26",
+      picks: { [OPEN]: "a" },
+      tallies: { [OPEN]: { a: 1, b: 0 }, [OLD]: { a: 3, b: 4 } },
+    })
+  })
+
+  it("leaves out a game with no tally", async () => {
+    const body = await (await boardOf(`${MISSING},${FINAL}`)).json()
+
+    expect(body.tallies).toEqual({})
+    expect(body.picks).toEqual({})
+  })
+
+  it("reads the tallies and no picks for a caller with no address", async () => {
+    await put(OPEN, "a")
+
+    const body = await (await boardOf(OPEN, { ip: null })).json()
+
+    expect(body.address).toBe("unknown")
+    expect(body.picks).toEqual({})
+    expect(body.tallies).toEqual({ [OPEN]: { a: 1, b: 0 } })
+  })
+
+  it("answers an empty list with an empty board", async () => {
+    await put(OPEN, "a")
+
+    const body = await (await boardOf("")).json()
+
+    expect(body).toEqual({ address: "known", cutoff: "2026-09-26", picks: {}, tallies: {} })
+  })
+
+  it("counts a key given twice once", async () => {
+    await put(OPEN, "a")
+
+    const body = await (await boardOf(`${OPEN},${OPEN}`)).json()
+
+    expect(body.tallies).toEqual({ [OPEN]: { a: 1, b: 0 } })
+  })
+
+  it("takes 40 keys and refuses 41", async () => {
+    const keys = (count: number) =>
+      Array.from(
+        { length: count },
+        (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      ).join(",")
+
+    expect((await boardOf(keys(40))).status).toBe(200)
+    await expectError(await boardOf(keys(41)), 400, "INVALID_GAME_KEY")
+  })
+
+  it("refuses a key that is not a UUID in lower case", async () => {
+    await expectError(await boardOf(`${OPEN},nope`), 400, "INVALID_GAME_KEY")
+    await expectError(
+      await boardOf("0B5C7C1E-7B8A-4A8E-9A43-2F1D6C3E9B10"),
+      400,
+      "INVALID_GAME_KEY",
+    )
+    await expectError(await boardOf(`${OPEN},`), 400, "INVALID_GAME_KEY")
+  })
+})
+
 describe("a pick", () => {
   it("is stored and counted", async () => {
     const response = await put(OPEN, "a")

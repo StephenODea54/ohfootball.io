@@ -1,13 +1,13 @@
 "use client"
 
-import { type ReactNode, useRef } from "react"
-import { FinalPick, PickControl, showsPick } from "@/features/pickem/components/pick-control"
+import { type ReactNode, useMemo, useRef } from "react"
+import { FinalPick, NoPick, PickControl } from "@/features/pickem/components/pick-control"
 import {
   PicksBoardProvider,
   useLoadBoardWhenVisible,
-  usePicksBoard,
 } from "@/features/pickem/components/picks-board"
-import { PicksIntro } from "@/features/pickem/components/picks-intro"
+import { PicksStatus } from "@/features/pickem/components/picks-status"
+import { tallyKeys } from "@/features/pickem/utils/tally-keys"
 import {
   type ScheduleGame,
   type SchedulePicks,
@@ -15,21 +15,25 @@ import {
   type ScheduleTeam,
 } from "@/features/teams/components/schedule-table"
 
-/** Loads the board of picks when its children come into view. */
+/**
+ * Loads the board of picks when any part of the table comes into view. The whole table is watched,
+ * so a table that a browser shows already scrolled past its first game still loads the board.
+ */
 function LoadBoardWhenVisible({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLSpanElement>(null)
+  const ref = useRef<HTMLDivElement>(null)
   useLoadBoardWhenVisible(ref)
-  return <span ref={ref}>{children}</span>
+  return <div ref={ref}>{children}</div>
 }
 
 /**
- * The Pick cell of a game that takes picks, or took them in the last days. The table moves focus
- * between the buttons of the cell with the left and right arrow keys, and to the next row with the
- * up and down arrow keys.
+ * The Pick cell of a game. The table moves focus between the buttons of the cell with the left and
+ * right arrow keys, and to the next row with the up and down arrow keys. Disabled buttons take no
+ * focus, so the table puts focus on their cell.
  */
 function PickCell({ game, teamName }: { game: ScheduleGame; teamName: string }) {
-  if (!game.pick) return null
-  const props = { pick: game.pick, teamName, opponentName: game.opponentName }
+  const names = { teamName, opponentName: game.opponentName }
+  if (!game.pick) return <NoPick {...names} isCanceled={game.result === "CANCELED"} />
+  const props = { ...names, pick: game.pick }
   return (
     <div className="inline-flex">
       {game.pick.winner === null ? <PickControl {...props} /> : <FinalPick {...props} />}
@@ -37,29 +41,24 @@ function PickCell({ game, teamName }: { game: ScheduleGame; teamName: string }) 
   )
 }
 
-function PickedTable({ team }: { team: ScheduleTeam }) {
-  const board = usePicksBoard()
-  const picks: SchedulePicks = {
-    hasColumn: team.schedule.some((game) => showsPick(game.pick, board)),
-    cell: (game) =>
-      showsPick(game.pick, board) ? <PickCell game={game} teamName={team.name} /> : null,
-    week: (game) =>
-      game.pick ? <LoadBoardWhenVisible>{game.week}</LoadBoardWhenVisible> : game.week,
-  }
-  return <ScheduleTable team={team} picks={picks} />
-}
-
-/** The schedule of a team with a Pick column for the games that take picks. */
+/** The schedule of a team with a Pick column. Every game has thumbs in it. */
 export function ScheduleWithPicks({ team }: { team: ScheduleTeam }) {
   const games = Object.fromEntries(
     team.schedule.flatMap((game) =>
       game.pick ? [[game.pick.gameKey, `${team.name} vs ${game.opponentName}`]] : [],
     ),
   )
+  // The same list on each draw, so the load of the board and its watcher are not made again.
+  const tallies = useMemo(() => tallyKeys(team.schedule), [team.schedule])
+  const picks: SchedulePicks = {
+    cell: (game) => <PickCell game={game} teamName={team.name} />,
+  }
+  const table = <ScheduleTable team={team} picks={picks} />
   return (
-    <PicksBoardProvider>
-      <PicksIntro games={games} />
-      <PickedTable team={team} />
+    <PicksBoardProvider games={tallies}>
+      <PicksStatus games={games} teamName={team.name} />
+      {/* A schedule with no game that can have a tally needs no board. */}
+      {tallies.length > 0 ? <LoadBoardWhenVisible>{table}</LoadBoardWhenVisible> : table}
     </PicksBoardProvider>
   )
 }

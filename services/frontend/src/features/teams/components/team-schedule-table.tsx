@@ -7,8 +7,8 @@ import { ScheduleTable, type ScheduleTeam } from "@/features/teams/components/sc
 export type { ScheduleGame } from "@/features/teams/components/schedule-table"
 
 /**
- * The schedule with its pick controls. It is a separate script, and the browser loads it only for
- * a schedule with a game that takes picks. When Pick 'Em is off, the build leaves it out.
+ * The schedule with its Pick column. It is a separate script, and the browser loads it only when
+ * Pick 'Em is on. When Pick 'Em is off, no page loads it.
  */
 const ScheduleWithPicks = PUBLIC_PICKEM
   ? lazy(() =>
@@ -19,11 +19,11 @@ const ScheduleWithPicks = PUBLIC_PICKEM
   : null
 
 /**
- * The schedule of a team. When Pick 'Em is on, a game that takes picks gets a line under its row
- * with the pick control. The board of picks loads when the first such game comes into view.
+ * The schedule of a team. When Pick 'Em is on, the table has a Pick column with thumbs for every
+ * game. The board of picks loads when the table comes into view.
  */
 export function TeamScheduleTable({ team }: { team: ScheduleTeam }) {
-  if (!PUBLIC_PICKEM || !ScheduleWithPicks || !team.schedule.some((game) => game.pick)) {
+  if (!PUBLIC_PICKEM || !ScheduleWithPicks || team.schedule.length === 0) {
     return <ScheduleTable team={team} />
   }
   return (

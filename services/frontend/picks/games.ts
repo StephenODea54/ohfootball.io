@@ -1,4 +1,4 @@
-import type { PickemGame, PickemGamesFile } from "../src/features/pickem/contract"
+import type { PickemFile, PickemFileGame } from "../src/features/pickem/contract"
 
 /** The static files of the deployment. Pages gives them to the Function as env.ASSETS. */
 export interface Assets {
@@ -18,7 +18,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /** Whether a game has the fields that the Function reads. */
-function isGame(value: unknown): value is PickemGame {
+function isGame(value: unknown): value is PickemFileGame {
   return (
     isObject(value) &&
     typeof value.gameKey === "string" &&
@@ -33,22 +33,25 @@ function isGame(value: unknown): value is PickemGame {
 }
 
 /** The games of the file by game key. A file that is not a games file throws. */
-export function readGames(file: unknown): Map<string, PickemGame> {
-  const games = isObject(file) ? (file as Partial<PickemGamesFile>).games : undefined
+export function readGames(file: unknown): Map<string, PickemFileGame> {
+  const games = isObject(file) ? (file as Partial<PickemFile>).games : undefined
   if (!Array.isArray(games) || !games.every(isGame)) {
     throw new Error("the games file is not valid")
   }
   return new Map(games.map((game) => [game.gameKey, game]))
 }
 
-export type GamesLoader = (assets: Assets, requestUrl: string) => Promise<Map<string, PickemGame>>
+export type GamesLoader = (
+  assets: Assets,
+  requestUrl: string,
+) => Promise<Map<string, PickemFileGame>>
 
 /**
  * Reads the games file from the deployment and keeps it for GAMES_TTL_MS. A read that fails
  * throws, and nothing is kept, so the next request reads the file again.
  */
 export function createGamesLoader(clock: () => number): GamesLoader {
-  let kept: { at: number; games: Map<string, PickemGame> } | null = null
+  let kept: { at: number; games: Map<string, PickemFileGame> } | null = null
   return async (assets, requestUrl) => {
     if (kept && clock() - kept.at < GAMES_TTL_MS) return kept.games
     const response = await assets.fetch(new URL(GAMES_PATH, requestUrl))

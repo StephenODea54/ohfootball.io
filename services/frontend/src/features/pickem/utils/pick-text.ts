@@ -1,8 +1,12 @@
 import type { PickTally } from "@/features/pickem/api/picks-client"
 import type { PickemResult } from "@/features/pickem/contract"
 
-/** The codes after which a game takes no more picks, so its control turns read only. */
-const CLOSING_CODES = new Set(["GAME_LOCKED", "GAME_FINAL", "GAME_CANCELED", "GAME_UNKNOWN"])
+/**
+ * The codes after which a game takes no more picks, so its control turns read only. GAME_UNKNOWN is
+ * not one of them: just after a deploy, the Function can read the old games file for up to a
+ * minute, so the next press tries again.
+ */
+const CLOSING_CODES = new Set(["GAME_LOCKED", "GAME_FINAL", "GAME_CANCELED"])
 
 /** Whether the code of a failed write means that the game takes no more picks. */
 export function closesGame(code: string): boolean {
@@ -19,7 +23,7 @@ export function pickErrorMessage(code: string): string {
     case "GAME_CANCELED":
       return "This game was canceled, so it takes no picks."
     case "GAME_UNKNOWN":
-      return "This game does not take picks."
+      return "This game does not take picks yet. Try again in a minute."
     case "CLIENT_ADDRESS_UNKNOWN":
       return "Your network address is not known, so the pick did not save."
     default:

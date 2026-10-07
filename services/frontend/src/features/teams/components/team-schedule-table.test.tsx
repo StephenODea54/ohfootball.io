@@ -27,7 +27,7 @@ const FUTURE = "2999-01-01T05:00:00.000Z"
 const PAST = "2000-01-01T05:00:00.000Z"
 
 function pick(gameKey: string, overrides: Partial<TeamPick> = {}): TeamPick {
-  return { gameKey, side: "a", lockAt: FUTURE, winner: null, ...overrides }
+  return { gameKey, side: "a", lockAt: FUTURE, winner: null, takesPicks: true, ...overrides }
 }
 
 function game(
@@ -98,7 +98,7 @@ interface Board {
 /** Answers the picks Function. `write` answers each PUT and DELETE. */
 function serve(board: Board | Response, write?: (init: RequestInit, url: string) => Response) {
   const fetch = vi.fn(async (url: string, init: RequestInit = {}) => {
-    if (url === "/picks/board") {
+    if (url.startsWith("/picks/board")) {
       return board instanceof Response
         ? board
         : json({ address: "known", cutoff: "2026-09-26", picks: {}, tallies: {}, ...board })
@@ -110,9 +110,14 @@ function serve(board: Board | Response, write?: (init: RequestInit, url: string)
   return fetch
 }
 
+/** Waits for the script of the picks. Only it draws the header of the Pick column. */
+function picksDrawn() {
+  return screen.findByText(/Thumbs up picks .+ to win/)
+}
+
 /** Waits for the script of the picks, then brings the games into view. */
 async function showBoard() {
-  await screen.findByRole("link", { name: "How picks work" })
+  await picksDrawn()
   await act(async () => FakeObserver.showAll())
 }
 
@@ -143,18 +148,98 @@ describe("TeamScheduleTable picks", () => {
 
     render(<TeamScheduleTable team={team(game(OPEN, "McKinley", pick(OPEN)))} />)
 
-    expect(screen.queryByRole("columnheader", { name: "Pick" })).toBeNull()
-    expect(screen.queryByText("How picks work")).toBeNull()
+    expect(screen.queryByText(/Thumbs up picks/)).toBeNull()
+    expect(screen.queryByRole("status")).toBeNull()
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it("has no Pick column when no game takes picks", () => {
+  it("shows quiet thumbs for games that take no picks, and loads no board", async () => {
+    const fetch = serve({})
+
+    render(
+      <TeamScheduleTable
+        team={team(
+          game(OPEN, "Michigan", null),
+          game(LATER, "Perry", null, "CANCELED"),
+          game(LOCKED, "Jackson", null, "WIN"),
+        )}
+      />,
+    )
+
+    expect(await picksDrawn()).toBeTruthy()
+    expect(
+      screen.getByText("Massillon vs Michigan: picks are not open for this game."),
+    ).toBeTruthy()
+    expect(screen.getByText("Massillon vs Perry: the game was canceled.")).toBeTruthy()
+    // A dash takes the place of each count.
+    expect(screen.getAllByText("–")).toHaveLength(6)
+    // The result column says Canceled.
+    expect(screen.getAllByText("Canceled")).toHaveLength(1)
+    // Screen readers skip the buttons of these rows, and the buttons take no focus.
+    expect(screen.queryByRole("toolbar")).toBeNull()
+    expect(screen.queryByRole("button", { name: /wins$/ })).toBeNull()
+    const buttons = document.querySelectorAll("[aria-hidden=true] button")
+    expect(buttons).toHaveLength(6)
+    for (const button of buttons) expect(button.hasAttribute("disabled")).toBe(true)
+    expect(document.querySelector("[title]")).toBeNull()
+    expect(screen.queryByText(/picks? for/)).toBeNull()
+    expect(document.querySelector("[data-slot=skeleton]")).toBeNull()
+    await act(async () => FakeObserver.showAll())
+    expect(FakeObserver.all.every((observer) => observer.targets.length === 0)).toBe(true)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("asks for the tallies of the games of the schedule, sorted", async () => {
+    const fetch = serve({})
+    render(
+      <TeamScheduleTable
+        team={team(
+          game(LATER, "Perry", pick(LATER)),
+          game(OPEN, "McKinley", pick(OPEN)),
+          game(LOCKED, "Michigan", null),
+        )}
+      />,
+    )
+    await showBoard()
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(`/picks/board?games=${OPEN},${LATER}`, { method: "GET" }),
+    )
+  })
+
+  it("shows the counts of an older game against an Ohio team, read only", async () => {
+    serve({ tallies: { [WON]: { a: 2, b: 5 } } })
+    render(
+      <TeamScheduleTable
+        team={team(
+          game(WON, "McKinley", pick(WON, { lockAt: PAST, winner: "a", takesPicks: false }), "WIN"),
+          game(LOST, "Perry", pick(LOST, { lockAt: FUTURE, takesPicks: false })),
+        )}
+      />,
+    )
+    await showBoard()
+
+    expect(await screen.findByText("2 picks for Massillon, 5 picks for McKinley.")).toBeTruthy()
+    expect(screen.getByText("0 picks for Massillon, 0 picks for Perry.")).toBeTruthy()
+    // A game that the build takes no picks for is read only, even before its lock.
+    const perry = screen.getByRole("toolbar", { name: "Pick the winner of Massillon vs Perry" })
+    for (const button of perry.querySelectorAll("button")) {
+      expect(button.hasAttribute("disabled")).toBe(true)
+    }
+  })
+
+  it("watches the whole table, so a table scrolled past its first game still loads", async () => {
     serve({})
+    render(
+      <TeamScheduleTable
+        team={team(game(LOCKED, "Michigan", null), game(OPEN, "McKinley", pick(OPEN)))}
+      />,
+    )
+    await picksDrawn()
 
-    render(<TeamScheduleTable team={team(game(OPEN, "McKinley", null))} />)
-
-    expect(screen.queryByRole("columnheader", { name: "Pick" })).toBeNull()
-    expect(screen.queryByText("How picks work")).toBeNull()
+    const watched = FakeObserver.all.flatMap((observer) => observer.targets)
+    expect(watched).toHaveLength(1)
+    expect(watched[0].querySelector("table")).not.toBeNull()
   })
 
   it("loads the board once, when a game first comes into view, for every game", async () => {
@@ -166,11 +251,18 @@ describe("TeamScheduleTable picks", () => {
       />,
     )
 
-    const link = await screen.findByRole("link", { name: "How picks work" })
-    expect(link.getAttribute("href")).toBe("/privacy")
-    expect(screen.getByText(/Thumbs up picks this team to win/)).toBeTruthy()
+    await picksDrawn()
+    // Nothing shows above the table, and the status region is empty.
+    expect(screen.queryByRole("link")).toBeNull()
+    expect(screen.getByRole("status").textContent).toBe("")
     const headers = screen.getAllByRole("columnheader").map((header) => header.textContent)
     expect(headers.at(-1)).toBe("Pick")
+    // Screen readers read how to pick once, above the table.
+    expect(
+      screen.getAllByText(
+        "Thumbs up picks Massillon to win. Picks close at midnight in Ohio after game day.",
+      ),
+    ).toHaveLength(1)
     expect(headers.at(-2)).toBe("Result")
     const skeletons = document.querySelectorAll("[data-slot=skeleton]")
     expect(skeletons).toHaveLength(2)
@@ -223,6 +315,9 @@ describe("TeamScheduleTable picks", () => {
     expect(isPressed("Massillon wins")).toBe(true)
     expect(isPressed("McKinley wins")).toBe(false)
     expect(screen.getByText("3 picks for Massillon, 1 pick for McKinley.")).toBeTruthy()
+    // An open thumb keeps the pointer cursor.
+    expect(thumb("Massillon wins").closest(".cursor-not-allowed")).toBeNull()
+    expect(thumb("Massillon wins").className).toContain("cursor-pointer")
     expect(await screen.findByText("5 picks for Massillon, 1 pick for McKinley.")).toBeTruthy()
     expect(fetch).toHaveBeenCalledWith(`/picks/${OPEN}`, {
       method: "PUT",
@@ -350,6 +445,10 @@ describe("TeamScheduleTable picks", () => {
     expect(
       await screen.findByText("Massillon vs McKinley: Picks for this game are closed."),
     ).toBeTruthy()
+    // The message is a note in the status region above the table.
+    expect(screen.getByRole("status").querySelector("[data-slot=note]")?.textContent).toBe(
+      "Massillon vs McKinley: Picks for this game are closed.",
+    )
     expect(isPressed("Massillon wins")).toBe(true)
     expect(screen.getByText("1 pick for Massillon, 0 picks for McKinley.")).toBeTruthy()
     expect(thumb("McKinley wins").hasAttribute("disabled")).toBe(true)
@@ -387,11 +486,13 @@ describe("TeamScheduleTable picks", () => {
     expect(isPressed("McKinley wins")).toBe(true)
     expect(thumb("McKinley wins").hasAttribute("disabled")).toBe(true)
     expect(thumb("Massillon wins").hasAttribute("disabled")).toBe(true)
+    // A thumb that cannot be pressed shows the not-allowed cursor.
+    expect(thumb("Massillon wins").closest(".cursor-not-allowed")).not.toBeNull()
     expect(screen.getByText("2 picks for Massillon, 1 pick for McKinley.")).toBeTruthy()
     expect(screen.getByText("Picks closed.")).toBeTruthy()
   })
 
-  it("marks how the pick of a final game did, and shows nothing for a game with no pick", async () => {
+  it("marks how the pick of a final game did, and shows the counts of a final with no pick", async () => {
     const final = (gameKey: string, winner: PickemResult["winner"]) =>
       pick(gameKey, { side: "b", lockAt: PAST, winner })
     serve({
@@ -417,8 +518,9 @@ describe("TeamScheduleTable picks", () => {
     expect(screen.getByText("3 picks for Massillon, 1 pick for McKinley.")).toBeTruthy()
     expect(screen.getByText("You picked Massillon: missed")).toBeTruthy()
     expect(screen.getByText("You picked Jackson. The game ended in a tie.")).toBeTruthy()
-    expect(screen.queryByRole("toolbar", { name: /Hoover/ })).toBeNull()
-    expect(screen.getAllByRole("toolbar")).toHaveLength(3)
+    expect(screen.getByRole("toolbar", { name: "Picks for Massillon vs Hoover" })).toBeTruthy()
+    expect(screen.getByText("0 picks for Massillon, 0 picks for Hoover.")).toBeTruthy()
+    expect(screen.getAllByRole("toolbar")).toHaveLength(4)
     for (const toolbar of screen.getAllByRole("toolbar")) {
       for (const button of toolbar.querySelectorAll("button")) {
         expect(button.hasAttribute("disabled")).toBe(true)
@@ -426,30 +528,68 @@ describe("TeamScheduleTable picks", () => {
     }
   })
 
-  it("adds the Pick column for finals only once the board shows a pick", async () => {
+  it("shows a skeleton for a final until the board loads", async () => {
     serve({ picks: { [WON]: "a" }, tallies: { [WON]: { a: 1, b: 0 } } })
     render(
       <TeamScheduleTable
         team={team(game(WON, "McKinley", pick(WON, { lockAt: PAST, winner: "none" }), "LOSS"))}
       />,
     )
+    await picksDrawn()
+    expect(document.querySelectorAll("[data-slot=skeleton]")).toHaveLength(1)
+
     await showBoard()
 
     expect(await screen.findByText("You picked Massillon. The game had no winner.")).toBeTruthy()
-    expect(screen.getByRole("columnheader", { name: "Pick" })).toBeTruthy()
+    expect(document.querySelector("[data-slot=skeleton]")).toBeNull()
   })
 
-  it("has no Pick column for finals that the visitor did not pick", async () => {
+  it("moves focus past a row whose thumbs take no picks", async () => {
     serve({})
     render(
       <TeamScheduleTable
-        team={team(game(WON, "McKinley", pick(WON, { lockAt: PAST, winner: "a" }), "WIN"))}
+        team={team(
+          game(OPEN, "McKinley", pick(OPEN)),
+          game(LOCKED, "Michigan", null),
+          game(LATER, "Perry", pick(LATER)),
+        )}
       />,
     )
     await showBoard()
-    await waitFor(() => expect(screen.queryByText("Loading picks")).toBeNull())
+    await screen.findByRole("toolbar", { name: /Perry/ })
 
-    expect(screen.queryByRole("columnheader", { name: "Pick" })).toBeNull()
+    const [first, last] = screen.getAllByRole("button", { name: "Massillon wins" })
+    fireEvent.pointerDown(first, { pointerType: "mouse" })
+    act(() => first.focus())
+    fireEvent.keyDown(first, { key: "ArrowDown" })
+
+    // The disabled buttons take no focus, so the cell of that row takes it.
+    await waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("gridcell"))
+    expect(document.activeElement?.closest("tr")?.textContent).toContain("Michigan")
+
+    fireEvent.keyDown(document.activeElement as Element, { key: "ArrowDown" })
+    await waitFor(() => expect(document.activeElement).toBe(last))
+  })
+
+  it("lets the next press try again after GAME_UNKNOWN", async () => {
+    let answer = json({ error: { code: "GAME_UNKNOWN", message: "no" } }, 404)
+    const fetch = serve({}, () => answer)
+    render(<TeamScheduleTable team={team(game(OPEN, "McKinley", pick(OPEN)))} />)
+    await showBoard()
+
+    fireEvent.click(await screen.findByRole("button", { name: "Massillon wins" }))
+    expect(
+      await screen.findByText(
+        "Massillon vs McKinley: This game does not take picks yet. Try again in a minute.",
+      ),
+    ).toBeTruthy()
+    expect(thumb("Massillon wins").hasAttribute("disabled")).toBe(false)
+
+    answer = json({ gameKey: OPEN, myPick: "a", tally: { a: 1, b: 0 } })
+    fireEvent.click(thumb("Massillon wins"))
+
+    expect(await screen.findByText("1 pick for Massillon, 0 picks for McKinley.")).toBeTruthy()
+    expect(fetch).toHaveBeenCalledTimes(3)
   })
 
   it("makes every control read only when the board does not load", async () => {
@@ -461,6 +601,10 @@ describe("TeamScheduleTable picks", () => {
       await screen.findByText("Picks are not available right now. The schedule still shows."),
     ).toBeTruthy()
     expect(thumb("Massillon wins").hasAttribute("disabled")).toBe(true)
+    // The counts are not known, so a word shows in their place.
+    expect(screen.queryByText(/picks? for/)).toBeNull()
+    expect(screen.getByText("No counts")).toBeTruthy()
+    expect(screen.getByText("Counts not available.")).toBeTruthy()
   })
 
   it("makes every control read only when the address of the visitor is not known", async () => {
@@ -484,19 +628,42 @@ describe("TeamScheduleTable picks", () => {
 })
 
 describe("TeamScheduleTable drawn by the build", () => {
-  it("draws the Pick column with skeletons and no buttons", async () => {
-    // Astro draws an island with a stream and waits until all of it is ready, as here.
+  /** The HTML as Astro draws an island: with a stream, after all of it is ready. */
+  async function drawn(schedule: ScheduleGame[]) {
     const { renderToReadableStream } = await import("react-dom/server")
-    const stream = await renderToReadableStream(
-      <TeamScheduleTable team={team(game(OPEN, "McKinley", pick(OPEN)))} />,
-    )
+    const stream = await renderToReadableStream(<TeamScheduleTable team={team(...schedule)} />)
     await stream.allReady
-    const html = await new Response(stream).text()
+    return new Response(stream).text()
+  }
 
-    expect(html).toContain("How picks work")
+  it("draws a skeleton for each game that takes picks, and quiet thumbs for the others", async () => {
+    const html = await drawn([game(OPEN, "McKinley", pick(OPEN)), game(LATER, "Michigan", null)])
+
+    expect(html).not.toContain("How picks work")
+    expect(html).toContain("Thumbs up picks Massillon to win.")
     expect(html).toContain(">Pick<")
-    expect(html).toContain('data-slot="skeleton"')
-    expect(html).not.toContain('role="toolbar"')
-    expect(html).not.toContain("aria-pressed")
+    expect(html.match(/data-slot="skeleton"/g)).toHaveLength(1)
+    expect(html).toContain("Massillon vs Michigan: picks are not open for this game.")
+    expect(html).toContain(">–<")
+    expect(html).not.toContain('aria-pressed="true"')
+  })
+
+  it("hydrates the drawn HTML with no change", async () => {
+    const schedule = [game(OPEN, "McKinley", pick(OPEN)), game(LATER, "Michigan", null)]
+    const html = await drawn(schedule)
+    const container = document.body.appendChild(document.createElement("div"))
+    container.innerHTML = html
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    render(<TeamScheduleTable team={team(...schedule)} />, { container, hydrate: true })
+    await screen.findByText("Massillon vs Michigan: picks are not open for this game.")
+
+    // The test draws on the server and in the browser in one process, and React warns about that.
+    // Only a message about hydration counts here.
+    const hydration = errors.mock.calls.filter((call) =>
+      /hydrat|did not match/i.test(String(call[0])),
+    )
+    expect(hydration).toEqual([])
+    errors.mockRestore()
   })
 })

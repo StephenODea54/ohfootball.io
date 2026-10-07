@@ -47,6 +47,15 @@ describe("createPicksClient", () => {
     expect(fetcher).toHaveBeenCalledWith("/picks/board", { method: "GET" })
   })
 
+  it("asks for the board of a list of games, sorted", async () => {
+    const fetcher = vi.fn(async () => json(board))
+    const other = "00000000-0000-4000-8000-000000000001"
+
+    await createPicksClient(fetcher).loadBoard([GAME, other])
+
+    expect(fetcher).toHaveBeenCalledWith(`/picks/board?games=${other},${GAME}`, { method: "GET" })
+  })
+
   it("sends a pick as JSON and reads the answer", async () => {
     const answer = { gameKey: GAME, myPick: "b", tally: { a: 3, b: 2 } }
     const fetcher = vi.fn(async () => json(answer))

@@ -69,59 +69,71 @@ A small limit can hide a rivalry link.
 Two schools that merged have different `sourceId` values, and the page does not join them. A school
 that did not play the current season has no page and no history file, so it cannot be compared.
 
-## The games file of Pick 'Em
+## The games of Pick 'Em
 
-The build writes `/pickem/games.json`. It holds each game between two Ohio teams from ten days
-before the build to the end of the week after it. Weeks run from Wednesday to Tuesday, by the same
-rule as the API. Each game has a side `a` and a side `b`, and a pick names a side. The file gives
-each game the moment its picks close, which is midnight in Ohio at the end of the game day.
+The build makes the games of Pick 'Em once. They are each game between two Ohio teams from ten
+days before the build on. So every game left in the season takes picks. The window of the games
+ends at the last game date that the build read. Each game has a side `a` and a side `b`, and a pick
+names a side. Picks of a game close at midnight in Ohio at the end of the game day.
 
-The file comes from the schedule of each team that has a page. The team pages read the same teams,
-and the build keeps each answer, so the file costs no extra request. The build reads the teams
-eight at a time. A game is in the file only when both of its teams have a page, so
-`PRERENDER_TEAM_LIMIT` makes the file short too. With a small limit, no week may hold the 50 games
-that start the season, so the week numbers of such a build can differ from the API. The
-development server keeps no answer, so it reads every team for each request of the file. The file
-is not a page, so the sitemap leaves it out.
+The games come from the schedule of each team that has a page. The team pages read the same teams,
+and the build keeps each answer, so the games cost no extra request. The build reads the teams
+eight at a time. A game is in the games only when both of its teams have a page, so
+`PRERENDER_TEAM_LIMIT` makes them fewer too. The development server keeps no answer, so it reads
+every team each time it needs the games.
+
+The team pages read the games in the memory of the build. The build also writes
+`/pickem/games.json` for the picks Function, and nothing else reads it. So it holds only what the
+Function reads for each game: `gameKey`, `season`, `date`, `lockAt`, `canceled`, and `result` with
+only its `winner`. The file is not a page, so the sitemap leaves it out.
 
 ## Pick 'Em on the team pages
 
 Pick 'Em is off until `PUBLIC_PICKEM` is `true` for the build. When it is on, each team page reads
-the games file once more from the cache of the build, so it adds no request to the API. The
-schedule of the team then gets a Pick column at its end. On a phone the table scrolls to the side
-to show it, as it does for the other columns at the end. The column is there only when a game of
-the schedule shows a pick. A canceled game shows none.
+the games once more from the cache of the build, so it adds no request to the API. The schedule of
+the team then gets a Pick column at its end, with two toggle buttons in every row. On a phone the
+table scrolls to the side to show it, as it does for the other columns at the end.
 
-A game with no result shows two toggle buttons in its Pick cell. Thumbs up picks the team of the
-page, and thumbs down picks the opponent. The count of picks for each side is under its button. A
-press on the picked button removes the pick. The buttons turn read only at the lock of the game,
-and they still show the pick of the visitor and the counts then. A game with a result shows its
-cell only when the visitor picked it. The cell then shows the pick, the final counts, and a mark
-for a correct pick, a missed pick, or a game with no winner.
+Thumbs up picks the team of the page, and thumbs down picks the opponent. Each game against an
+Ohio team that is not canceled shows the count of picks for each side under its button, with 0 for
+a game that has no count yet. The team page finds the Ohio teams in the list of teams of the
+build. A press on the picked button removes the pick. The buttons are read only after the lock of
+the game, and for a game that is not in the games of the build, such as an older one. They still
+show the pick of the visitor and the counts then. When the visitor picked a game with a result, the
+cell also shows a mark for a correct pick, a missed pick, or a game with no winner. A game against
+a team from another state, or a canceled game, never takes picks. It shows greyed, disabled
+buttons with a dash under each. Screen readers skip those buttons and read one sentence with the
+reason.
 
 The schedule is a table that moves focus with the arrow keys. The left and right arrow keys move
 between the two buttons of a cell, the up and down arrow keys move to the next row, and the space
-key presses a button.
+key presses a button. Disabled buttons take no focus, so the table puts focus on their cell.
 
-The page asks for `GET /picks/board` one time, when the first game of the schedule that takes
-picks comes into view. Every cell of the page reads that one answer. A pick shows at once, and the
-tally that the Function sends back replaces the guess of the page. When a write fails, the cell
-goes back to the last pick that the Function confirmed. When the board does not load, or the
-Function cannot read the address of the visitor, every button is read only. Over the free quota,
-Cloudflare answers `/picks/*` with the 404 page of the site, so the page counts any answer that is
-not JSON as "picks unavailable".
+The page asks for `GET /picks/board?games=` one time, when any part of a schedule with a game that
+can have a count comes into view. It lists the keys of those games, sorted, so one schedule has one
+address, and at most 40 of them. A schedule with no such game never asks. Every cell of the page
+reads that one answer. A pick shows at once, and the tally that the Function sends back replaces
+the guess of the page. When a write fails, the cell goes back to the last pick that the Function
+confirmed.
+After `GAME_UNKNOWN`, the next press tries again, because just after a deploy the Function can read
+the old games file for up to a minute. When the board does not load, every button is read only and
+"No counts" shows in place of the counts. When the Function cannot read the address of the
+visitor, every button is read only. Over the free quota, Cloudflare answers `/picks/*` with the 404
+page of the site, so the page counts any answer that is not JSON as "picks unavailable".
 
-The line above the schedule tells how to pick and links to `/privacy`, which says what the site
-stores for a pick. It also holds the one live region of the picks: it says when the picks load,
-why the visitor cannot pick, and which pick did not save. The privacy page is built whether Pick
-'Em is on or off.
+Nothing shows above the schedule in the normal case. Above the table, one sentence for screen
+readers tells that thumbs up picks the team of the page to win and when picks close. Each button is
+named for the team that it picks, such as "Massillon wins". One live region above the table says
+"Loading picks" to screen readers while the board loads. It shows a note only when the visitor
+cannot pick or a pick did not save. The footer links to `/privacy`, which says what the site stores
+for a pick. The privacy page is built whether Pick 'Em is on or off.
 
 `src/features/pickem/api/picks-client.ts` calls the Function, and the controls are in
-`src/features/pickem/components`. The controls are a separate script, which the browser loads only
-for a schedule with a game that takes picks. With `PUBLIC_PICKEM` off, the build still writes that
+`src/features/pickem/components`. The controls are a separate script, which the browser loads on
+each team page when `PUBLIC_PICKEM` is on. With `PUBLIC_PICKEM` off, the build still writes that
 script to `assets/`, but no page or script names it, so no browser loads it. The development
-server makes the games file again for each team page, so with `PUBLIC_PICKEM` on it reads every
-team for each page.
+server makes the games again for each team page, so with `PUBLIC_PICKEM` on it reads every team
+for each page.
 
 ## The picks Function
 
@@ -135,6 +147,7 @@ and the code and its tests are in `picks/`.
 | Request | Answer |
 | --- | --- |
 | `GET /picks/board` or `HEAD /picks/board` | `{ "address", "cutoff", "picks", "tallies" }`. A HEAD gets the status and the headers with no body. `cutoff` is ten days before today in Ohio, as `YYYY-MM-DD`. `tallies` holds `{ "a", "b" }` for each game on or after the cutoff that has a tally. `picks` holds the side the caller picked for each such game. `address` is `unknown` when the Function cannot read the address of the caller, and then `picks` is empty. |
+| `GET /picks/board?games=<key>,<key>` | The same answer for the listed games only, at any date. The list holds at most 40 game keys in lower case, split by commas. A key given twice counts once. A game with no tally is left out of `tallies`. `picks` holds the picks of the caller among the listed games, which exist only for the last ten days. An empty list gives an empty board. The pages of older builds ask with no list, so the board without it stays. |
 | `PUT /picks/:gameKey` with `{"side":"a"}` or `{"side":"b"}` | `{ "gameKey", "myPick", "tally" }`. It stores the pick, or changes it. When the address already picked that side, it writes nothing. |
 | `DELETE /picks/:gameKey` | `{ "gameKey", "myPick": null, "tally" }`. It removes the pick, if there is one. |
 | another method | 405 with an `Allow` header |
@@ -145,7 +158,7 @@ check that fails gives the answer:
 | Status | Code | When |
 | --- | --- | --- |
 | 403 | `ORIGIN_REFUSED` | The `Origin` header or the origin of the request address is not the origin of `PICKS_ORIGIN`. The header must match exactly, so a slash at its end is refused. A page on `ohfootball.pages.dev` cannot write. |
-| 400 | `INVALID_GAME_KEY` | The game key is not a UUID in lower case. |
+| 400 | `INVALID_GAME_KEY` | The game key is not a UUID in lower case. The board answers this too when `games` lists more than 40 keys, or a key that is not a UUID in lower case. |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | A PUT is not `application/json`. |
 | 413 | `BODY_TOO_LARGE` | The body of a PUT is over 1024 bytes. The Function counts the bytes as it reads them, so a body without `Content-Length` is stopped too. |
 | 400 | `INVALID_BODY` | The body of a PUT does not name side `a` or side `b`. |
@@ -169,7 +182,8 @@ minute. It checks each write against the lock rule in `src/features/pickem/contr
 rule that the page uses. Each write counts the picks of its game again in the same transaction, so
 a tally is always the count of the stored picks. After a write, the Function removes the picks of
 each game before the cutoff. It does this at most once an hour after a removal that worked. A
-removal that fails is tried again on the next write. The tallies stay.
+removal that fails is tried again on the next write. The tallies stay with no end date. A tally
+holds the two counts of a game and no address or hash.
 
 When the Function answers 503, it writes the cause to its log with `console.error`. The log never
 holds the address, its hash, the secret, or the body of the request.
