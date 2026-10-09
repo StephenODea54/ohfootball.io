@@ -72,4 +72,5 @@ export const links = {
   joeEitel: "https://joeeitel.com/hsfoot/",
   ohhsfbdb: "https://ohhsfbdb.net/",
   fantastic50: "https://www.fantastic50.net/",
+  harbinCalculator: "https://www.harbincalculator.com/",
 } as const

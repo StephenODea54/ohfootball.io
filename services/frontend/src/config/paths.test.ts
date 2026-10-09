@@ -31,5 +31,6 @@ it("links to the project and the score sources outside the site", () => {
     "https://joeeitel.com/hsfoot/",
     "https://ohhsfbdb.net/",
     "https://www.fantastic50.net/",
+    "https://www.harbincalculator.com/",
   ])
 })

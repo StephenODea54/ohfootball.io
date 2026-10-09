@@ -23,4 +23,10 @@ export const awesomeSites = [
     description: "Drew Pasteur's ratings, weekly predictions, and playoff odds for Ohio teams.",
     isScoreSource: false,
   },
+  {
+    name: "Harbin Calculator",
+    href: links.harbinCalculator,
+    description: "Live what-if analysis for Harbin points.",
+    isScoreSource: false,
+  },
 ] as const

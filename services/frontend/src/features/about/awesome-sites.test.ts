@@ -7,6 +7,7 @@ describe("the awesome sites", () => {
       "joeeitel.com",
       "ohhsfbdb.net",
       "Fantastic 50",
+      "Harbin Calculator",
     ])
   })
 
