@@ -45,7 +45,10 @@ jobs:
       - run: make lint-python
       - run: make lint-sql
       - run: make -C services/rating vet
-      - run: make -C services/rating test
+      # The rating tests import numpy. pip installs it here, and the test target then runs on the
+      # Python of the runner instead of through uv.
+      - run: pip install "numpy>=2.1,<3"
+      - run: make -C services/rating test PYTHON=python
       - run: make -C services/dataset vet
       - run: make -C services/dataset test
       - run: make -C services/recruiting vet

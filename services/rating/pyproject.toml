@@ -9,6 +9,7 @@ description = "Margin ratings and game predictions for ohfootball.io"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "numpy>=2.1,<3",
     "psycopg[binary]>=3.2,<4",
 ]
 
