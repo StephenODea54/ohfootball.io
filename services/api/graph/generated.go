@@ -116,6 +116,68 @@ type ComplexityRoot struct {
 		Score func(childComplexity int) int
 	}
 
+	PlayoffGame struct {
+		Date           func(childComplexity int) int
+		HomeIfLoss     func(childComplexity int) int
+		HomeIfWin      func(childComplexity int) int
+		ID             func(childComplexity int) int
+		Location       func(childComplexity int) int
+		OpponentID     func(childComplexity int) int
+		OpponentName   func(childComplexity int) int
+		QualifyIfLoss  func(childComplexity int) int
+		QualifyIfWin   func(childComplexity int) int
+		WinProbability func(childComplexity int) int
+	}
+
+	PlayoffOutlook struct {
+		Average              func(childComplexity int) int
+		ByeProbability       func(childComplexity int) int
+		Divisor              func(childComplexity int) int
+		ExpectedSeed         func(childComplexity int) int
+		HomeProbability      func(childComplexity int) int
+		LevelOne             func(childComplexity int) int
+		LevelTwo             func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		PrimaryColor         func(childComplexity int) int
+		QualifyProbability   func(childComplexity int) int
+		Rating               func(childComplexity int) int
+		Record               func(childComplexity int) int
+		Records              func(childComplexity int) int
+		RegionWinProbability func(childComplexity int) int
+		RemainingGames       func(childComplexity int) int
+		SecondaryColor       func(childComplexity int) int
+		SourceID             func(childComplexity int) int
+		TeamID               func(childComplexity int) int
+	}
+
+	PlayoffProjection struct {
+		AsOf       func(childComplexity int) int
+		Byes       func(childComplexity int) int
+		HomeGames  func(childComplexity int) int
+		Qualifiers func(childComplexity int) int
+		Regions    func(childComplexity int) int
+		Runs       func(childComplexity int) int
+		Season     func(childComplexity int) int
+	}
+
+	PlayoffRecordOdds struct {
+		ByeProbability     func(childComplexity int) int
+		HighAverage        func(childComplexity int) int
+		HomeProbability    func(childComplexity int) int
+		LowAverage         func(childComplexity int) int
+		MedianAverage      func(childComplexity int) int
+		Probability        func(childComplexity int) int
+		QualifyProbability func(childComplexity int) int
+		Record             func(childComplexity int) int
+		Runs               func(childComplexity int) int
+	}
+
+	PlayoffRegion struct {
+		Division func(childComplexity int) int
+		Region   func(childComplexity int) int
+		Teams    func(childComplexity int) int
+	}
+
 	Program struct {
 		Games         func(childComplexity int) int
 		RatingHistory func(childComplexity int) int
@@ -142,12 +204,13 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		CurrentSeason func(childComplexity int) int
-		ModelAccuracy func(childComplexity int, fromSeason *int, toSeason *int) int
-		Program       func(childComplexity int, sourceID string) int
-		Seasons       func(childComplexity int) int
-		Team          func(childComplexity int, id string, season *int) int
-		Teams         func(childComplexity int, season *int, search *string, region *int, division *int, sort *model.TeamSort, limit *int) int
+		CurrentSeason     func(childComplexity int) int
+		ModelAccuracy     func(childComplexity int, fromSeason *int, toSeason *int) int
+		PlayoffProjection func(childComplexity int, season *int) int
+		Program           func(childComplexity int, sourceID string) int
+		Seasons           func(childComplexity int) int
+		Team              func(childComplexity int, id string, season *int) int
+		Teams             func(childComplexity int, season *int, search *string, region *int, division *int, sort *model.TeamSort, limit *int) int
 	}
 
 	Record struct {
@@ -236,6 +299,7 @@ type QueryResolver interface {
 	Team(ctx context.Context, id string, season *int) (*model.Team, error)
 	ModelAccuracy(ctx context.Context, fromSeason *int, toSeason *int) (*model.ModelAccuracy, error)
 	Program(ctx context.Context, sourceID string) (*model.Program, error)
+	PlayoffProjection(ctx context.Context, season *int) (*model.PlayoffProjection, error)
 }
 
 type executableSchema struct {
@@ -600,6 +664,335 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PhaseAccuracy.Score(childComplexity), true
 
+	case "PlayoffGame.date":
+		if e.complexity.PlayoffGame.Date == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.Date(childComplexity), true
+
+	case "PlayoffGame.homeIfLoss":
+		if e.complexity.PlayoffGame.HomeIfLoss == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.HomeIfLoss(childComplexity), true
+
+	case "PlayoffGame.homeIfWin":
+		if e.complexity.PlayoffGame.HomeIfWin == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.HomeIfWin(childComplexity), true
+
+	case "PlayoffGame.id":
+		if e.complexity.PlayoffGame.ID == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.ID(childComplexity), true
+
+	case "PlayoffGame.location":
+		if e.complexity.PlayoffGame.Location == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.Location(childComplexity), true
+
+	case "PlayoffGame.opponentId":
+		if e.complexity.PlayoffGame.OpponentID == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.OpponentID(childComplexity), true
+
+	case "PlayoffGame.opponentName":
+		if e.complexity.PlayoffGame.OpponentName == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.OpponentName(childComplexity), true
+
+	case "PlayoffGame.qualifyIfLoss":
+		if e.complexity.PlayoffGame.QualifyIfLoss == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.QualifyIfLoss(childComplexity), true
+
+	case "PlayoffGame.qualifyIfWin":
+		if e.complexity.PlayoffGame.QualifyIfWin == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.QualifyIfWin(childComplexity), true
+
+	case "PlayoffGame.winProbability":
+		if e.complexity.PlayoffGame.WinProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffGame.WinProbability(childComplexity), true
+
+	case "PlayoffOutlook.average":
+		if e.complexity.PlayoffOutlook.Average == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.Average(childComplexity), true
+
+	case "PlayoffOutlook.byeProbability":
+		if e.complexity.PlayoffOutlook.ByeProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.ByeProbability(childComplexity), true
+
+	case "PlayoffOutlook.divisor":
+		if e.complexity.PlayoffOutlook.Divisor == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.Divisor(childComplexity), true
+
+	case "PlayoffOutlook.expectedSeed":
+		if e.complexity.PlayoffOutlook.ExpectedSeed == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.ExpectedSeed(childComplexity), true
+
+	case "PlayoffOutlook.homeProbability":
+		if e.complexity.PlayoffOutlook.HomeProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.HomeProbability(childComplexity), true
+
+	case "PlayoffOutlook.levelOne":
+		if e.complexity.PlayoffOutlook.LevelOne == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.LevelOne(childComplexity), true
+
+	case "PlayoffOutlook.levelTwo":
+		if e.complexity.PlayoffOutlook.LevelTwo == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.LevelTwo(childComplexity), true
+
+	case "PlayoffOutlook.name":
+		if e.complexity.PlayoffOutlook.Name == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.Name(childComplexity), true
+
+	case "PlayoffOutlook.primaryColor":
+		if e.complexity.PlayoffOutlook.PrimaryColor == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.PrimaryColor(childComplexity), true
+
+	case "PlayoffOutlook.qualifyProbability":
+		if e.complexity.PlayoffOutlook.QualifyProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.QualifyProbability(childComplexity), true
+
+	case "PlayoffOutlook.rating":
+		if e.complexity.PlayoffOutlook.Rating == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.Rating(childComplexity), true
+
+	case "PlayoffOutlook.record":
+		if e.complexity.PlayoffOutlook.Record == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.Record(childComplexity), true
+
+	case "PlayoffOutlook.records":
+		if e.complexity.PlayoffOutlook.Records == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.Records(childComplexity), true
+
+	case "PlayoffOutlook.regionWinProbability":
+		if e.complexity.PlayoffOutlook.RegionWinProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.RegionWinProbability(childComplexity), true
+
+	case "PlayoffOutlook.remainingGames":
+		if e.complexity.PlayoffOutlook.RemainingGames == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.RemainingGames(childComplexity), true
+
+	case "PlayoffOutlook.secondaryColor":
+		if e.complexity.PlayoffOutlook.SecondaryColor == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.SecondaryColor(childComplexity), true
+
+	case "PlayoffOutlook.sourceId":
+		if e.complexity.PlayoffOutlook.SourceID == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.SourceID(childComplexity), true
+
+	case "PlayoffOutlook.teamId":
+		if e.complexity.PlayoffOutlook.TeamID == nil {
+			break
+		}
+
+		return e.complexity.PlayoffOutlook.TeamID(childComplexity), true
+
+	case "PlayoffProjection.asOf":
+		if e.complexity.PlayoffProjection.AsOf == nil {
+			break
+		}
+
+		return e.complexity.PlayoffProjection.AsOf(childComplexity), true
+
+	case "PlayoffProjection.byes":
+		if e.complexity.PlayoffProjection.Byes == nil {
+			break
+		}
+
+		return e.complexity.PlayoffProjection.Byes(childComplexity), true
+
+	case "PlayoffProjection.homeGames":
+		if e.complexity.PlayoffProjection.HomeGames == nil {
+			break
+		}
+
+		return e.complexity.PlayoffProjection.HomeGames(childComplexity), true
+
+	case "PlayoffProjection.qualifiers":
+		if e.complexity.PlayoffProjection.Qualifiers == nil {
+			break
+		}
+
+		return e.complexity.PlayoffProjection.Qualifiers(childComplexity), true
+
+	case "PlayoffProjection.regions":
+		if e.complexity.PlayoffProjection.Regions == nil {
+			break
+		}
+
+		return e.complexity.PlayoffProjection.Regions(childComplexity), true
+
+	case "PlayoffProjection.runs":
+		if e.complexity.PlayoffProjection.Runs == nil {
+			break
+		}
+
+		return e.complexity.PlayoffProjection.Runs(childComplexity), true
+
+	case "PlayoffProjection.season":
+		if e.complexity.PlayoffProjection.Season == nil {
+			break
+		}
+
+		return e.complexity.PlayoffProjection.Season(childComplexity), true
+
+	case "PlayoffRecordOdds.byeProbability":
+		if e.complexity.PlayoffRecordOdds.ByeProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.ByeProbability(childComplexity), true
+
+	case "PlayoffRecordOdds.highAverage":
+		if e.complexity.PlayoffRecordOdds.HighAverage == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.HighAverage(childComplexity), true
+
+	case "PlayoffRecordOdds.homeProbability":
+		if e.complexity.PlayoffRecordOdds.HomeProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.HomeProbability(childComplexity), true
+
+	case "PlayoffRecordOdds.lowAverage":
+		if e.complexity.PlayoffRecordOdds.LowAverage == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.LowAverage(childComplexity), true
+
+	case "PlayoffRecordOdds.medianAverage":
+		if e.complexity.PlayoffRecordOdds.MedianAverage == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.MedianAverage(childComplexity), true
+
+	case "PlayoffRecordOdds.probability":
+		if e.complexity.PlayoffRecordOdds.Probability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.Probability(childComplexity), true
+
+	case "PlayoffRecordOdds.qualifyProbability":
+		if e.complexity.PlayoffRecordOdds.QualifyProbability == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.QualifyProbability(childComplexity), true
+
+	case "PlayoffRecordOdds.record":
+		if e.complexity.PlayoffRecordOdds.Record == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.Record(childComplexity), true
+
+	case "PlayoffRecordOdds.runs":
+		if e.complexity.PlayoffRecordOdds.Runs == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRecordOdds.Runs(childComplexity), true
+
+	case "PlayoffRegion.division":
+		if e.complexity.PlayoffRegion.Division == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRegion.Division(childComplexity), true
+
+	case "PlayoffRegion.region":
+		if e.complexity.PlayoffRegion.Region == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRegion.Region(childComplexity), true
+
+	case "PlayoffRegion.teams":
+		if e.complexity.PlayoffRegion.Teams == nil {
+			break
+		}
+
+		return e.complexity.PlayoffRegion.Teams(childComplexity), true
+
 	case "Program.games":
 		if e.complexity.Program.Games == nil {
 			break
@@ -730,6 +1123,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.ModelAccuracy(childComplexity, args["fromSeason"].(*int), args["toSeason"].(*int)), true
+
+	case "Query.playoffProjection":
+		if e.complexity.Query.PlayoffProjection == nil {
+			break
+		}
+
+		args, err := ec.field_Query_playoffProjection_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PlayoffProjection(childComplexity, args["season"].(*int)), true
 
 	case "Query.program":
 		if e.complexity.Query.Program == nil {
@@ -1240,7 +1645,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema.graphqls"
+//go:embed "playoffs.graphqls" "schema.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1252,6 +1657,7 @@ func sourceData(filename string) string {
 }
 
 var sources = []*ast.Source{
+	{Name: "playoffs.graphqls", Input: sourceData("playoffs.graphqls"), BuiltIn: false},
 	{Name: "schema.graphqls", Input: sourceData("schema.graphqls"), BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -1332,6 +1738,34 @@ func (ec *executionContext) field_Query_modelAccuracy_argsToSeason(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("toSeason"))
 	if tmp, ok := rawArgs["toSeason"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_playoffProjection_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_playoffProjection_argsSeason(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["season"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_playoffProjection_argsSeason(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["season"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("season"))
+	if tmp, ok := rawArgs["season"]; ok {
 		return ec.unmarshalOInt2ᚖint(ctx, tmp)
 	}
 
@@ -3957,6 +4391,2154 @@ func (ec *executionContext) fieldContext_PhaseAccuracy_score(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _PlayoffGame_id(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_date(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_date(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Date, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_opponentId(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_opponentId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OpponentID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_opponentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_opponentName(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_opponentName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OpponentName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_opponentName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_location(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_location(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.GameLocation)
+	fc.Result = res
+	return ec.marshalNGameLocation2githubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐGameLocation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_location(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type GameLocation does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_winProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_winProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WinProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_winProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_qualifyIfWin(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_qualifyIfWin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.QualifyIfWin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_qualifyIfWin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_qualifyIfLoss(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_qualifyIfLoss(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.QualifyIfLoss, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_qualifyIfLoss(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_homeIfWin(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_homeIfWin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HomeIfWin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_homeIfWin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffGame_homeIfLoss(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffGame) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffGame_homeIfLoss(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HomeIfLoss, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffGame_homeIfLoss(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffGame",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_teamId(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_teamId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TeamID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_teamId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_sourceId(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_sourceId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SourceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_sourceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_name(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_primaryColor(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_primaryColor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrimaryColor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_primaryColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_secondaryColor(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_secondaryColor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SecondaryColor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_secondaryColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_rating(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_rating(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rating, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_rating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_record(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_record(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Record, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Record)
+	fc.Result = res
+	return ec.marshalNRecord2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐRecord(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_record(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "wins":
+				return ec.fieldContext_Record_wins(ctx, field)
+			case "losses":
+				return ec.fieldContext_Record_losses(ctx, field)
+			case "ties":
+				return ec.fieldContext_Record_ties(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Record", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_levelOne(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_levelOne(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LevelOne, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_levelOne(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_levelTwo(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_levelTwo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LevelTwo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_levelTwo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_divisor(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_divisor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Divisor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_divisor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_average(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_average(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Average, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_average(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_qualifyProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_qualifyProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.QualifyProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_qualifyProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_homeProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_homeProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HomeProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_homeProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_byeProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_byeProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ByeProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_byeProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_regionWinProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_regionWinProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RegionWinProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_regionWinProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_expectedSeed(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_expectedSeed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExpectedSeed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_expectedSeed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_remainingGames(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_remainingGames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RemainingGames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlayoffGame)
+	fc.Result = res
+	return ec.marshalNPlayoffGame2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffGameᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_remainingGames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PlayoffGame_id(ctx, field)
+			case "date":
+				return ec.fieldContext_PlayoffGame_date(ctx, field)
+			case "opponentId":
+				return ec.fieldContext_PlayoffGame_opponentId(ctx, field)
+			case "opponentName":
+				return ec.fieldContext_PlayoffGame_opponentName(ctx, field)
+			case "location":
+				return ec.fieldContext_PlayoffGame_location(ctx, field)
+			case "winProbability":
+				return ec.fieldContext_PlayoffGame_winProbability(ctx, field)
+			case "qualifyIfWin":
+				return ec.fieldContext_PlayoffGame_qualifyIfWin(ctx, field)
+			case "qualifyIfLoss":
+				return ec.fieldContext_PlayoffGame_qualifyIfLoss(ctx, field)
+			case "homeIfWin":
+				return ec.fieldContext_PlayoffGame_homeIfWin(ctx, field)
+			case "homeIfLoss":
+				return ec.fieldContext_PlayoffGame_homeIfLoss(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlayoffGame", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffOutlook_records(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffOutlook) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffOutlook_records(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Records, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlayoffRecordOdds)
+	fc.Result = res
+	return ec.marshalNPlayoffRecordOdds2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRecordOddsᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffOutlook_records(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffOutlook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "record":
+				return ec.fieldContext_PlayoffRecordOdds_record(ctx, field)
+			case "probability":
+				return ec.fieldContext_PlayoffRecordOdds_probability(ctx, field)
+			case "runs":
+				return ec.fieldContext_PlayoffRecordOdds_runs(ctx, field)
+			case "lowAverage":
+				return ec.fieldContext_PlayoffRecordOdds_lowAverage(ctx, field)
+			case "medianAverage":
+				return ec.fieldContext_PlayoffRecordOdds_medianAverage(ctx, field)
+			case "highAverage":
+				return ec.fieldContext_PlayoffRecordOdds_highAverage(ctx, field)
+			case "qualifyProbability":
+				return ec.fieldContext_PlayoffRecordOdds_qualifyProbability(ctx, field)
+			case "homeProbability":
+				return ec.fieldContext_PlayoffRecordOdds_homeProbability(ctx, field)
+			case "byeProbability":
+				return ec.fieldContext_PlayoffRecordOdds_byeProbability(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlayoffRecordOdds", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffProjection_season(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffProjection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffProjection_season(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Season, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffProjection_season(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffProjection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffProjection_asOf(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffProjection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffProjection_asOf(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AsOf, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffProjection_asOf(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffProjection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffProjection_runs(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffProjection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffProjection_runs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Runs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffProjection_runs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffProjection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffProjection_qualifiers(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffProjection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffProjection_qualifiers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Qualifiers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffProjection_qualifiers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffProjection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffProjection_byes(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffProjection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffProjection_byes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Byes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffProjection_byes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffProjection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffProjection_homeGames(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffProjection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffProjection_homeGames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HomeGames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffProjection_homeGames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffProjection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffProjection_regions(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffProjection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffProjection_regions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Regions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlayoffRegion)
+	fc.Result = res
+	return ec.marshalNPlayoffRegion2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRegionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffProjection_regions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffProjection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "region":
+				return ec.fieldContext_PlayoffRegion_region(ctx, field)
+			case "division":
+				return ec.fieldContext_PlayoffRegion_division(ctx, field)
+			case "teams":
+				return ec.fieldContext_PlayoffRegion_teams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlayoffRegion", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_record(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_record(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Record, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Record)
+	fc.Result = res
+	return ec.marshalNRecord2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐRecord(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_record(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "wins":
+				return ec.fieldContext_Record_wins(ctx, field)
+			case "losses":
+				return ec.fieldContext_Record_losses(ctx, field)
+			case "ties":
+				return ec.fieldContext_Record_ties(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Record", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_probability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_probability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Probability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_probability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_runs(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_runs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Runs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_runs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_lowAverage(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_lowAverage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LowAverage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_lowAverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_medianAverage(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_medianAverage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MedianAverage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_medianAverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_highAverage(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_highAverage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HighAverage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_highAverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_qualifyProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_qualifyProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.QualifyProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_qualifyProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_homeProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_homeProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HomeProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_homeProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRecordOdds_byeProbability(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRecordOdds) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRecordOdds_byeProbability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ByeProbability, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRecordOdds_byeProbability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRecordOdds",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRegion_region(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRegion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRegion_region(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Region, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRegion_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRegion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRegion_division(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRegion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRegion_division(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Division, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRegion_division(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRegion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlayoffRegion_teams(ctx context.Context, field graphql.CollectedField, obj *model.PlayoffRegion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlayoffRegion_teams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Teams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlayoffOutlook)
+	fc.Result = res
+	return ec.marshalNPlayoffOutlook2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffOutlookᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlayoffRegion_teams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlayoffRegion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "teamId":
+				return ec.fieldContext_PlayoffOutlook_teamId(ctx, field)
+			case "sourceId":
+				return ec.fieldContext_PlayoffOutlook_sourceId(ctx, field)
+			case "name":
+				return ec.fieldContext_PlayoffOutlook_name(ctx, field)
+			case "primaryColor":
+				return ec.fieldContext_PlayoffOutlook_primaryColor(ctx, field)
+			case "secondaryColor":
+				return ec.fieldContext_PlayoffOutlook_secondaryColor(ctx, field)
+			case "rating":
+				return ec.fieldContext_PlayoffOutlook_rating(ctx, field)
+			case "record":
+				return ec.fieldContext_PlayoffOutlook_record(ctx, field)
+			case "levelOne":
+				return ec.fieldContext_PlayoffOutlook_levelOne(ctx, field)
+			case "levelTwo":
+				return ec.fieldContext_PlayoffOutlook_levelTwo(ctx, field)
+			case "divisor":
+				return ec.fieldContext_PlayoffOutlook_divisor(ctx, field)
+			case "average":
+				return ec.fieldContext_PlayoffOutlook_average(ctx, field)
+			case "qualifyProbability":
+				return ec.fieldContext_PlayoffOutlook_qualifyProbability(ctx, field)
+			case "homeProbability":
+				return ec.fieldContext_PlayoffOutlook_homeProbability(ctx, field)
+			case "byeProbability":
+				return ec.fieldContext_PlayoffOutlook_byeProbability(ctx, field)
+			case "regionWinProbability":
+				return ec.fieldContext_PlayoffOutlook_regionWinProbability(ctx, field)
+			case "expectedSeed":
+				return ec.fieldContext_PlayoffOutlook_expectedSeed(ctx, field)
+			case "remainingGames":
+				return ec.fieldContext_PlayoffOutlook_remainingGames(ctx, field)
+			case "records":
+				return ec.fieldContext_PlayoffOutlook_records(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlayoffOutlook", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Program_sourceId(ctx context.Context, field graphql.CollectedField, obj *model.Program) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Program_sourceId(ctx, field)
 	if err != nil {
@@ -5124,6 +7706,74 @@ func (ec *executionContext) fieldContext_Query_program(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_program_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_playoffProjection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_playoffProjection(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PlayoffProjection(rctx, fc.Args["season"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlayoffProjection)
+	fc.Result = res
+	return ec.marshalOPlayoffProjection2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffProjection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_playoffProjection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "season":
+				return ec.fieldContext_PlayoffProjection_season(ctx, field)
+			case "asOf":
+				return ec.fieldContext_PlayoffProjection_asOf(ctx, field)
+			case "runs":
+				return ec.fieldContext_PlayoffProjection_runs(ctx, field)
+			case "qualifiers":
+				return ec.fieldContext_PlayoffProjection_qualifiers(ctx, field)
+			case "byes":
+				return ec.fieldContext_PlayoffProjection_byes(ctx, field)
+			case "homeGames":
+				return ec.fieldContext_PlayoffProjection_homeGames(ctx, field)
+			case "regions":
+				return ec.fieldContext_PlayoffProjection_regions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlayoffProjection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_playoffProjection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -10215,6 +12865,387 @@ func (ec *executionContext) _PhaseAccuracy(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var playoffGameImplementors = []string{"PlayoffGame"}
+
+func (ec *executionContext) _PlayoffGame(ctx context.Context, sel ast.SelectionSet, obj *model.PlayoffGame) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, playoffGameImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlayoffGame")
+		case "id":
+			out.Values[i] = ec._PlayoffGame_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "date":
+			out.Values[i] = ec._PlayoffGame_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "opponentId":
+			out.Values[i] = ec._PlayoffGame_opponentId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "opponentName":
+			out.Values[i] = ec._PlayoffGame_opponentName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "location":
+			out.Values[i] = ec._PlayoffGame_location(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "winProbability":
+			out.Values[i] = ec._PlayoffGame_winProbability(ctx, field, obj)
+		case "qualifyIfWin":
+			out.Values[i] = ec._PlayoffGame_qualifyIfWin(ctx, field, obj)
+		case "qualifyIfLoss":
+			out.Values[i] = ec._PlayoffGame_qualifyIfLoss(ctx, field, obj)
+		case "homeIfWin":
+			out.Values[i] = ec._PlayoffGame_homeIfWin(ctx, field, obj)
+		case "homeIfLoss":
+			out.Values[i] = ec._PlayoffGame_homeIfLoss(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var playoffOutlookImplementors = []string{"PlayoffOutlook"}
+
+func (ec *executionContext) _PlayoffOutlook(ctx context.Context, sel ast.SelectionSet, obj *model.PlayoffOutlook) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, playoffOutlookImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlayoffOutlook")
+		case "teamId":
+			out.Values[i] = ec._PlayoffOutlook_teamId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sourceId":
+			out.Values[i] = ec._PlayoffOutlook_sourceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._PlayoffOutlook_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "primaryColor":
+			out.Values[i] = ec._PlayoffOutlook_primaryColor(ctx, field, obj)
+		case "secondaryColor":
+			out.Values[i] = ec._PlayoffOutlook_secondaryColor(ctx, field, obj)
+		case "rating":
+			out.Values[i] = ec._PlayoffOutlook_rating(ctx, field, obj)
+		case "record":
+			out.Values[i] = ec._PlayoffOutlook_record(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "levelOne":
+			out.Values[i] = ec._PlayoffOutlook_levelOne(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "levelTwo":
+			out.Values[i] = ec._PlayoffOutlook_levelTwo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "divisor":
+			out.Values[i] = ec._PlayoffOutlook_divisor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "average":
+			out.Values[i] = ec._PlayoffOutlook_average(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "qualifyProbability":
+			out.Values[i] = ec._PlayoffOutlook_qualifyProbability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "homeProbability":
+			out.Values[i] = ec._PlayoffOutlook_homeProbability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byeProbability":
+			out.Values[i] = ec._PlayoffOutlook_byeProbability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "regionWinProbability":
+			out.Values[i] = ec._PlayoffOutlook_regionWinProbability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expectedSeed":
+			out.Values[i] = ec._PlayoffOutlook_expectedSeed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "remainingGames":
+			out.Values[i] = ec._PlayoffOutlook_remainingGames(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "records":
+			out.Values[i] = ec._PlayoffOutlook_records(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var playoffProjectionImplementors = []string{"PlayoffProjection"}
+
+func (ec *executionContext) _PlayoffProjection(ctx context.Context, sel ast.SelectionSet, obj *model.PlayoffProjection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, playoffProjectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlayoffProjection")
+		case "season":
+			out.Values[i] = ec._PlayoffProjection_season(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "asOf":
+			out.Values[i] = ec._PlayoffProjection_asOf(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "runs":
+			out.Values[i] = ec._PlayoffProjection_runs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "qualifiers":
+			out.Values[i] = ec._PlayoffProjection_qualifiers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byes":
+			out.Values[i] = ec._PlayoffProjection_byes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "homeGames":
+			out.Values[i] = ec._PlayoffProjection_homeGames(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "regions":
+			out.Values[i] = ec._PlayoffProjection_regions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var playoffRecordOddsImplementors = []string{"PlayoffRecordOdds"}
+
+func (ec *executionContext) _PlayoffRecordOdds(ctx context.Context, sel ast.SelectionSet, obj *model.PlayoffRecordOdds) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, playoffRecordOddsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlayoffRecordOdds")
+		case "record":
+			out.Values[i] = ec._PlayoffRecordOdds_record(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "probability":
+			out.Values[i] = ec._PlayoffRecordOdds_probability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "runs":
+			out.Values[i] = ec._PlayoffRecordOdds_runs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lowAverage":
+			out.Values[i] = ec._PlayoffRecordOdds_lowAverage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "medianAverage":
+			out.Values[i] = ec._PlayoffRecordOdds_medianAverage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "highAverage":
+			out.Values[i] = ec._PlayoffRecordOdds_highAverage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "qualifyProbability":
+			out.Values[i] = ec._PlayoffRecordOdds_qualifyProbability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "homeProbability":
+			out.Values[i] = ec._PlayoffRecordOdds_homeProbability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byeProbability":
+			out.Values[i] = ec._PlayoffRecordOdds_byeProbability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var playoffRegionImplementors = []string{"PlayoffRegion"}
+
+func (ec *executionContext) _PlayoffRegion(ctx context.Context, sel ast.SelectionSet, obj *model.PlayoffRegion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, playoffRegionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlayoffRegion")
+		case "region":
+			out.Values[i] = ec._PlayoffRegion_region(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "division":
+			out.Values[i] = ec._PlayoffRegion_division(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teams":
+			out.Values[i] = ec._PlayoffRegion_teams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var programImplementors = []string{"Program"}
 
 func (ec *executionContext) _Program(ctx context.Context, sel ast.SelectionSet, obj *model.Program) graphql.Marshaler {
@@ -10530,6 +13561,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_program(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "playoffProjection":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_playoffProjection(ctx, field)
 				return res
 			}
 
@@ -11709,6 +14759,222 @@ func (ec *executionContext) marshalNPhaseAccuracy2ᚖgithubᚗcomᚋStephenODea5
 	return ec._PhaseAccuracy(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPlayoffGame2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffGameᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlayoffGame) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlayoffGame2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffGame(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlayoffGame2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffGame(ctx context.Context, sel ast.SelectionSet, v *model.PlayoffGame) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlayoffGame(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPlayoffOutlook2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffOutlookᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlayoffOutlook) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlayoffOutlook2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffOutlook(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlayoffOutlook2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffOutlook(ctx context.Context, sel ast.SelectionSet, v *model.PlayoffOutlook) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlayoffOutlook(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPlayoffRecordOdds2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRecordOddsᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlayoffRecordOdds) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlayoffRecordOdds2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRecordOdds(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlayoffRecordOdds2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRecordOdds(ctx context.Context, sel ast.SelectionSet, v *model.PlayoffRecordOdds) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlayoffRecordOdds(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPlayoffRegion2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRegionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlayoffRegion) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlayoffRegion2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRegion(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlayoffRegion2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffRegion(ctx context.Context, sel ast.SelectionSet, v *model.PlayoffRegion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlayoffRegion(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNProgramGame2ᚕᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐProgramGameᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ProgramGame) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -12465,6 +15731,13 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	}
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOPlayoffProjection2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐPlayoffProjection(ctx context.Context, sel ast.SelectionSet, v *model.PlayoffProjection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PlayoffProjection(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOProgram2ᚖgithubᚗcomᚋStephenODea54ᚋservicesᚋapiᚋgraphᚋmodelᚐProgram(ctx context.Context, sel ast.SelectionSet, v *model.Program) graphql.Marshaler {

@@ -22,6 +22,7 @@ const (
 type Postgres struct {
 	client          *database.Client
 	accuracyAnswers *answerCache[accuracyKey, *model.ModelAccuracy]
+	playoffAnswers  *answerCache[int, *model.PlayoffProjection]
 }
 
 func Open(ctx context.Context, databaseURL string) (*Postgres, error) {
@@ -32,6 +33,7 @@ func Open(ctx context.Context, databaseURL string) (*Postgres, error) {
 	return &Postgres{
 		client:          client,
 		accuracyAnswers: newAnswerCache[accuracyKey, *model.ModelAccuracy](accuracyCacheTTL, accuracyCacheSize, time.Now),
+		playoffAnswers:  newAnswerCache[int, *model.PlayoffProjection](playoffCacheTTL, playoffCacheSize, time.Now),
 	}, nil
 }
 

@@ -126,6 +126,88 @@ type PhaseAccuracy struct {
 	Score *AccuracyScore `json:"score"`
 }
 
+// A remaining game of a team, with the odds of the team if it wins and if it loses. The odds come
+// from the runs in which the game ended that way, and they are null when no run did.
+type PlayoffGame struct {
+	ID           string       `json:"id"`
+	Date         string       `json:"date"`
+	OpponentID   string       `json:"opponentId"`
+	OpponentName string       `json:"opponentName"`
+	Location     GameLocation `json:"location"`
+	// The win probability of the model for the team. Null when the model has no prediction.
+	WinProbability *float64 `json:"winProbability,omitempty"`
+	QualifyIfWin   *float64 `json:"qualifyIfWin,omitempty"`
+	QualifyIfLoss  *float64 `json:"qualifyIfLoss,omitempty"`
+	HomeIfWin      *float64 `json:"homeIfWin,omitempty"`
+	HomeIfLoss     *float64 `json:"homeIfLoss,omitempty"`
+}
+
+type PlayoffOutlook struct {
+	TeamID         string  `json:"teamId"`
+	SourceID       string  `json:"sourceId"`
+	Name           string  `json:"name"`
+	PrimaryColor   *string `json:"primaryColor,omitempty"`
+	SecondaryColor *string `json:"secondaryColor,omitempty"`
+	// The relative rating of the team in the newest snapshot of the season up to the as-of date of
+	// the projection. Null when it has none.
+	Rating *float64 `json:"rating,omitempty"`
+	// The record and the OHSAA computer points after the weeks that were over at the as-of date.
+	Record             *Record `json:"record"`
+	LevelOne           float64 `json:"levelOne"`
+	LevelTwo           float64 `json:"levelTwo"`
+	Divisor            int     `json:"divisor"`
+	Average            float64 `json:"average"`
+	QualifyProbability float64 `json:"qualifyProbability"`
+	// The chance of a seed that plays its first playoff game at home.
+	HomeProbability float64 `json:"homeProbability"`
+	// The chance of a seed that gets a bye. It is 0 in a season without byes.
+	ByeProbability float64 `json:"byeProbability"`
+	// The chance to win the region in the playoffs.
+	RegionWinProbability float64 `json:"regionWinProbability"`
+	// The mean place of the team in its region over the runs.
+	ExpectedSeed   float64        `json:"expectedSeed"`
+	RemainingGames []*PlayoffGame `json:"remainingGames"`
+	// The final records of the team, from the most wins.
+	Records []*PlayoffRecordOdds `json:"records"`
+}
+
+// The playoff projection of a season. The rating service plays the rest of the regular season many
+// times with the margin rating, computes the OHSAA computer points of each run, seeds each region
+// and plays its playoff games. The numbers are unofficial.
+type PlayoffProjection struct {
+	Season     int              `json:"season"`
+	AsOf       string           `json:"asOf"`
+	Runs       int              `json:"runs"`
+	Qualifiers int              `json:"qualifiers"`
+	Byes       int              `json:"byes"`
+	HomeGames  int              `json:"homeGames"`
+	Regions    []*PlayoffRegion `json:"regions"`
+}
+
+// The odds of a team when it ends the regular season with one final record.
+type PlayoffRecordOdds struct {
+	Record      *Record `json:"record"`
+	Probability float64 `json:"probability"`
+	// The number of runs that ended with this record. A small number means a rough estimate.
+	Runs int `json:"runs"`
+	// The final average of the OHSAA computer points at the 5th, the 50th and the 95th percentile of
+	// the runs with this record.
+	LowAverage         float64 `json:"lowAverage"`
+	MedianAverage      float64 `json:"medianAverage"`
+	HighAverage        float64 `json:"highAverage"`
+	QualifyProbability float64 `json:"qualifyProbability"`
+	HomeProbability    float64 `json:"homeProbability"`
+	ByeProbability     float64 `json:"byeProbability"`
+}
+
+type PlayoffRegion struct {
+	Region   int `json:"region"`
+	Division int `json:"division"`
+	// The teams of the region in the order of their chance to qualify, then of their chance of a bye,
+	// both to the whole percent, then of their mean seed. The list reads like the likely final order.
+	Teams []*PlayoffOutlook `json:"teams"`
+}
+
 // An Ohio school across every season the marts hold. The source identifier follows the school from
 // one season to the next, so it is the key of a program. A source can give the same identifier to a
 // team of another state, so only the Ohio teams with the identifier count.

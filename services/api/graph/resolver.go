@@ -13,6 +13,7 @@ type FootballStore interface {
 	Team(context.Context, string, *int) (*model.Team, error)
 	ModelAccuracy(context.Context, *int, *int) (*model.ModelAccuracy, error)
 	Program(context.Context, string) (*model.Program, error)
+	PlayoffProjection(context.Context, *int) (*model.PlayoffProjection, error)
 }
 
 type Resolver struct {

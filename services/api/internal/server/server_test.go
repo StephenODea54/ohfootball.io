@@ -31,6 +31,8 @@ type fakeStore struct {
 	program     *model.Program
 	// programID is the source id that the last call of Program asked for.
 	programID string
+	// projection is the answer of PlayoffProjection.
+	projection *model.PlayoffProjection
 	// calls counts the calls of CurrentSeason, so a test can tell that no resolver ran.
 	calls int
 }
@@ -55,6 +57,10 @@ func (fake *fakeStore) ListTeams(
 
 func (fake *fakeStore) Team(context.Context, string, *int) (*model.Team, error) {
 	return fake.team, nil
+}
+
+func (fake *fakeStore) PlayoffProjection(context.Context, *int) (*model.PlayoffProjection, error) {
+	return fake.projection, nil
 }
 
 func (fake *fakeStore) Program(_ context.Context, sourceID string) (*model.Program, error) {

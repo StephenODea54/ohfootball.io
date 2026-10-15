@@ -1,0 +1,117 @@
+"""
+The odds of a team when it ends the regular season with one final record.
+"""
+type PlayoffRecordOdds {
+  record: Record!
+  probability: Float!
+  """
+  The number of runs that ended with this record. A small number means a rough estimate.
+  """
+  runs: Int!
+  """
+  The final average of the OHSAA computer points at the 5th, the 50th and the 95th percentile of
+  the runs with this record.
+  """
+  lowAverage: Float!
+  medianAverage: Float!
+  highAverage: Float!
+  qualifyProbability: Float!
+  homeProbability: Float!
+  byeProbability: Float!
+}
+
+"""
+A remaining game of a team, with the odds of the team if it wins and if it loses. The odds come
+from the runs in which the game ended that way, and they are null when no run did.
+"""
+type PlayoffGame {
+  id: ID!
+  date: String!
+  opponentId: ID!
+  opponentName: String!
+  location: GameLocation!
+  """
+  The win probability of the model for the team. Null when the model has no prediction.
+  """
+  winProbability: Float
+  qualifyIfWin: Float
+  qualifyIfLoss: Float
+  homeIfWin: Float
+  homeIfLoss: Float
+}
+
+type PlayoffOutlook {
+  teamId: ID!
+  sourceId: String!
+  name: String!
+  primaryColor: String
+  secondaryColor: String
+  """
+  The relative rating of the team in the newest snapshot of the season up to the as-of date of
+  the projection. Null when it has none.
+  """
+  rating: Float
+  """
+  The record and the OHSAA computer points after the weeks that were over at the as-of date.
+  """
+  record: Record!
+  levelOne: Float!
+  levelTwo: Float!
+  divisor: Int!
+  average: Float!
+  qualifyProbability: Float!
+  """
+  The chance of a seed that plays its first playoff game at home.
+  """
+  homeProbability: Float!
+  """
+  The chance of a seed that gets a bye. It is 0 in a season without byes.
+  """
+  byeProbability: Float!
+  """
+  The chance to win the region in the playoffs.
+  """
+  regionWinProbability: Float!
+  """
+  The mean place of the team in its region over the runs.
+  """
+  expectedSeed: Float!
+  remainingGames: [PlayoffGame!]!
+  """
+  The final records of the team, from the most wins.
+  """
+  records: [PlayoffRecordOdds!]!
+}
+
+type PlayoffRegion {
+  region: Int!
+  division: Int!
+  """
+  The teams of the region in the order of their chance to qualify, then of their chance of a bye,
+  both to the whole percent, then of their mean seed. The list reads like the likely final order.
+  """
+  teams: [PlayoffOutlook!]!
+}
+
+"""
+The playoff projection of a season. The rating service plays the rest of the regular season many
+times with the margin rating, computes the OHSAA computer points of each run, seeds each region
+and plays its playoff games. The numbers are unofficial.
+"""
+type PlayoffProjection {
+  season: Int!
+  asOf: String!
+  runs: Int!
+  qualifiers: Int!
+  byes: Int!
+  homeGames: Int!
+  regions: [PlayoffRegion!]!
+}
+
+extend type Query {
+  """
+  The newest playoff projection of a season. season defaults to the current season. It is null
+  when the season has no projection, and for a season before 2013 or after the current season.
+  """
+  playoffProjection(season: Int): PlayoffProjection
+}
