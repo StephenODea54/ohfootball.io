@@ -25,6 +25,16 @@ every season has overtime. `FIRST_CHART_SEASON` is 1973, because 1972 is the fir
 data and its predictions say little. The text of the page must not name the API, because
 `make pages` refuses a page other than `/api` that names it.
 
+The page `/playoffs` shows the playoff odds of one region at a time: the chance of each team to
+make the playoffs, to get a top seed and to win its region, from the `playoffProjection` query. The
+division and the region live in the query string, such as `/playoffs?division=3&region=9`. The
+page carries the table of the first region only. The build writes one file for each region, such
+as `/playoffs/regions/9.json`, with the table of the region and the details of its teams, and the
+browser loads it when a visitor opens that region or a team. These files are not pages, so the
+sitemap leaves them out. The map of the regions is drawn when the site is built, from the counties
+of the schools. When the API has no projection, or does not know the query yet, the page says that
+the odds are not ready and the build goes on.
+
 The page `/api` tells people how to call the public API: the endpoint, the contact that each
 request names, the rate limits, the errors, a curl example, the playground, and the Data page and
 the Kaggle dataset for bulk data. It is drawn when the site is built, and its content runs no script. Only the

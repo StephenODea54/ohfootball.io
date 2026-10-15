@@ -1,0 +1,54 @@
+---
+import SiteLayout from "@/layouts/site-layout.astro"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { Text } from "@/components/ui/text"
+import { getPlayoffProjection } from "@/features/playoffs/api/get-playoff-projection"
+import { PlayoffOdds } from "@/features/playoffs/components/playoff-odds"
+import { playoffMap } from "@/features/playoffs/server/region-map"
+import { regionData, regionKeys } from "@/features/playoffs/utils/view"
+import { getTeams } from "@/features/teams/api/get-teams"
+import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
+
+const [projection, teams] = await Promise.all([getPlayoffProjection(), getTeams()])
+const regions = projection ? regionKeys(projection) : []
+const firstRegion = projection?.regions.find((region) => region.region === regions[0]?.region)
+const map = firstRegion ? playoffMap(teams) : null
+const format = projection
+  ? `The top ${projection.qualifiers} teams in each region qualify. Seeds 1-${projection.byes} get a bye, and seeds ${projection.byes + 1}-${projection.homeGames} play their first game at home.`
+  : null
+---
+
+<SiteLayout
+  title="Playoff Odds | ohfootball.io"
+  description="The chance of each Ohio high school football team to make the playoffs, to get a top seed and to win its region, from simulated seasons."
+>
+  <main>
+    <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
+      <header class="max-w-3xl">
+        <Heading className="text-4xl/none sm:text-5xl/none">Playoff Odds</Heading>
+        {projection && firstRegion ? (
+          <Text className="mt-3 text-base/7 sm:text-base/7">
+            {format} Pick a division and a region to see the latest odds.
+          </Text>
+        ) : (
+          <Text className="mt-3">The playoff odds of this season are not ready yet.</Text>
+        )}
+      </header>
+
+      {projection && firstRegion && (
+        <PlayoffOdds
+          client:load
+          regions={regions}
+          first={{ region: firstRegion.region, data: regionData(firstRegion) }}
+          qualifiers={projection.qualifiers}
+          byes={projection.byes}
+          runs={projection.runs}
+          map={map}
+        />
+      )}
+    </Container>
+
+    <LastUpdatedStamp isoDate={projection?.asOf ?? null} />
+  </main>
+</SiteLayout>

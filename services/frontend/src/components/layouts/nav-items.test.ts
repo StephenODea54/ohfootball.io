@@ -7,6 +7,7 @@ describe("the navigation bar", () => {
       "Home",
       "About",
       "Leaderboard",
+      "Playoffs",
       "Compare",
       "Methodology",
       "Accuracy",

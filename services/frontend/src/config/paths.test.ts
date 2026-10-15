@@ -5,6 +5,8 @@ it("builds every address without a season", () => {
   expect(paths.home.getHref()).toBe("/")
   expect(paths.about.getHref()).toBe("/about")
   expect(paths.leaderboard.getHref()).toBe("/leaderboard")
+  expect(paths.playoffs.getHref()).toBe("/playoffs")
+  expect(paths.playoffRegion.getHref(9)).toBe("/playoffs/regions/9.json")
   expect(paths.methodology.getHref()).toBe("/methodology")
   expect(paths.accuracy.getHref()).toBe("/accuracy")
   expect(paths.data.getHref()).toBe("/data")

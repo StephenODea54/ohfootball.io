@@ -15,6 +15,17 @@ export const paths = {
     path: "/leaderboard",
     getHref: () => "/leaderboard",
   },
+  playoffs: {
+    path: "/playoffs",
+    getHref: () => "/playoffs",
+  },
+  // The details of the teams of one region of the OHSAA, numbered 1 to 28 across the divisions.
+  // The playoff page loads one when a team is opened. It is not a page, so the sitemap leaves it
+  // out.
+  playoffRegion: {
+    path: "/playoffs/regions/[region].json",
+    getHref: (region: number) => `/playoffs/regions/${region}.json`,
+  },
   methodology: {
     path: "/methodology",
     getHref: () => "/methodology",
