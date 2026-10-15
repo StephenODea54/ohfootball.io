@@ -38,6 +38,10 @@ type Summary struct {
 	OpponentsScraped    int
 	GameRows            int
 
+	// OpponentGameRows counts the schedule rows of the opponents that are not
+	// OHSAA teams.
+	OpponentGameRows int
+
 	// EmptyTeamPages counts the team pages that held only white space. Those
 	// teams are also in OHSAATeams or OpponentsScraped.
 	EmptyTeamPages int
@@ -90,8 +94,10 @@ func (r *Runner) ListSeasons(ctx context.Context) ([]int, error) {
 //
 // The stages are: read the season page, read every region page for its team
 // links, read every OHSAA team page, and then read the page of every opponent
-// that is not an OHSAA team. The opponent pass reads metadata only. Following
-// the schedules of those opponents would make the crawler leave Ohio.
+// that is not an OHSAA team. The opponent pass keeps the schedule of each
+// such opponent, because the computer points count its wins and its games.
+// It does not read the pages of the teams on that schedule. Following them
+// would make the crawler leave Ohio.
 func (r *Runner) Season(ctx context.Context, season int, sink Sink) (Summary, error) {
 	seasonURL := joeeitel.SeasonURL(r.BaseURL, season)
 	body, err := r.Client.Get(ctx, seasonURL)
@@ -141,16 +147,20 @@ func (r *Runner) Season(ctx context.Context, season int, sink Sink) (Summary, er
 	// Each opponent came from a schedule, so an empty opponent page always
 	// gets a row.
 	opponents := PartitionOpponents(ohsaaRefs, discoveredRefs)
-	_, err = FanOut(ctx, r.Workers, opponents,
-		func(ctx context.Context, ref joeeitel.TeamRef) (struct{}, error) {
+	opponentPages, err := FanOut(ctx, r.Workers, opponents,
+		func(ctx context.Context, ref joeeitel.TeamRef) (teamPage, error) {
 			page, err := r.writeTeamPage(ctx, ref, sink, false, &empty)
 			if err == nil && page.empty {
 				err = writePlaceholder(ctx, sink, placeholderTeam(ref, ""))
 			}
-			return struct{}{}, err
+			return page, err
 		})
 	if err != nil {
 		return Summary{}, err
+	}
+	opponentRows := 0
+	for _, page := range opponentPages {
+		opponentRows += page.rows
 	}
 
 	return Summary{
@@ -160,6 +170,7 @@ func (r *Runner) Season(ctx context.Context, season int, sink Sink) (Summary, er
 		OpponentsDiscovered: len(opponents),
 		OpponentsScraped:    len(opponents),
 		GameRows:            gameRows,
+		OpponentGameRows:    opponentRows,
 		EmptyTeamPages:      empty.total(),
 	}, nil
 }
@@ -223,8 +234,9 @@ func (r *Runner) regionTeams(ctx context.Context, regionURL string, season int) 
 // writeTeamPage reads one team page and hands it to the sink. It returns the
 // opponents of that team, so the caller can read their pages next.
 //
-// withSchedule is false for an opponent. An opponent supplies metadata only,
-// and its own schedule belongs to the season of another association.
+// withSchedule is false for an opponent that is not an OHSAA team. Its
+// schedule goes to the sink apart from the OHSAA schedules, and the teams on
+// it are not returned, so the crawler does not read their pages.
 //
 // An empty page writes nothing and is counted in empty. The client can report
 // it as an error that wraps joeeitel.ErrEmptyPage, or return the empty body
@@ -252,11 +264,11 @@ func (r *Runner) writeTeamPage(ctx context.Context, ref joeeitel.TeamRef, sink S
 	if err != nil {
 		return teamPage{}, fmt.Errorf("parse team %s: %w", ref.Key(), err)
 	}
+	write := sink.WriteTeam
 	if !withSchedule {
-		rows, opponents = nil, nil
+		write, opponents = sink.WriteOpponent, nil
 	}
-
-	if err := sink.WriteTeam(ctx, team, rows); err != nil {
+	if err := write(ctx, team, rows); err != nil {
 		return teamPage{}, fmt.Errorf("write team %s: %w", ref.Key(), err)
 	}
 	return teamPage{ref: ref, opponents: opponents, rows: len(rows)}, nil

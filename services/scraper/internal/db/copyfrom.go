@@ -45,6 +45,12 @@ func (q *Queries) InsertGames(ctx context.Context, arg []InsertGamesParams) (int
 	return q.db.CopyFrom(ctx, []string{"ohfootball_raw", "games"}, []string{"scrape_run_id", "season", "source_team_id", "game_date", "home_away", "opponent_team_id", "result", "score", "notes", "playoff"}, &iteratorForInsertGames{rows: arg})
 }
 
+// InsertOpponentGames writes the schedule rows of the opponents that are not
+// OHSAA teams. The rows have the columns of InsertGames.
+func (q *Queries) InsertOpponentGames(ctx context.Context, arg []InsertGamesParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"ohfootball_raw", "opponent_games"}, []string{"scrape_run_id", "season", "source_team_id", "game_date", "home_away", "opponent_team_id", "result", "score", "notes", "playoff"}, &iteratorForInsertGames{rows: arg})
+}
+
 // iteratorForInsertOhhsfbdbGames implements pgx.CopyFromSource.
 type iteratorForInsertOhhsfbdbGames struct {
 	rows                 []InsertOhhsfbdbGamesParams

@@ -35,6 +35,7 @@ func removeRun(t *testing.T, store *Store, runID pgtype.UUID) {
 		ctx := context.Background()
 		for _, statement := range []string{
 			"DELETE FROM ohfootball_raw.games WHERE scrape_run_id = $1",
+			"DELETE FROM ohfootball_raw.opponent_games WHERE scrape_run_id = $1",
 			"DELETE FROM ohfootball_raw.teams WHERE scrape_run_id = $1",
 			"DELETE FROM ohfootball_metadata.scrape_runs WHERE id = $1",
 		} {
@@ -76,6 +77,53 @@ func TestWriteTeamStoresATeamAndItsSchedule(t *testing.T) {
 	}
 	if teamCount != 1 || gameCount != 2 {
 		t.Errorf("stored %d teams and %d games, want 1 and 2", teamCount, gameCount)
+	}
+
+	if err := store.FinishRun(ctx, runID, RunFailed, errors.New("the test ends here")); err != nil {
+		t.Fatalf("FinishRun returned %v", err)
+	}
+}
+
+// The schedule of an opponent from another state goes to its own table, so it
+// never becomes a canonical game.
+func TestWriteOpponentKeepsItsScheduleApart(t *testing.T) {
+	store := openStore(t)
+	ctx := context.Background()
+
+	runID, err := store.StartRun(ctx, "store-test", "https://example.com")
+	if err != nil {
+		t.Fatalf("StartRun returned %v", err)
+	}
+	removeRun(t, store, runID)
+
+	sink := store.ForRun(runID)
+	team := joeeitel.Team{Season: 2025, TeamID: "store-test-5", Name: "Opponent", State: "PA"}
+	rows := []joeeitel.TeamScheduleRow{
+		{Season: 2025, SourceTeamID: "store-test-5", OpponentTeamID: "store-test-6", Result: "W*"},
+	}
+	if err := sink.WriteOpponent(ctx, team, rows); err != nil {
+		t.Fatalf("WriteOpponent returned %v", err)
+	}
+	if err := sink.WriteOpponent(ctx, joeeitel.Team{Season: 2025, TeamID: "store-test-7"}, nil); err != nil {
+		t.Fatalf("WriteOpponent without rows returned %v", err)
+	}
+
+	var teamCount, gameCount, opponentCount int
+	for _, check := range []struct {
+		query string
+		into  *int
+	}{
+		{"SELECT count(*) FROM ohfootball_raw.teams WHERE scrape_run_id = $1", &teamCount},
+		{"SELECT count(*) FROM ohfootball_raw.games WHERE scrape_run_id = $1", &gameCount},
+		{"SELECT count(*) FROM ohfootball_raw.opponent_games WHERE scrape_run_id = $1", &opponentCount},
+	} {
+		if err := store.pool.QueryRow(ctx, check.query, runID).Scan(check.into); err != nil {
+			t.Fatalf("count rows: %v", err)
+		}
+	}
+	if teamCount != 2 || gameCount != 0 || opponentCount != 1 {
+		t.Errorf("stored %d teams, %d games and %d opponent games, want 2, 0 and 1",
+			teamCount, gameCount, opponentCount)
 	}
 
 	if err := store.FinishRun(ctx, runID, RunFailed, errors.New("the test ends here")); err != nil {

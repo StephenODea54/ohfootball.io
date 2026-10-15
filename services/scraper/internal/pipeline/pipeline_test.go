@@ -53,11 +53,12 @@ func (s *stubGetter) callCount(pageURL string) int {
 // memorySink keeps the pages a run wrote. err fails every write, and failTeam
 // fails the write of one team only.
 type memorySink struct {
-	mutex    sync.Mutex
-	teams    []joeeitel.Team
-	rows     []joeeitel.TeamScheduleRow
-	err      error
-	failTeam string
+	mutex        sync.Mutex
+	teams        []joeeitel.Team
+	rows         []joeeitel.TeamScheduleRow
+	opponentRows []joeeitel.TeamScheduleRow
+	err          error
+	failTeam     string
 }
 
 func (m *memorySink) WriteTeam(_ context.Context, team joeeitel.Team, rows []joeeitel.TeamScheduleRow) error {
@@ -71,6 +72,16 @@ func (m *memorySink) WriteTeam(_ context.Context, team joeeitel.Team, rows []joe
 	}
 	m.teams = append(m.teams, team)
 	m.rows = append(m.rows, rows...)
+	return nil
+}
+
+func (m *memorySink) WriteOpponent(ctx context.Context, team joeeitel.Team, rows []joeeitel.TeamScheduleRow) error {
+	if err := m.WriteTeam(ctx, team, nil); err != nil {
+		return err
+	}
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.opponentRows = append(m.opponentRows, rows...)
 	return nil
 }
 
@@ -159,10 +170,20 @@ func TestSeasonReadsEveryTeamAndStopsAtTheOpponents(t *testing.T) {
 		t.Errorf("summary opponents are %d and %d, want 2 and 2",
 			summary.OpponentsDiscovered, summary.OpponentsScraped)
 	}
-	// Two rows for team 1, two for team 2, one for team 3. An opponent stores
-	// no rows at all.
+	// Two rows for team 1, two for team 2, one for team 3. The rows of an
+	// opponent go apart from them.
 	if summary.GameRows != 5 || len(sink.rows) != 5 {
 		t.Errorf("summary counts %d rows and the sink holds %d, want 5", summary.GameRows, len(sink.rows))
+	}
+	// Opponents 90 and 91 each play team 99.
+	if summary.OpponentGameRows != 2 || len(sink.opponentRows) != 2 {
+		t.Errorf("summary counts %d opponent rows and the sink holds %d, want 2",
+			summary.OpponentGameRows, len(sink.opponentRows))
+	}
+	for _, row := range sink.opponentRows {
+		if row.OpponentTeamID != "99" {
+			t.Errorf("an opponent row names opponent %q, want 99", row.OpponentTeamID)
+		}
 	}
 
 	// Team 99 is on the schedule of an opponent. The crawler must not read it.

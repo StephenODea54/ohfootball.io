@@ -11,9 +11,11 @@ the warehouse.
 4. Reads every region page and collects the teams of the Ohio High School Athletic
    Association.
 5. Reads the page of every one of those teams, and writes the team and its schedule.
-6. Reads the page of every opponent that is not one of those teams, and writes the team
-   only. The crawler does not follow the schedule of such an opponent. If it did, it would
-   leave Ohio and never stop.
+6. Reads the page of every opponent that is not one of those teams, and writes the team and
+   its schedule. That schedule goes to `ohfootball_raw.opponent_games` and not to
+   `ohfootball_raw.games`, so it never becomes a canonical game. The OHSAA computer points
+   count the wins and the games of such an opponent. The crawler does not read the pages of
+   the teams on that schedule. If it did, it would leave Ohio and never stop.
 
 The site answers some team pages with status 200 and a body that holds only white space.
 See the empty team pages below.
@@ -78,9 +80,10 @@ SCRAPER_ALL_SEASONS=true \
 The program writes one JSON line for each season, on standard output:
 
 ```json
-{"run_id":"...","season":2015,"regions":26,"ohsaa_teams":716,"opponent_teams_discovered":61,"opponent_teams_scraped":61,"game_rows":7284,"empty_team_pages":0,"status":"succeeded"}
+{"run_id":"...","season":2015,"regions":26,"ohsaa_teams":716,"opponent_teams_discovered":61,"opponent_teams_scraped":61,"game_rows":7284,"opponent_game_rows":540,"empty_team_pages":0,"status":"succeeded"}
 ```
 
+`opponent_game_rows` counts the schedule rows of the opponents that are not OHSAA teams.
 `empty_team_pages` counts the team pages that held only white space. Those teams are also
 counted in `ohsaa_teams` or `opponent_teams_scraped`.
 

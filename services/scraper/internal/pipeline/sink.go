@@ -13,4 +13,9 @@ import (
 // pages in memory.
 type Sink interface {
 	WriteTeam(ctx context.Context, team joeeitel.Team, rows []joeeitel.TeamScheduleRow) error
+
+	// WriteOpponent writes the page of an opponent that is not an OHSAA team.
+	// Its schedule rows go apart from the rows of the OHSAA teams, so they do
+	// not become canonical games.
+	WriteOpponent(ctx context.Context, team joeeitel.Team, rows []joeeitel.TeamScheduleRow) error
 }

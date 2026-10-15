@@ -34,6 +34,7 @@ type summary struct {
 	OpponentTeamsDiscovered int    `json:"opponent_teams_discovered"`
 	OpponentTeamsScraped    int    `json:"opponent_teams_scraped"`
 	GameRows                int    `json:"game_rows"`
+	OpponentGameRows        int    `json:"opponent_game_rows"`
 	EmptyTeamPages          int    `json:"empty_team_pages"`
 	Status                  string `json:"status"`
 }
@@ -158,6 +159,7 @@ func seasonSummary(runID string, result pipeline.Summary, status store.RunStatus
 		OpponentTeamsDiscovered: result.OpponentsDiscovered,
 		OpponentTeamsScraped:    result.OpponentsScraped,
 		GameRows:                result.GameRows,
+		OpponentGameRows:        result.OpponentGameRows,
 		EmptyTeamPages:          result.EmptyTeamPages,
 		Status:                  string(status),
 	}

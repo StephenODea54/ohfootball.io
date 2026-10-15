@@ -67,6 +67,7 @@ func TestSeasonSummaryReportsEveryCount(t *testing.T) {
 		OpponentsDiscovered: 60,
 		OpponentsScraped:    60,
 		GameRows:            6900,
+		OpponentGameRows:    540,
 		EmptyTeamPages:      1,
 	}
 
@@ -77,7 +78,7 @@ func TestSeasonSummaryReportsEveryCount(t *testing.T) {
 
 	want := `{"run_id":"run-1","season":2001,"regions":24,"ohsaa_teams":700,` +
 		`"opponent_teams_discovered":60,"opponent_teams_scraped":60,"game_rows":6900,` +
-		`"empty_team_pages":1,"status":"succeeded"}`
+		`"opponent_game_rows":540,"empty_team_pages":1,"status":"succeeded"}`
 	if string(line) != want {
 		t.Errorf("summary is %s, want %s", line, want)
 	}
