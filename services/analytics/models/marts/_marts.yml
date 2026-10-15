@@ -125,3 +125,67 @@ models:
       - name: is_current
         data_tests:
           - not_null
+
+  - name: fct_harbin_games
+    description: >
+      One row for each game that the OHSAA computer points of a season can read, from 2013. The
+      games of the Ohio teams are the current games of fct_games, with the mark of a game that
+      the OHSAA does not rate. The games between two teams from other states come from the
+      schedules of the opponents of the Ohio teams, in the newest run of the season that read
+      them.
+    columns:
+      - name: game_key
+        description: The key of the game, built as in fct_games.
+        data_tests:
+          - not_null
+          - unique
+      - name: season
+        data_tests:
+          - not_null
+      - name: game_date
+        data_tests:
+          - not_null
+      - name: team_a_key
+        description: >
+          The team key of the lower source identifier. A team on the schedule of an opponent
+          from another state may have no row in dim_teams.
+        data_tests:
+          - not_null
+      - name: team_b_key
+        data_tests:
+          - not_null
+      - name: team_a_result
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [W, L, T, C, unknown]
+      - name: team_b_result
+        description: The result of team B. A double forfeit is a loss for both teams.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [W, L, T, C, unknown]
+      - name: is_team_a_home
+        data_tests:
+          - not_null
+      - name: is_team_b_home
+        data_tests:
+          - not_null
+      - name: is_playoff_game
+        data_tests:
+          - not_null
+      - name: counts_in_ohsaa_rating
+        description: False when the site marks the game as one that the OHSAA does not rate.
+        data_tests:
+          - not_null
+      - name: has_team_a_schedule
+        description: >
+          True when the whole schedule of team A is here: an Ohio team, or a team from another
+          state whose page the newest run read.
+        data_tests:
+          - not_null
+      - name: has_team_b_schedule
+        data_tests:
+          - not_null

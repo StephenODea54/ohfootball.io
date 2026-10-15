@@ -98,3 +98,34 @@ models:
         description: Whether the source marked this as a playoff game.
         data_tests:
           - not_null
+      - name: counts_in_ohsaa_rating
+        description: >
+          False when the site marks the result with a star, because the OHSAA leaves the game
+          out of its computer points. A game against a club team is one example.
+        data_tests:
+          - not_null
+
+  - name: stg_opponent_games
+    description: >
+      Clean, typed schedule rows of the opponents from other states, with the columns of
+      stg_games. An opponent of such a team may have no identifier.
+    columns:
+      - name: game_record_id
+        data_tests:
+          - not_null
+          - unique
+      - name: scrape_run_id
+        data_tests:
+          - not_null
+      - name: source_team_id
+        data_tests:
+          - not_null
+      - name: result
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [W, L, T, C, unknown]
+      - name: counts_in_ohsaa_rating
+        data_tests:
+          - not_null

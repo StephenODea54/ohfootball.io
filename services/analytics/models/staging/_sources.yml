@@ -72,6 +72,25 @@ sources:
                   arguments:
                     values: [H, A, N]
 
+      - name: opponent_games
+        description: >
+          The schedules of the opponents from other states, with the columns of games. They
+          never become canonical games.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: scrape_run_id
+            data_tests:
+              - not_null
+          - name: season
+            data_tests:
+              - not_null
+          - name: source_team_id
+            data_tests:
+              - not_null
+
       - name: ohhsfbdb_index
         description: The index sheet of ohhsfbdb.net, which is the only page holding full school names.
         columns:

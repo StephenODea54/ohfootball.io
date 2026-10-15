@@ -1,0 +1,47 @@
+version: 2
+
+# Teams 100, 200 and 300 are Ohio schools. Team 900 is a team from another state whose page the
+# scrape read, and team 901 is a team on its schedule that the scrape never read. Run 1 is a week
+# older than run 2, and run 3 failed. The game keys are the keys that the game_key macro makes.
+unit_tests:
+  - name: fct_harbin_games_reads_ohio_and_opponent_games
+    model: fct_harbin_games
+    given:
+      - input: source('ohfootball_metadata', 'scrape_runs')
+        rows:
+          - {id: "00000000-0000-0000-0000-000000000001", scraper_version: "joe-eitel@0.1.0", status: succeeded, started_at: "2026-09-05 13:00:00+00", finished_at: "2026-09-05 14:00:00+00"}
+          - {id: "00000000-0000-0000-0000-000000000002", scraper_version: "joe-eitel@0.1.0", status: succeeded, started_at: "2026-09-12 13:00:00+00", finished_at: "2026-09-12 14:00:00+00"}
+          - {id: "00000000-0000-0000-0000-000000000003", scraper_version: "joe-eitel@0.1.0", status: failed, started_at: "2026-09-13 13:00:00+00", finished_at: "2026-09-13 14:00:00+00"}
+      - input: ref('dim_teams')
+        rows:
+          - {team_key: "f842a846-9fdc-51fa-8687-7b6c77e67720", season: 2026, source_id: "100", state_code: OH, is_current: true}
+          - {team_key: "bc6af9b4-7b63-55d5-86b7-005b3c13edae", season: 2026, source_id: "200", state_code: OH, is_current: true}
+          - {team_key: "9bb03f8a-da9d-57f6-9129-6aa3586612b2", season: 2026, source_id: "300", state_code: OH, is_current: true}
+      - input: ref('dim_dates')
+        rows:
+          - {date_key: 20260904, date_day: "2026-09-04"}
+          - {date_key: 20260911, date_day: "2026-09-11"}
+      - input: ref('fct_games')
+        rows:
+          - {game_key: "0732d52b-5230-5ab2-acce-28881067780a", season: 2026, game_date_key: 20260904, team_a_key: "f842a846-9fdc-51fa-8687-7b6c77e67720", team_b_key: "bc6af9b4-7b63-55d5-86b7-005b3c13edae", team_a_result: W, team_b_result: L, is_team_a_home: true, is_team_b_home: false, is_playoff_game: false, is_current: true}
+          - {game_key: "407831f7-15ba-50b0-bde2-47223e90dd80", season: 2026, game_date_key: 20260911, team_a_key: "f842a846-9fdc-51fa-8687-7b6c77e67720", team_b_key: "9bb03f8a-da9d-57f6-9129-6aa3586612b2", team_a_result: unknown, team_b_result: unknown, is_team_a_home: false, is_team_b_home: true, is_playoff_game: false, is_current: true}
+      # The game of 4 September was marked in run 1 and not in run 2, so the newest mark is none.
+      # The game of 11 September is marked in run 2. The failed run 3 does not count.
+      - input: ref('stg_games')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, game_date: "2026-09-04", source_team_id: "100", opponent_team_id: "200", counts_in_ohsaa_rating: false}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", season: 2026, game_date: "2026-09-04", source_team_id: "100", opponent_team_id: "200", counts_in_ohsaa_rating: true}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", season: 2026, game_date: "2026-09-11", source_team_id: "300", opponent_team_id: "100", counts_in_ohsaa_rating: false}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000003", season: 2026, game_date: "2026-09-11", source_team_id: "100", opponent_team_id: "300", counts_in_ohsaa_rating: true}
+      # Run 2 is the newest run that read the page of team 900, so the row of run 1 is left out.
+      # The game against team 100 is an Ohio game, so it comes from fct_games and not from here.
+      - input: ref('stg_opponent_games')
+        rows:
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000001", season: 2026, game_date: "2026-09-05", source_team_id: "900", opponent_team_id: "901", result: W, notes: null, is_source_team_home: true, is_opponent_team_home: false, is_playoff_game: false, counts_in_ohsaa_rating: true}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", season: 2026, game_date: "2026-09-12", source_team_id: "900", opponent_team_id: "901", result: L, notes: double forfeit, is_source_team_home: true, is_opponent_team_home: false, is_playoff_game: false, counts_in_ohsaa_rating: true}
+          - {scrape_run_id: "00000000-0000-0000-0000-000000000002", season: 2026, game_date: "2026-09-18", source_team_id: "900", opponent_team_id: "100", result: L, notes: null, is_source_team_home: false, is_opponent_team_home: true, is_playoff_game: false, counts_in_ohsaa_rating: true}
+    expect:
+      rows:
+        - {game_date: "2026-09-04", team_a_result: W, team_b_result: L, counts_in_ohsaa_rating: true, has_team_a_schedule: true, has_team_b_schedule: true}
+        - {game_date: "2026-09-11", team_a_result: unknown, team_b_result: unknown, counts_in_ohsaa_rating: false, has_team_a_schedule: true, has_team_b_schedule: true}
+        - {game_date: "2026-09-12", team_a_result: L, team_b_result: L, counts_in_ohsaa_rating: true, has_team_a_schedule: true, has_team_b_schedule: false}

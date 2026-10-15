@@ -12,7 +12,7 @@ the `dbt` service of `compose.yaml` runs the same project against the local data
 | --- | --- | --- | --- |
 | staging | view | `ohfootball_stg` | `stg_teams`, `stg_games`, `stg_ohhsfbdb_index`, `stg_ohhsfbdb_teams`, `stg_ohhsfbdb_games`, `stg_ohhsfbdb_season_summaries` |
 | intermediate | view | `ohfootball_int` | `int_team_observations`, `int_games_canonicalized`, `int_schedule_observations`, `int_ohhsfbdb_sheet_teams`, `int_ohhsfbdb_games`, `int_ohhsfbdb_team_observations`, `int_ohhsfbdb_games_canonicalized` |
-| marts | table | `ohfootball_marts` | `dim_teams`, `fct_games`, `dim_dates` |
+| marts | table | `ohfootball_marts` | `dim_teams`, `fct_games`, `dim_dates`, `fct_harbin_games` |
 
 The staging models clean and type the raw rows. Each one holds one row for each raw row.
 
@@ -35,11 +35,16 @@ version, and a moved game is current under its new key. A game that is listed ag
 version, so two versions of a game can have a gap between them. An empty page of a team writes no
 game row, so it does not count as a read and ends no game. A run that failed ends no game.
 
+`fct_harbin_games` is not Type II. It holds the current games of `fct_games` from 2013, with the
+mark of each game that the OHSAA leaves out of its computer points. It also holds the games between
+two teams from other states, from the schedules of the opponents of the Ohio teams in
+`ohfootball_raw.opponent_games`. The playoff projection of the rating reads it.
+
 `generate_schema_name` gives each layer the schema named in `dbt_project.yml`, with no prefix.
 Staging has no schema of its own, so it uses the schema of the profile.
 
-The rating writes `fct_team_ratings` and `fct_game_predictions` to `ohfootball_marts`. dbt
-does not build those two tables. The migrations in `infra/postgres/migrations` make them.
+The rating writes `fct_team_ratings`, `fct_game_predictions` and the playoff projection tables to
+`ohfootball_marts`. dbt does not build those tables. The migrations in `infra/postgres/migrations` make them.
 
 ## Sources
 
