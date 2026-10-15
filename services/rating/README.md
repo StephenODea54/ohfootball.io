@@ -170,6 +170,87 @@ an overconfident model. **Brier score** is the mean squared error of the probabi
 games in which the favorite won. It leaves out ties and exact 50% forecasts, and it cannot tell a
 51% forecast from a 90% forecast.
 
+## Playoff projections
+
+### The computer points
+
+`harbin.py` holds the rules of the OHSAA computer points. A win gives Level 1 points by the
+division of the opponent, from 6.5 for division I down to 3.5 for division VII. A tie gives half.
+A win also gives Level 2 points: the Level 1 points of the defeated opponent. A team from another
+state gives the points of its assigned division for each of its wins instead. The average is:
+
+```text
+average = Level 1 / games played + 10 * Level 2 / divisor
+divisor = 100 - 10 * (own open dates) - (open dates of each opponent played)
+```
+
+At the end of the season, the divisor of a team with ten games is the sum of the counted games of
+its opponents. Two averages that agree to four decimals are a tie. The third level of points breaks
+it: the Level 2 points of the defeated opponents. A draw breaks a tie that remains.
+
+From 2025, twelve teams of each region qualify. Seeds one to four get a bye and host the second
+round. Seeds five to eight host the first round. Sixteen teams qualified from 2021 to 2024, and
+eight before 2020.
+
+The rules follow the OHSAA Football Tournament Regulations, sections 5 and 7. The section on the
+`project` command below compares the points with the OHSAA ratings.
+
+### The simulation
+
+`simulation.py` plays the rest of a regular season many times. Each run starts from the ratings of
+the day of the run and plays the remaining games date by date. The margin of a game is the expected
+margin plus an error drawn from the errors that the model made in the ten earlier seasons, in games
+of the same slope group. The ratings then move by the rule of the backtest, so a team that wins in
+a run is stronger in its later games of that run. After the last date, each run computes the
+points and seeds each region.
+
+The errors come from the record and not from a normal curve, because the errors of the model have
+heavier tails than a normal curve. The errors are also wider in a close game than in a game with a
+clear favorite. So a game draws its error from the earlier games whose expected margin was within
+the same band of four points, and the error is measured from the side of the favorite. With one
+pool for each slope group, a favorite won two to four points less often in the runs than its
+published win probability says, and the record agrees with the published probability. With the
+bands, the runs give the published probability of a game within 0.008 on average.
+
+A new program from another state opens at the rating that its Ohio opponent has in the run on the
+date of the game, as in the backtest. A game without a rating, such as a game between two teams
+from other states, has no expected margin, so the records of the two teams decide it.
+
+All runs of a chunk move together in numpy arrays, and the loop goes over the dates only. The
+played games give the same points in every run, so the setup adds them up one time.
+
+After the regular season of a run, the qualifiers of each region fill a bracket. The better seed
+hosts each game but the regional final, which is on a neutral field. A playoff game draws its error
+from the errors of earlier playoff games, and the ratings stay as they were at the end of the
+regular season.
+
+`projection.py` counts the runs. For each team and each number of its remaining games that it
+wins, it counts the place in the region and the final average. For each of its remaining games, it
+counts the runs in which the team won that game and the runs in which it lost it. It also counts
+the runs in which the team won its region. From the counts it gives the chance to qualify, to play
+at home, to get a bye and to win the region, the mean seed, the odds of each final record, and the
+odds if the team wins and if it loses each of its games. A percentile of an average is read from a
+histogram with bins of 0.1, and the runs of a bin are taken to spread evenly across it.
+
+The runs of a projection split into chunks, and each chunk gets a seed of its own, so the result
+does not depend on the number of processes. On a laptop, 100,000 runs of the 2026 season after week
+six take about four seconds with eight processes and about fourteen seconds with one.
+
+### What the projection does not know
+
+- A team from another state whose page the scrape could not read is taken to play ten games, and
+  it wins half of the games that are not known.
+- The record of a team from another state comes from its own page, so a game against a team that
+  the site does not link is not in it.
+- The OHSAA breaks a tie that involves a team from another state with other steps. The projection
+  uses the third level for every tie.
+- A team that opts out of the playoffs, or that the OHSAA rules out, still gets a seed.
+- When a team from another state plays more than ten games, only its first ten count. The OHSAA
+  has an exception when the game against the Ohio team is the eleventh. The projection does not
+  apply it.
+- A game that does not count, such as the eleventh game of a team from another state, does not
+  move a rating in a run. The backtest would replay it.
+
 ## Running it
 
 Build the dbt marts, then publish the ratings and the predictions:
@@ -210,6 +291,44 @@ gets a prediction from the current ratings, dated the day of the run. A game of 
 that never got a result gets no prediction. Each row holds both pregame ratings, the expected
 margin and the win probability of team A. A run with an older `--as-of-date` therefore also
 rewrites the predictions as they were on that day, until the next run with the current date.
+
+### Project the playoffs
+
+```bash
+ohfootball-rating project --season 2026 --runs 100000 --workers 8
+```
+
+The command reads the games of the season from `ohfootball_marts.fct_harbin_games`: the current
+games of the Ohio teams, the mark of each game that the OHSAA does not rate, and the games between
+the opponents from other states. It starts from the last week that is over at `--as-of-date`. A
+week runs from Wednesday to Tuesday, and it is over from the Sunday after its games. A game after
+that week is played in the runs, even when its result is known already, and the replay of the
+rating stops before it. So the record, the remaining games and the ratings always meet at the same
+point. The command plays the rest of the regular season `--runs` times and replaces the projection
+of the season at `--as-of-date` in three tables:
+
+- `dim_playoff_projections`: the number of runs, the seed and the playoff format.
+- `fct_playoff_outlooks`: the computer points of each Ohio team after the finished weeks, its odds
+  to qualify, to play at home, to get a bye and to win its region, its mean seed, its remaining
+  games in the order of their dates, and its odds if it wins and if it loses each of them.
+- `fct_playoff_record_odds`: the odds of each final record of each team, with the range of its
+  final average. A row holds wins and losses only. The runs play no ties, so the ties of a team
+  are the ties of its record.
+
+The seed defaults to the as-of date, so a second run on the same day gives the same numbers. The
+command stores nothing and succeeds before week one is over, when no Ohio team has a region yet,
+and when no earlier season gives the errors of the model.
+
+The regular season ends on the Saturday of week ten, because the OHSAA counts only the games played
+by then. A makeup game on the Monday or the Tuesday after does not count. A double forfeit is a
+loss for both teams.
+
+With the scrape of 2026-10-01, the computer points after week six agree with the OHSAA ratings of
+2026-09-29 for each of the 700 Ohio teams with a region, in the record, both levels, the divisor
+and the average. With the scrape of 2026-10-14, the points after week eight agree with the OHSAA
+ratings of 2026-10-13 for each of the 700 teams in the same way. A team without a region, such as
+a school whose games were all canceled, gets no projection. A projection of 100,000 runs, with the
+replay and the reads, takes about fifteen seconds on a laptop.
 
 ### Evaluate the margin rating
 

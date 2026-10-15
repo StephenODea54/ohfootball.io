@@ -10,7 +10,7 @@
 # Run one of these on a workstation with:
 #   make pipeline ARGS=rate
 
-.PHONY: pipeline snapshot-recruits scrape transform rate publish-site publish-download \
+.PHONY: pipeline snapshot-recruits scrape transform rate project publish-site publish-download \
 	publish-dataset backfill
 
 # The order matters. The recruiting snapshot goes first, because it needs nothing else in the run
@@ -28,6 +28,7 @@ pipeline:
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) scrape
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) transform
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) rate
+	-$(MAKE) -f $(firstword $(MAKEFILE_LIST)) project
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-site
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-download
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-dataset
@@ -55,6 +56,17 @@ transform:
 # reaches the whole record.
 rate:
 	ohfootball-rating publish
+
+# Plays the rest of the regular season 100,000 times and stores the playoff odds of each team. It
+# reads the marts and the games of the scrape, so it runs after the transform and the rating, and
+# before the site is drawn. It starts from the last week that is over. A week is over from the
+# Sunday after its games, so a run from Sunday to Tuesday holds the games of that week. The weekly
+# run goes on when this target fails, because no later target needs it, and the site then shows
+# the odds of the last run that worked. Before week one ends, and when no team has a region yet,
+# it stores nothing and succeeds. Two processes keep the memory of the image lower than eight, and
+# the runs still take seconds.
+project:
+	ohfootball-rating project --workers 2
 
 # Asks GitHub to build the site again and publish it.
 #

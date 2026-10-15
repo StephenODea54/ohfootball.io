@@ -171,7 +171,8 @@ flowchart TD
     snapshot["snapshot-recruits<br/>ohfootball-recruiting snapshot"] --> scrape
     scrape["scrape<br/>joe-eitel"] --> transform["transform<br/>dbt build"]
     transform --> rate["rate<br/>ohfootball-rating publish"]
-    rate --> site["publish-site<br/>start the site workflow"]
+    rate --> project["project<br/>ohfootball-rating project"]
+    project --> site["publish-site<br/>start the site workflow"]
     site --> download["publish-download<br/>ohfootball-dataset publish-download"]
     download --> dataset["publish-dataset<br/>ohfootball-dataset publish"]
 
@@ -186,6 +187,7 @@ flowchart TD
     scrape -. writes .-> warehouse
     transform -. reads and writes .-> warehouse
     rate -. reads and writes .-> warehouse
+    project -. reads and writes .-> warehouse
     site -. asks for .-> build
     build -. draws every page from .-> api["api"]
     download -. reads the marts, zips them, then sends .-> r2
@@ -198,6 +200,7 @@ flowchart TD
 | `scrape` | Go | collects the games of the season named by `SCRAPER_SEASON` |
 | `transform` | dbt | rebuilds staging, intermediate, and the marts |
 | `rate` | Python | rates every Ohio team in every season, reads its games against teams from other states too, and stores a pregame prediction for every game of an Ohio team played, except a game against another state without both scores, and for every game of an Ohio team of the season in progress not yet played |
+| `project` | Python | plays the rest of the regular season 100,000 times and stores the playoff odds of each Ohio team, including its chance to win its region; before week one is over it stores nothing; a failure does not stop the run |
 | `publish-site` | curl | starts the site workflow through the REST API of GitHub |
 | `publish-download` | Python | zips the marts and sends the zip to R2, under the date and under `latest/` |
 | `publish-dataset` | Python | sends the marts to Kaggle as one new version |
@@ -210,7 +213,7 @@ not run, in the order above.
 before the games of the week, however long the scrape takes. When it fails, the run stops, the
 same as when any other source fails. A run again on the same day calls only for the classes that
 are missing. To finish a run that stopped at this target, run it again, or run the targets after
-it by hand: `cd /app && make scrape transform rate publish-site publish-download publish-dataset`.
+it by hand: `cd /app && make scrape transform rate project publish-site publish-download publish-dataset`.
 
 Set `CFBD_API_KEY` on the `pipeline` application before a deploy that adds `snapshot-recruits`
 reaches the host. Without the key, the next weekly run stops at its first target, and no other

@@ -20,6 +20,7 @@ ORDER = [
     "scrape",
     "transform",
     "rate",
+    "project",
     "publish-site",
     "publish-download",
     "publish-dataset",
@@ -64,6 +65,12 @@ class TheWeeklyRun(unittest.TestCase):
         self.assertNotEqual(code, 0)
         self.assertEqual(calls, ["snapshot-recruits", "scrape"])
 
+    def test_goes_on_when_the_projection_fails(self) -> None:
+        code, calls = run_with_a_failure("project")
+
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, ORDER)
+
     def test_runs_every_target_when_nothing_fails(self) -> None:
         code, calls = run_with_a_failure("")
 
@@ -98,6 +105,11 @@ class TheSnapshot(unittest.TestCase):
         """Guards against a later edit that puts the key on a command line. The command reads the
         key from the environment."""
         self.assertNotIn("CFBD_API_KEY", dry_run("pipeline"))
+
+
+class TheProjection(unittest.TestCase):
+    def test_runs_the_command_of_the_rating_package(self) -> None:
+        self.assertEqual(dry_run("project").strip(), "ohfootball-rating project --workers 2")
 
 
 class TheDownload(unittest.TestCase):

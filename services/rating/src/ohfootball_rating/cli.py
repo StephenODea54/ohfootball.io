@@ -6,15 +6,24 @@ import argparse
 import json
 import os
 from collections.abc import Iterable, Sequence
-from dataclasses import asdict
-from datetime import date, datetime
+from dataclasses import asdict, replace
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from statistics import median
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .games import Game
+from .harbin import SEASON_WEEKS, counted_games, playoff_format, standings
+from .harbin_repository import (
+    completed_week,
+    last_regular_season_day,
+    load_harbin_inputs,
+    season_start,
+)
 from .margin import MarginConfig, MarginPrediction, backtest, opening_rating, predict
 from .metrics import evaluate
+from .projection import outlooks, own_games, run_projection
+from .projection_publisher import projection_rows, publish_projection
 from .publisher import (
     GamePredictionRow,
     RatingSnapshot,
@@ -23,6 +32,7 @@ from .publisher import (
     publish_ratings,
 )
 from .repository import load_games, load_games_from_export
+from .simulation import build_setup
 
 DEFAULT_DATABASE_URL = "postgresql://im_batman:shhhhhhhhh@localhost:5432/ohfootball"
 DEFAULT_TIME_ZONE = "America/New_York"
@@ -70,6 +80,25 @@ def build_parser() -> argparse.ArgumentParser:
         default=(2024, 2025),
         help="the seasons to score apart from the windows, as FIRST:LAST (default 2024:2025)",
     )
+
+    projection = subparsers.add_parser(
+        "project",
+        help="simulate the rest of a regular season and publish the playoff projection",
+    )
+    _add_common_arguments(projection)
+    projection.add_argument("--season", type=int)
+    projection.add_argument("--runs", type=int, default=100_000)
+    projection.add_argument(
+        "--workers",
+        type=int,
+        default=min(8, os.cpu_count() or 1),
+        help="the number of processes that play the runs",
+    )
+    projection.add_argument(
+        "--seed",
+        type=int,
+        help="the seed of the runs (default: the as-of date as a number, such as 20261006)",
+    )
     return parser
 
 
@@ -109,7 +138,7 @@ def _season_range(raw_range: str) -> tuple[int, int]:
 
 def main() -> None:
     arguments = build_parser().parse_args()
-    commands = {"publish": _publish, "evaluate": _evaluate}
+    commands = {"publish": _publish, "evaluate": _evaluate, "project": _project}
     commands[arguments.command](arguments)
 
 
@@ -209,6 +238,101 @@ def _publish(arguments: argparse.Namespace) -> None:
             sort_keys=True,
         )
     )
+
+
+def _project(arguments: argparse.Namespace) -> None:
+    config = MarginConfig()
+    as_of_date = arguments.as_of_date
+    season = arguments.season or as_of_date.year
+    seed = arguments.seed if arguments.seed is not None else int(as_of_date.strftime("%Y%m%d"))
+    if arguments.runs < 1:
+        raise SystemExit("the projection needs at least one run")
+
+    inputs = load_harbin_inputs(
+        arguments.database_url, season=season, marts_schema=arguments.marts_schema
+    )
+    first_day = season_start(inputs.games, inputs.teams)
+    if first_day is None:
+        _skip(season, "the season has no week one yet")
+        return
+    week = completed_week(as_of_date, first_day, last_week=SEASON_WEEKS)
+    if week == 0:
+        _skip(season, "no week of the season is over yet")
+        return
+    # The projection starts after the last finished week. A game after it is played in the runs,
+    # even when its result is known already, and the rating does not read it. So the current
+    # points, the remaining games and the ratings all stop at the same point.
+    week_end = first_day + timedelta(days=7 * week)
+    counted = [
+        game
+        if game.game_date < week_end
+        else replace(game, team_a_result="unknown", team_b_result=None)
+        for game in counted_games(
+            inputs.games,
+            inputs.teams,
+            last_day=last_regular_season_day(first_day, SEASON_WEEKS),
+        )
+    ]
+    games = load_games(arguments.database_url, marts_schema=arguments.marts_schema)
+    result = backtest(_completed_games(games, min(as_of_date, week_end)), config)
+    setup = build_setup(
+        season=season,
+        teams=inputs.teams,
+        harbin_games=counted,
+        games={game.game_key: game for game in games if game.season == season},
+        result=result,
+        playoff_format=playoff_format(season),
+        complete_schedules=inputs.complete_schedules,
+        config=config,
+    )
+    if len(setup.remaining) and not len(setup.errors):
+        _skip(season, "no earlier season gives the errors of the model")
+        return
+    current = standings(counted, inputs.teams, season=season, week=week, first_day=first_day)
+    if not (setup.regions >= 0).any():
+        _skip(season, "no Ohio team has a region yet")
+        return
+    tally = run_projection(setup, runs=arguments.runs, seed=seed, workers=arguments.workers)
+    ohio = setup.team_keys[: setup.ohio_count]
+    teams = outlooks(
+        setup,
+        tally,
+        [current[key].wins for key in ohio],
+        [current[key].losses for key in ohio],
+    )
+    rows = projection_rows(
+        setup=setup,
+        own=own_games(setup),
+        runs=tally.runs,
+        outlooks=teams,
+        standings=current,
+        as_of_date=as_of_date,
+        seed=seed,
+    )
+    published = publish_projection(
+        arguments.database_url, rows, marts_schema=arguments.marts_schema
+    )
+    print(
+        json.dumps(
+            {
+                "as_of_date": as_of_date.isoformat(),
+                "completed_week": week,
+                "published_teams": published,
+                "remaining_games": len(setup.remaining),
+                "runs": tally.runs,
+                "season": season,
+                "seed": seed,
+                "teams_with_known_schedules": len(inputs.complete_schedules),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+def _skip(season: int, reason: str) -> None:
+    """Report a projection that the command did not make. The weekly run must still go on."""
+    print(json.dumps({"season": season, "skipped": reason}))
 
 
 def _prediction_row(prediction: MarginPrediction, as_of_date: date) -> GamePredictionRow:
