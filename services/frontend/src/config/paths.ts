@@ -84,4 +84,7 @@ export const links = {
   ohhsfbdb: "https://ohhsfbdb.net/",
   fantastic50: "https://www.fantastic50.net/",
   harbinCalculator: "https://www.harbincalculator.com/",
+  // The football tournament regulations of the OHSAA, which the Playoffs page links to.
+  ohsaaFootballRules:
+    "https://ohsaaweb.blob.core.windows.net/files/Sports/Football/FootballTournamentRegs.pdf",
 } as const

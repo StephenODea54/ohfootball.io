@@ -34,5 +34,6 @@ it("links to the project and the score sources outside the site", () => {
     "https://ohhsfbdb.net/",
     "https://www.fantastic50.net/",
     "https://www.harbincalculator.com/",
+    "https://ohsaaweb.blob.core.windows.net/files/Sports/Football/FootballTournamentRegs.pdf",
   ])
 })
