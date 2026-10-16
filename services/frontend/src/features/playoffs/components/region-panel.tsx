@@ -62,10 +62,6 @@ function RegionMap({ map, region }: { map: RegionMapData; region: number }) {
           </text>
         ))}
       </svg>
-      <figcaption className="mt-2 text-muted-fg text-xs/4">
-        Each county takes the region that most of its schools in the division play in. A county with
-        no such school takes the region of the nearest county that has one.
-      </figcaption>
     </figure>
   )
 }
