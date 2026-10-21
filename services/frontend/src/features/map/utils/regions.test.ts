@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { MapTeam } from "@/features/map/api/get-map-teams"
-import { readCounties } from "@/features/map/server/ohio-map"
+import { readCounties } from "@/features/map/server/ohio-projection"
 import { REGIONS, regionKings, regionOfCounty } from "@/features/map/utils/regions"
 
 function team(

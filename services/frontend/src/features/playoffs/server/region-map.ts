@@ -1,4 +1,4 @@
-import { geoArea, geoMercator, geoPath } from "d3-geo"
+import { geoArea } from "d3-geo"
 import type {
   Feature,
   FeatureCollection,
@@ -6,13 +6,18 @@ import type {
   Polygon as GeoPolygon,
 } from "geojson"
 import { feature, merge, mesh } from "topojson-client"
-import type { GeometryCollection, MultiPolygon, Polygon, Topology } from "topojson-specification"
-import { readCounties } from "@/features/map/server/ohio-map"
+import type { MultiPolygon, Polygon } from "topojson-specification"
+import {
+  type Counties,
+  countyName,
+  fitOhio,
+  ohioCounties,
+  readCounties,
+} from "@/features/map/server/ohio-projection"
 
 /** The width of the map in its own units. The height follows from the shape of Ohio. */
 const MAP_WIDTH = 400
 const MAP_MARGIN = 8
-const OHIO_FIPS = "39"
 
 /** A school of the season with the county, the division and the region that it plays in. */
 export interface RegionMapTeam {
@@ -37,8 +42,6 @@ export interface PlayoffMap {
   divisions: Record<number, RegionShape[]>
 }
 
-type Counties = Topology<{ counties: GeometryCollection<{ name: string }> }>
-
 /**
  * Draws the regions of each division as groups of whole counties. It runs only in the build.
  *
@@ -50,21 +53,10 @@ export function playoffMap(
   teams: readonly RegionMapTeam[],
   topology: Counties = readCounties(),
 ): PlayoffMap {
-  const counties: GeometryCollection<{ name: string }> = {
-    type: "GeometryCollection",
-    geometries: topology.objects.counties.geometries.filter((county) =>
-      String(county.id).startsWith(OHIO_FIPS),
-    ),
-  }
+  const counties = ohioCounties(topology)
+  const { path, height } = fitOhio(topology, counties, MAP_WIDTH, MAP_MARGIN)
   const shapes = feature(topology, counties) as FeatureCollection
-  const projection = geoMercator().fitWidth(MAP_WIDTH - 2 * MAP_MARGIN, shapes)
-  const [x, y] = projection.translate()
-  projection.translate([x + MAP_MARGIN, y + MAP_MARGIN])
-  const path = geoPath(projection).digits(1)
-  const [, [, bottom]] = path.bounds(shapes)
-  const names = counties.geometries.map(
-    (county) => (county.properties as { name?: string } | undefined)?.name ?? "",
-  )
+  const names = counties.geometries.map(countyName)
   const centers = (shapes.features as Feature[]).map((shape) => path.centroid(shape))
 
   const divisions: Record<number, RegionShape[]> = {}
@@ -98,7 +90,7 @@ export function playoffMap(
 
   return {
     width: MAP_WIDTH,
-    height: Math.ceil(bottom + MAP_MARGIN),
+    height,
     outline: path(mesh(topology, counties, (a, b) => a === b)) ?? "",
     divisions,
   }

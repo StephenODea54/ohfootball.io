@@ -1,6 +1,7 @@
 import { geoMercator } from "d3-geo"
 import { describe, expect, it } from "vitest"
-import { MAP_WIDTH, ohioMap, readCounties } from "@/features/map/server/ohio-map"
+import { MAP_WIDTH, ohioMap } from "@/features/map/server/ohio-map"
+import { readCounties } from "@/features/map/server/ohio-projection"
 import { project } from "@/features/map/utils/projection"
 
 const map = ohioMap()
