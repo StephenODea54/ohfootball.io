@@ -19,7 +19,7 @@ beforeEach(() => {
 })
 
 describe("getMapTeams", () => {
-  it("asks for the location and the rating of every team of the season", async () => {
+  it("asks for the location, the rating, and the playoff region of every team of the season", async () => {
     graphqlRequest.mockResolvedValue({ teams: [{ id: "a" }] })
     const getMapTeams = await loadGetMapTeams()
 
@@ -28,6 +28,7 @@ describe("getMapTeams", () => {
       expect.stringContaining("coordinates { latitude longitude }"),
       { season: 2026 },
     )
+    expect(graphqlRequest.mock.calls[0][0]).toMatch(/division\s+region/)
   })
 
   it("stops when the API may have cut the list", async () => {

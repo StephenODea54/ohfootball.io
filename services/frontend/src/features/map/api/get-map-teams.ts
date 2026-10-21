@@ -11,13 +11,17 @@ export interface MapTeam {
   name: string
   /** The Ohio county of the school without the word County, such as Stark. */
   county: string | null
+  /** The OHSAA division, 1 to 7. Null for a school that does not play in the OHSAA playoffs. */
+  division: number | null
+  /** The OHSAA region, numbered 1 to 28 across the divisions. */
+  region: number | null
   primaryColor: string | null
   secondaryColor: string | null
   rating: { value: number; rank: number } | null
   coordinates: { latitude: number; longitude: number } | null
 }
 
-/** Every team of the current season with only the fields that the map of the home page draws. */
+/** Every team of the current season with only the fields that the maps of the site draw. */
 export function getMapTeams(): Promise<MapTeam[]> {
   return once("map-teams", async () => {
     const season = await getCurrentSeason()
@@ -29,6 +33,8 @@ export function getMapTeams(): Promise<MapTeam[]> {
             sourceId
             name
             county
+            division
+            region
             primaryColor
             secondaryColor
             rating { value: relativeRating rank }

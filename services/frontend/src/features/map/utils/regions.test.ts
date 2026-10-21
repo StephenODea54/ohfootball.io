@@ -14,6 +14,8 @@ function team(
     sourceId: id,
     name: id,
     county,
+    division: null,
+    region: null,
     primaryColor: colors[0],
     secondaryColor: colors[1],
     rating: rank === null ? null : { value: 50 - rank, rank },

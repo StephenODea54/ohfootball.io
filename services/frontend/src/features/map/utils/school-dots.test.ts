@@ -11,6 +11,8 @@ function team(id: string, rank: number | null): MapTeam {
     sourceId: id,
     name: id,
     county: null,
+    division: null,
+    region: null,
     primaryColor: null,
     secondaryColor: null,
     rating: rank === null ? null : { value: 40 - rank, rank },

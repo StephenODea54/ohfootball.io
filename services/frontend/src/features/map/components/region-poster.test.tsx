@@ -16,6 +16,8 @@ function king(id: string, sourceId: string): MapTeam & { rating: { value: number
     sourceId,
     name: id,
     county: null,
+    division: null,
+    region: null,
     primaryColor: null,
     secondaryColor: null,
     rating: { value: 65.2, rank: 1 },
