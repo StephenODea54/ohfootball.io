@@ -1,10 +1,8 @@
 import type { CSSProperties } from "react"
-import { Link } from "@/components/ui/link"
 import { paths } from "@/config/paths"
+import { TeamCard } from "@/features/map/components/team-card"
 import type { RegionKey, RegionKing } from "@/features/map/utils/regions"
 import type { Dot } from "@/features/map/utils/school-dots"
-import { TeamLogo } from "@/features/teams/components/team-logo"
-import { formatRating } from "@/features/teams/utils/format"
 import { logoHref } from "@/features/teams/utils/team-logo"
 
 /** The color of a region whose best school has no usable team color. */
@@ -45,7 +43,6 @@ const TINT = {
   fill: "[fill:var(--tint)] [fill-opacity:0.8] dark:[fill-opacity:0.5]",
   stroke: "fill-none [stroke:var(--tint)]",
   halo: "[fill:var(--tint)]",
-  card: "border-l-4 [border-color:color-mix(in_oklab,var(--tint)_45%,transparent)] [border-left-color:var(--tint)]",
 }
 
 function tint(color: string) {
@@ -288,6 +285,7 @@ export function RegionPoster({ map, kings, dots }: RegionPosterProps) {
   )
 }
 
+/** The card of the best school of a region. It links to the page of the team. */
 function PosterCard({
   king,
   label,
@@ -300,22 +298,17 @@ function PosterCard({
   style: CSSProperties
 }) {
   return (
-    <Link
+    <TeamCard
+      team={{
+        sourceId: king.sourceId,
+        name: king.name,
+        rank: king.rating.rank,
+        rating: king.rating.value,
+      }}
+      label={label}
       href={paths.team.getHref(king.id)}
       data-card={regionKey}
-      className={`flex items-center gap-3 whitespace-nowrap rounded-lg border bg-bg/95 py-2 ps-3 pe-5 shadow-xl backdrop-blur-sm hover:shadow-[0_12px_32px_-8px_var(--tint)] motion-safe:transition-shadow motion-safe:duration-300 dark:bg-black/80 ${TINT.card}`}
       style={style}
-    >
-      <TeamLogo team={king} size="sm" className="size-9" />
-      <span className="flex flex-col">
-        <span className="font-medium text-[0.625rem]/3 text-muted-fg uppercase tracking-[0.12em]">
-          {label}
-        </span>
-        <span className="mt-0.5 font-semibold text-base/5 text-fg">{king.name}</span>
-        <span className="text-muted-fg text-xs/4 tabular-nums">
-          {`#${king.rating.rank} · ${formatRating(king.rating.value)}`}
-        </span>
-      </span>
-    </Link>
+    />
   )
 }
