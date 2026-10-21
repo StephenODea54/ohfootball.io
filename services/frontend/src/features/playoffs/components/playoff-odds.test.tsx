@@ -161,6 +161,28 @@ describe("PlayoffOdds", () => {
 
     await waitFor(() => expect(screen.getByText(/did not load/)).toBeTruthy())
   })
+
+  it("chooses a region from the map", async () => {
+    const shape = (region: number) => ({ region, path: "M1,1Z", label: { x: 10, y: 10 } })
+    const map = {
+      width: 400,
+      height: 420,
+      outline: "M0,0Z",
+      // Region 3 has no odds, so the map leaves it out.
+      divisions: { 1: [shape(1), shape(2), shape(3)], 2: [shape(5), shape(6)] },
+    }
+    serve({ "/playoffs/regions/2.json": first.data })
+    render(<PlayoffOdds {...props} map={map} />)
+    expect(screen.queryByRole("link", { name: "Region 3" })).toBeNull()
+
+    fireEvent.click(screen.getByRole("link", { name: "Region 2" }))
+
+    await waitFor(() =>
+      expect(screen.getByRole("grid", { name: "Region 2 playoff odds" })).toBeTruthy(),
+    )
+    expect(window.location.search).toBe("?division=1&region=2")
+    expect(screen.getByRole("link", { name: "Region 2" }).getAttribute("aria-current")).toBe("page")
+  })
 })
 
 describe("loadRegion", () => {

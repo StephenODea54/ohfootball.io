@@ -161,13 +161,18 @@ export function PlayoffOdds({ regions, first, qualifiers, byes, runs, map }: Pla
         <aside className="flex flex-col gap-6">
           <RegionPanel
             region={selection.region}
+            division={selection.division}
+            onSelect={(next) => choose({ division: selection.division, region: next })}
             map={
               map
                 ? {
                     width: map.width,
                     height: map.height,
                     outline: map.outline,
-                    shapes: map.divisions[selection.division] ?? [],
+                    // Only a region with odds is a link, so a click never opens an empty region.
+                    shapes: (map.divisions[selection.division] ?? []).filter((shape) =>
+                      regionNumbers.includes(shape.region),
+                    ),
                   }
                 : null
             }
