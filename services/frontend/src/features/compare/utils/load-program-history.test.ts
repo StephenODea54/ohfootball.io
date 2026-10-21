@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { loadProgramHistory } from "@/features/compare/utils/load-program-history"
 
-const history = { sourceId: "1624", name: "Massillon Washington" }
+const history = {
+  sourceId: "1624",
+  name: "Massillon Washington",
+  colors: { primary: "#ffa500", secondary: "#000000" },
+}
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -13,6 +17,26 @@ describe("loadProgramHistory", () => {
 
     expect(await loadProgramHistory("1624", fetcher)).toEqual(history)
     expect(fetcher).toHaveBeenCalledWith("/programs/1624.json")
+  })
+
+  it("reads an old file without colors as a school with no colors", async () => {
+    const old = { sourceId: "1624", name: "Massillon Washington" }
+    const fetcher = vi.fn(async () => ({ ok: true, json: async () => old }))
+
+    expect(await loadProgramHistory("1624", fetcher)).toEqual({
+      ...old,
+      colors: { primary: null, secondary: null },
+    })
+  })
+
+  it("drops a color that is not #rrggbb", async () => {
+    const file = { ...history, colors: { primary: '#ffa500" }', secondary: "#000000" } }
+    const fetcher = vi.fn(async () => ({ ok: true, json: async () => file }))
+
+    expect((await loadProgramHistory("1624", fetcher))?.colors).toEqual({
+      primary: null,
+      secondary: "#000000",
+    })
   })
 
   it("gives null when the site has no file", async () => {

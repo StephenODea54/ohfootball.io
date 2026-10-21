@@ -7,6 +7,7 @@ import { CompareView } from "@/features/compare/components/compare-view"
 import { HeadToHeadCard } from "@/features/compare/components/head-to-head-card"
 import { MeetingsTable } from "@/features/compare/components/meetings-table"
 import { ProgramPicker } from "@/features/compare/components/program-picker"
+import { slotStyles } from "@/features/compare/components/slot-colors"
 import type { ProgramHistory } from "@/features/compare/types"
 import { headToHead } from "@/features/compare/utils/head-to-head"
 import { toProgramOption } from "@/features/compare/utils/program-history"
@@ -29,6 +30,7 @@ const massillon: ProgramHistory = {
   sourceId: "1624",
   name: "Massillon Washington",
   teamId: "massillon-2026",
+  colors: { primary: "#ffa500", secondary: "#000000" },
   seasons: [
     { season: 2024, rating: 18, rank: 20, asOf: "2024-12-31" },
     { season: 2026, rating: 22.4, rank: 12, asOf: "2026-09-29" },
@@ -40,6 +42,7 @@ const mckinley: ProgramHistory = {
   sourceId: "306",
   name: "Canton McKinley",
   teamId: "mckinley-2026",
+  colors: { primary: "#ff0000", secondary: "#000000" },
   seasons: [{ season: 2025, rating: -3, rank: 300, asOf: "2025-12-31" }],
   games: [],
 }
@@ -47,8 +50,12 @@ const mckinley: ProgramHistory = {
 const label = (season: number) => (season === 2026 ? "2026 so far" : `${season}`)
 
 describe("CompareLegend", () => {
+  const styles = slotStyles(massillon, mckinley)
+
   it("shows each school with its line, its page, and its standing this season", () => {
-    const html = renderToStaticMarkup(<CompareLegend a={massillon} b={mckinley} season={2026} />)
+    const html = renderToStaticMarkup(
+      <CompareLegend a={massillon} b={mckinley} styles={styles} season={2026} />,
+    )
 
     expect(html).toContain('href="/teams/massillon-2026"')
     expect(html).toContain("#12")
@@ -58,8 +65,21 @@ describe("CompareLegend", () => {
     expect(html).not.toContain("background-color:#FF6600")
   })
 
+  it("draws each sample in the colors of its school for each theme", () => {
+    const html = renderToStaticMarkup(
+      <CompareLegend a={massillon} b={mckinley} styles={styles} season={2026} />,
+    )
+
+    expect(html.match(/stroke-\(--line-light\) dark:stroke-\(--line-dark\)/g)).toHaveLength(2)
+    expect(html).toContain("--line-light:#b87600;--line-dark:#ffa500")
+    expect(html).toContain("--line-light:#fb0000;--line-dark:#ff0000")
+    expect(html.match(/stroke-dasharray/g)).toHaveLength(1)
+  })
+
   it("leaves out a side with no school", () => {
-    const html = renderToStaticMarkup(<CompareLegend a={null} b={mckinley} season={2026} />)
+    const html = renderToStaticMarkup(
+      <CompareLegend a={null} b={mckinley} styles={slotStyles(null, mckinley)} season={2026} />,
+    )
 
     expect(html).not.toContain("Massillon")
     expect(html).toContain("Canton McKinley")

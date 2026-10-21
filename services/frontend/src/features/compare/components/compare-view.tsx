@@ -14,6 +14,7 @@ import { CompareSeasonTable } from "@/features/compare/components/compare-season
 import { HeadToHeadCard } from "@/features/compare/components/head-to-head-card"
 import { MeetingsTable } from "@/features/compare/components/meetings-table"
 import { ProgramPicker } from "@/features/compare/components/program-picker"
+import { slotStyles } from "@/features/compare/components/slot-colors"
 import type { ProgramHistory, ProgramOption } from "@/features/compare/types"
 import {
   type ComparePair,
@@ -121,6 +122,7 @@ export function CompareView({ season, programs }: CompareViewProps) {
   const a = pair.a ? (histories.get(pair.a) ?? null) : null
   const b = pair.b ? (histories.get(pair.b) ?? null) : null
   const loaded = [a, b].filter((history) => history !== null)
+  const styles = useMemo(() => slotStyles(a, b), [a, b])
   const seasonLabel = seasonLabeler(season, loaded)
   const rows = mergeSeasonSeries(a?.seasons ?? [], b?.seasons ?? [])
   const record = a && b ? headToHead(a, b.sourceId) : null
@@ -182,8 +184,14 @@ export function CompareView({ season, programs }: CompareViewProps) {
             </Heading>
             <Card className="gap-5 py-5 shadow-none [--gutter:--spacing(4)] sm:[--gutter:--spacing(6)]">
               <CardContent className="grid gap-5">
-                <CompareLegend a={a} b={b} season={season} />
-                <CompareChart rows={rows} nameA={nameA} nameB={nameB} seasonLabel={seasonLabel} />
+                <CompareLegend a={a} b={b} styles={styles} season={season} />
+                <CompareChart
+                  rows={rows}
+                  nameA={nameA}
+                  nameB={nameB}
+                  styles={styles}
+                  seasonLabel={seasonLabel}
+                />
               </CardContent>
             </Card>
           </section>

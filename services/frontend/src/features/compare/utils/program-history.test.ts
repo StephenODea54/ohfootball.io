@@ -69,6 +69,7 @@ describe("toProgramHistory", () => {
 
     expect(history.teamId).toBe("team-2026")
     expect(history.name).toBe("Massillon Washington")
+    expect(history.colors).toEqual({ primary: "#ff6600", secondary: "#000000" })
     expect(history.seasons).toEqual([
       { season: 2025, rating: 20, rank: 5, asOf: "2025-12-31" },
       { season: 2026, rating: 14.3, rank: 7, asOf: "2026-09-29" },

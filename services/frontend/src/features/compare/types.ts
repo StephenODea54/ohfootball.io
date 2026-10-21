@@ -10,6 +10,12 @@ export interface SeasonPoint {
   asOf: string
 }
 
+/** The two team colors of a school in the form #rrggbb. A color is null when the data has none. */
+export interface SchoolColors {
+  primary: string | null
+  secondary: string | null
+}
+
 /** One program across every season the site knows, as programs/<sourceId>.json holds it. */
 export interface ProgramHistory {
   sourceId: string
@@ -17,6 +23,8 @@ export interface ProgramHistory {
   name: string
   /** The id of the team page in the current season. */
   teamId: string
+  /** The colors of the team in the current season. The chart draws the line of the school in them. */
+  colors: SchoolColors
   seasons: SeasonPoint[]
   /** The games against Ohio teams that have a result, oldest first. */
   games: ProgramGame[]

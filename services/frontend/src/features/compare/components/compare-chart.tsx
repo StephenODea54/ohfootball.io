@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "@/components/ui/chart"
-import { SLOT_STYLES } from "@/features/compare/components/slot-colors"
+import type { SlotStyles } from "@/features/compare/components/slot-colors"
 import { type CompareRow, ratingAxis } from "@/features/compare/utils/season-series"
 import { formatRating, formatRatingTick } from "@/features/teams/utils/format"
 
@@ -17,6 +17,8 @@ interface CompareChartProps {
   rows: CompareRow[]
   nameA: string
   nameB: string
+  /** The color and the dash of the line of each side. */
+  styles: SlotStyles
   /** The label of a season, such as "2026 so far" for the season in progress. */
   seasonLabel: (season: number) => string
 }
@@ -26,10 +28,12 @@ interface CompareChartProps {
  * Ohio team of each season, so two schools of any era compare. A season that a school did not
  * play is a break in its line. The season table below holds the same data as text.
  */
-export function CompareChart({ rows, nameA, nameB, seasonLabel }: CompareChartProps) {
+export function CompareChart({ rows, nameA, nameB, styles, seasonLabel }: CompareChartProps) {
+  // The chart writes --color-a and --color-b for each theme, and the lines and the tooltip read
+  // them.
   const config = {
-    a: { label: nameA, color: SLOT_STYLES.a.color },
-    b: { label: nameB, color: SLOT_STYLES.b.color },
+    a: { label: nameA, theme: { light: styles.a.light, dark: styles.a.dark } },
+    b: { label: nameB, theme: { light: styles.b.light, dark: styles.b.dark } },
   }
   const first = rows.at(0)?.season
   const last = rows.at(-1)?.season
@@ -91,6 +95,7 @@ export function CompareChart({ rows, nameA, nameB, seasonLabel }: CompareChartPr
             isAnimationActive={false}
             stroke="var(--color-a)"
             strokeWidth={2}
+            strokeDasharray={styles.a.dash}
             dot={false}
             activeDot={{ r: 4, fill: "var(--color-a)" }}
           />
@@ -102,7 +107,7 @@ export function CompareChart({ rows, nameA, nameB, seasonLabel }: CompareChartPr
             isAnimationActive={false}
             stroke="var(--color-b)"
             strokeWidth={2}
-            strokeDasharray={SLOT_STYLES.b.dash}
+            strokeDasharray={styles.b.dash}
             dot={false}
             activeDot={{ r: 4, fill: "var(--color-b)" }}
           />

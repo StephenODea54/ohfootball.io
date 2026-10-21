@@ -1,4 +1,5 @@
 import type { ProgramHistory, ProgramOption } from "@/features/compare/types"
+import { toSchoolColors } from "@/features/compare/utils/school-colors"
 import { seasonEndPoints } from "@/features/compare/utils/season-points"
 import type { Program, TeamSummary } from "@/types/api"
 
@@ -21,7 +22,8 @@ function tenth(value: number) {
 }
 
 /**
- * The history file of a program. The name and the page come from the team of the current season.
+ * The history file of a program. The name, the page, and the colors come from the team of the
+ * current season.
  * The seasons and the games come from the program.
  */
 export function toProgramHistory(team: TeamSummary, program: Program): ProgramHistory {
@@ -29,6 +31,7 @@ export function toProgramHistory(team: TeamSummary, program: Program): ProgramHi
     sourceId: team.sourceId,
     name: team.name,
     teamId: team.id,
+    colors: toSchoolColors(team),
     seasons: seasonEndPoints(program.ratingHistory).map((point) => ({
       ...point,
       rating: tenth(point.rating),

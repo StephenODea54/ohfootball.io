@@ -1,12 +1,27 @@
-/**
- * The color of each side of a comparison. The color belongs to the side and not to the school, so
- * two schools with the same colors still differ. Each token has a value for the light theme and
- * one for the dark theme, and both read on their background. The second line is also dashed, so
- * the two lines differ without color.
- */
-export const SLOT_STYLES = {
-  a: { color: "var(--color-primary-subtle-fg)", dash: undefined },
-  b: { color: "var(--color-warning-subtle-fg)", dash: "6 3" },
-} as const
+import type { ProgramHistory } from "@/features/compare/types"
+import { lineColors, type ThemedColor } from "@/features/compare/utils/line-colors"
 
-export type Slot = keyof typeof SLOT_STYLES
+export type Slot = "a" | "b"
+
+/** The line of one side: its color in each theme, and its dash pattern. */
+export interface SlotStyle extends ThemedColor {
+  /** The stroke-dasharray of the line. A solid line has none. */
+  dash: string | undefined
+}
+
+export type SlotStyles = Record<Slot, SlotStyle>
+
+/**
+ * The dash of each side. The dash belongs to the side and not to the school, so the two lines
+ * differ without color.
+ */
+const DASHES: Record<Slot, string | undefined> = { a: undefined, b: "6 3" }
+
+/** The line of each side of a comparison, in the colors of its school. */
+export function slotStyles(a: ProgramHistory | null, b: ProgramHistory | null): SlotStyles {
+  const colors = lineColors(a?.colors ?? null, b?.colors ?? null)
+  return {
+    a: { ...colors.a, dash: DASHES.a },
+    b: { ...colors.b, dash: DASHES.b },
+  }
+}

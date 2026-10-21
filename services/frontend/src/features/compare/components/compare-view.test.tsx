@@ -9,6 +9,7 @@ function history(sourceId: string, name: string, games: ProgramHistory["games"] 
     sourceId,
     name,
     teamId: `team-${sourceId}`,
+    colors: { primary: null, secondary: null },
     seasons: [{ season: 2025, rating: 10, rank: 50, asOf: "2025-12-31" }],
     games,
   } satisfies ProgramHistory
