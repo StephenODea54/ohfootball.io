@@ -26,6 +26,23 @@ export const paths = {
     path: "/playoffs/regions/[region].json",
     getHref: (region: number) => `/playoffs/regions/${region}.json`,
   },
+  // The map of the teams. The filters are in the query string, so a link opens the same map. A
+  // filter that is not set is left out, so one set of filters has one address.
+  map: {
+    path: "/map",
+    getHref: (filters?: {
+      division?: number | null
+      region?: number | null
+      county?: string | null
+    }) => {
+      const search = new URLSearchParams()
+      if (filters?.division) search.set("division", String(filters.division))
+      if (filters?.region) search.set("region", String(filters.region))
+      if (filters?.county) search.set("county", filters.county)
+      const query = search.toString()
+      return query ? `/map?${query}` : "/map"
+    },
+  },
   methodology: {
     path: "/methodology",
     getHref: () => "/methodology",

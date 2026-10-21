@@ -346,3 +346,101 @@
 .region-poster:has([data-region="se"]:hover, [data-card="se"]:hover) [data-logo="se"] {
   opacity: 1;
 }
+
+/*
+ * The team map. A filter keeps the counties of the chosen area at full strength and fades the
+ * rest. Pointing at a county makes its color stronger and fades the other counties, as on the map
+ * of the home page.
+ */
+.team-map [data-county] {
+  transition:
+    opacity 300ms ease,
+    fill 300ms ease,
+    fill-opacity 300ms ease;
+}
+
+.team-map:has([data-county]:hover) [data-county] {
+  opacity: 0.35;
+}
+
+/* Outside the chosen area a county loses its color and most of its strength, so the area stands
+ * out on both themes. */
+.team-map[data-filtered] [data-county]:not([data-selected]) {
+  fill: var(--color-muted-fg);
+  fill-opacity: 0.18;
+}
+
+.team-map[data-filtered]:not([data-cells]) [data-county][data-selected]:is(.dark *) {
+  fill-opacity: 0.7;
+}
+
+/* The territories are translucent, so the counties under them take the page color. */
+.team-map[data-cells] [data-county][data-selected] {
+  fill: var(--color-bg);
+  fill-opacity: 1;
+}
+
+.team-map:has([data-county]:hover) [data-county]:hover {
+  opacity: 1;
+  fill: var(--tint);
+  fill-opacity: 0.95;
+}
+
+/*
+ * The territories of the schools, as on the poster map. Pointing at a territory, or a first touch
+ * on it, makes its color stronger, fades the others, and brings its logo forward. A selector names
+ * the territory with the card, because CSS cannot see a touch after the touch ends.
+ */
+.team-map [data-cell],
+.team-map .cell-fill,
+.team-map .cell-logo {
+  transition:
+    opacity 300ms ease,
+    fill-opacity 300ms ease;
+}
+
+.team-map:has([data-cell]:is(:hover, [data-active])) [data-cell]:not(:hover, [data-active]) {
+  opacity: 0.35;
+}
+
+.team-map [data-cell]:is(:hover, [data-active]) .cell-fill {
+  fill-opacity: 0.95;
+}
+
+.team-map .cell-logo {
+  opacity: 0.6;
+}
+
+.team-map .cell-logo:is(.dark *) {
+  opacity: 0.55;
+}
+
+.team-map [data-cell]:is(:hover, [data-active]) .cell-logo {
+  opacity: 1;
+}
+
+/* The glow and the card wait while the view moves, so each frame of a zoom stays cheap. */
+.team-map .cell-glow {
+  transition: opacity 300ms ease;
+}
+
+/* Hidden, not only clear, so the browser does not blur each territory at each frame. */
+.team-map[data-zooming] .cell-glow {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
+}
+
+.team-map[data-zooming] + .cell-card {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team-map [data-county],
+  .team-map [data-cell],
+  .team-map .cell-fill,
+  .team-map .cell-logo,
+  .team-map .cell-glow {
+    transition: none;
+  }
+}

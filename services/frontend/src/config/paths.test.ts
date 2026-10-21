@@ -16,6 +16,15 @@ it("builds every address without a season", () => {
   expect(paths.program.getHref("1624")).toBe("/programs/1624.json")
 })
 
+it("writes one address for each set of filters of the map page", () => {
+  expect(paths.map.getHref()).toBe("/map")
+  expect(paths.map.getHref({ division: null, region: null, county: "" })).toBe("/map")
+  expect(paths.map.getHref({ division: 3 })).toBe("/map?division=3")
+  expect(paths.map.getHref({ county: "Van Wert", region: 9, division: 3 })).toBe(
+    "/map?division=3&region=9&county=Van+Wert",
+  )
+})
+
 it("writes one address for each pair of the compare page", () => {
   expect(paths.compare.getHref()).toBe("/compare")
   expect(paths.compare.getHref({ a: null, b: "" })).toBe("/compare")

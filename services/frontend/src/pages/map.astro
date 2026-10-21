@@ -1,0 +1,30 @@
+---
+import SiteLayout from "@/layouts/site-layout.astro"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { getMapTeams } from "@/features/map/api/get-map-teams"
+import { TeamMap } from "@/features/map/components/team-map"
+import { countyMap } from "@/features/map/server/county-map"
+import { mapMarkers } from "@/features/map/utils/markers"
+import { RatingNote } from "@/features/methodology/components/rating-note"
+
+const teams = await getMapTeams()
+const { fit, ...map } = countyMap(teams)
+const markers = mapMarkers(teams, fit)
+---
+
+<SiteLayout
+  title="Map | ohfootball.io"
+  description="Every rated Ohio high school football team on a map of the state. Choose a division, a region, or a county to see its teams and their ranks."
+>
+  <main>
+    <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
+      <header class="max-w-3xl">
+        <Heading className="text-4xl/none sm:text-5xl/none">Team Map</Heading>
+        <RatingNote className="mt-3" />
+      </header>
+
+      <TeamMap client:load map={map} markers={markers} />
+    </Container>
+  </main>
+</SiteLayout>
