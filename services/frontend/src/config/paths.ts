@@ -26,6 +26,12 @@ export const paths = {
     path: "/playoffs/regions/[region].json",
     getHref: (region: number) => `/playoffs/regions/${region}.json`,
   },
+  // The playoff map of one division, 1 to 7. Each playoff team starts with the land near its
+  // school, and the winner of each game takes the land of the loser.
+  playoffMap: {
+    path: "/playoffs/map/[division]",
+    getHref: (division: number) => `/playoffs/map/${division}`,
+  },
   // The map of the teams. The filters are in the query string, so a link opens the same map. A
   // filter that is not set is left out, so one set of filters has one address.
   map: {

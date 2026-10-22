@@ -13,6 +13,8 @@ interface TeamCardProps {
   team: { sourceId: string; name: string; rank: number; rating: number }
   /** The small line above the name, such as NE Ohio. */
   label: string
+  /** The line below the name. Without it the card shows the rank and the rating. */
+  detail?: string
   /** The page of the team. With no link the card is only a label, as on the team map. */
   href?: string
   /** Sets --tint, the color of the team. */
@@ -23,7 +25,7 @@ interface TeamCardProps {
 }
 
 /** A school with its logo, its name, its rank, and its rating, in the style of the poster map. */
-export function TeamCard({ team, label, href, style, className, ...data }: TeamCardProps) {
+export function TeamCard({ team, label, detail, href, style, className, ...data }: TeamCardProps) {
   const body = (
     <>
       <TeamLogo team={team} size="sm" className="size-9" />
@@ -33,7 +35,7 @@ export function TeamCard({ team, label, href, style, className, ...data }: TeamC
         </span>
         <span className="mt-0.5 font-semibold text-base/5 text-fg">{team.name}</span>
         <span className="text-muted-fg text-xs/4 tabular-nums">
-          {`#${team.rank} · ${formatRating(team.rating)}`}
+          {detail ?? `#${team.rank} · ${formatRating(team.rating)}`}
         </span>
       </span>
     </>

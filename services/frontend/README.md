@@ -35,6 +35,20 @@ sitemap leaves them out. The map of the regions is drawn when the site is built,
 of the schools. When the API has no projection, or does not know the query yet, the page says that
 the odds are not ready and the build goes on.
 
+The pages `/playoffs/map/1` to `/playoffs/map/7` show the playoff bracket of each division as a
+map. Each of the 12 playoff teams of a region starts with the land nearest its school. The
+distance is divided by the weight of the seed, so a better seed reaches farther: seed 12 has a
+weight of 1.0 and each better seed adds 0.1. The winner of each game takes all the land of the
+loser, through the regional final. The build works out the land on a grid of one map unit, traces
+it into SVG paths, and simplifies the paths with `topojson-simplify` so two neighbors keep one
+shared edge. The map opens when every game left in the newest projection has a date before the
+day of the build. The projection then gives the seeds. When the first round shows 4 games of 8
+teams near the top of a region, those games set seeds 5 to 12 and the byes. The rounds come from
+the playoff games in the schedules of the first 14 teams of each region in the projection. A full build reads those
+schedules for the team pages too, so they cost no more requests. A build with
+`PRERENDER_TEAM_LIMIT` and no key can hit the rate limits. Any error closes the map with a warning,
+and the build goes on.
+
 The page `/api` tells people how to call the public API: the endpoint, the contact that each
 request names, the rate limits, the errors, a curl example, the playground, and the Data page and
 the Kaggle dataset for bulk data. It is drawn when the site is built, and its content runs no script. Only the

@@ -16,7 +16,7 @@ export const FALLBACK_COLOR = "var(--color-muted-fg)"
 
 interface TeamCellProps {
   marker: MapMarker
-  territory: Territory
+  territory: Pick<Territory, "path" | "circle">
   layout: CellLayout
   /** The id of the clip path of this territory. */
   clipId: string
@@ -68,11 +68,13 @@ export const TeamCell = memo(function TeamCell({
       className="team-cell cursor-pointer outline-0"
       style={tint}
     >
+      {/* The even-odd rule cuts a hole where a territory has another territory inside it. */}
       <clipPath id={clipId}>
-        <path d={territory.path} />
+        <path d={territory.path} clipRule="evenodd" />
       </clipPath>
       <path
         d={territory.path}
+        fillRule="evenodd"
         className="cell-fill [fill-opacity:0.8] [fill:var(--tint)] dark:[fill-opacity:0.78]"
       />
       {/* The logo is wider than the circle of the territory, so the territory clips it. */}

@@ -396,7 +396,8 @@
 .team-map .cell-logo {
   transition:
     opacity 300ms ease,
-    fill-opacity 300ms ease;
+    fill-opacity 300ms ease,
+    fill 400ms ease;
 }
 
 .team-map:has([data-cell]:is(:hover, [data-active])) [data-cell]:not(:hover, [data-active]) {

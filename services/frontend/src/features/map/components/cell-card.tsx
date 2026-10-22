@@ -20,6 +20,8 @@ interface CellCardProps {
   anchor: Point
   /** The width of the map box, in CSS pixels. */
   boxWidth: number
+  /** The line below the name. Without it the card shows the rank and the rating. */
+  detail?: string
 }
 
 /** Where the card goes in the map box: centered on the point, above it or below it. */
@@ -33,7 +35,7 @@ export function cardPlacement(anchor: Point, boxWidth: number) {
  * the territory. On a narrow screen it is a strip at the bottom of the map. The card is only a
  * label: it takes no pointer, and screen readers skip it, as they skip the map.
  */
-export function CellCard({ marker, anchor, boxWidth }: CellCardProps) {
+export function CellCard({ marker, anchor, boxWidth, detail }: CellCardProps) {
   const { left, top, below } = cardPlacement(anchor, boxWidth)
   const style = {
     "--tint": marker.color ?? FALLBACK_COLOR,
@@ -56,6 +58,7 @@ export function CellCard({ marker, anchor, boxWidth }: CellCardProps) {
           rating: marker.rating,
         }}
         label={teamPlace(marker)}
+        detail={detail}
         style={style}
       />
       <Text className="mx-auto mt-1 hidden w-fit rounded-full bg-bg/90 px-2 text-fg text-xs/5 pointer-coarse:block sm:text-xs/5">

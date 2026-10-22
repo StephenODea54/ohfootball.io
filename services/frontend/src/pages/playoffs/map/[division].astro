@@ -1,0 +1,84 @@
+---
+import type { GetStaticPaths } from "astro"
+import SiteLayout from "@/layouts/site-layout.astro"
+import { buttonStyles } from "@/components/ui/button"
+import { Container } from "@/components/ui/container"
+import { Heading } from "@/components/ui/heading"
+import { Link } from "@/components/ui/link"
+import { Note } from "@/components/ui/note"
+import { Text, TextLink } from "@/components/ui/text"
+import { paths } from "@/config/paths"
+import { getPlayoffMap } from "@/features/playoff-map/api/get-playoff-map"
+import { PlayoffMap } from "@/features/playoff-map/components/playoff-map"
+import { DIVISIONS } from "@/features/playoff-map/utils/view"
+import { divisionLabel } from "@/features/playoffs/utils/format"
+import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
+
+/** One page for each division. A division with no map yet still has a page, so a link never breaks. */
+export const getStaticPaths = (() =>
+  DIVISIONS.map((division) => ({
+    params: { division: String(division) },
+    props: { division },
+  }))) satisfies GetStaticPaths
+
+const { division } = Astro.props
+const data = await getPlayoffMap()
+const shown = data?.divisions.find((item) => item.division === division)
+const label = divisionLabel(division)
+---
+
+<SiteLayout
+  title={`${label} Playoff Map | ohfootball.io`}
+  description={`The ${label} playoff bracket of Ohio high school football as a map. Each playoff team starts with the land near its school, and the winner of each game takes the land of the loser.`}
+>
+  <main>
+    <Container className="max-w-6xl py-12 sm:py-16 lg:py-20">
+      <header class="max-w-3xl">
+        <Heading className="text-4xl/none sm:text-5xl/none">Playoff Map</Heading>
+        <Text className="mt-3 text-base/7 sm:text-base/7">
+          Each playoff team starts with the land nearest its school, and a better seed reaches
+          farther. When a team wins, it takes all the land of the team it beat. After the regional
+          finals, one team holds each region. The seeds come from our{" "}
+          <TextLink href={paths.playoffs.getHref()}>playoff projection</TextLink> and the
+          first-round games. The regions are drawn from whole counties, so a border can be a little
+          off.
+        </Text>
+      </header>
+
+      <nav aria-label="Divisions" class="mt-8 overflow-x-auto pb-1">
+        <ul class="flex gap-2">
+          {DIVISIONS.map((item) => (
+            <li>
+              <Link
+                href={paths.playoffMap.getHref(item)}
+                aria-current={item === division ? "page" : undefined}
+                className={buttonStyles({
+                  intent: item === division ? "primary" : "outline",
+                  size: "sm",
+                  className: "whitespace-nowrap",
+                })}
+              >
+                {divisionLabel(item)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <section aria-labelledby="division-heading" class="mt-8">
+        <Heading id="division-heading" level={2} className="text-2xl/8">
+          {label}
+        </Heading>
+        {data && shown ? (
+          <PlayoffMap client:load map={data.shape} division={shown} />
+        ) : (
+          <Note intent="info" className="mt-4">
+            The playoff map opens when the regular season is over and the seeds are set.
+          </Note>
+        )}
+      </section>
+    </Container>
+
+    <LastUpdatedStamp isoDate={shown ? (data?.asOf ?? null) : null} />
+  </main>
+</SiteLayout>

@@ -3,7 +3,8 @@ import SiteLayout from "@/layouts/site-layout.astro"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Text, TextLink } from "@/components/ui/text"
-import { links } from "@/config/paths"
+import { links, paths } from "@/config/paths"
+import { getPlayoffMap } from "@/features/playoff-map/api/get-playoff-map"
 import { getPlayoffProjection } from "@/features/playoffs/api/get-playoff-projection"
 import { PlayoffOdds } from "@/features/playoffs/components/playoff-odds"
 import { playoffMap } from "@/features/playoffs/server/region-map"
@@ -11,7 +12,11 @@ import { regionData, regionKeys } from "@/features/playoffs/utils/view"
 import { getTeams } from "@/features/teams/api/get-teams"
 import { LastUpdatedStamp } from "@/features/teams/components/last-updated-stamp"
 
-const [projection, teams] = await Promise.all([getPlayoffProjection(), getTeams()])
+const [projection, teams, bracketMap] = await Promise.all([
+  getPlayoffProjection(),
+  getTeams(),
+  getPlayoffMap(),
+])
 const regions = projection ? regionKeys(projection) : []
 const firstRegion = projection?.regions.find((region) => region.region === regions[0]?.region)
 const map = firstRegion ? playoffMap(teams) : null
@@ -29,6 +34,13 @@ const map = firstRegion ? playoffMap(teams) : null
           <Text className="mt-3 text-base/7 sm:text-base/7">
             For how the playoffs work, see the{" "}
             <TextLink href={links.ohsaaFootballRules}>official OHSAA tournament rules</TextLink>.
+            {bracketMap && (
+              <>
+                {" "}
+                To watch the winners take the land of each region, see the{" "}
+                <TextLink href={paths.playoffMap.getHref(1)}>playoff map</TextLink>.
+              </>
+            )}
           </Text>
         ) : (
           <Text className="mt-3">The playoff odds of this season are not ready yet.</Text>
