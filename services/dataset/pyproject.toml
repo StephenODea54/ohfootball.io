@@ -15,7 +15,7 @@ requires-python = ">=3.12"
 # does not take that checksum on an upload of one part. See r2_bucket.py.
 dependencies = [
     "boto3>=1.36,<2",
-    "kaggle==2.2.4",
+    "kaggle==2.2.5",
     "psycopg[binary]>=3.2,<4",
 ]
 
