@@ -153,11 +153,19 @@ class FakeStore:
 
 
 class FakeApi:
-    """Gives one answer for each class, or raises FetchError for the classes in `fail`."""
+    """Gives one answer for each class. It raises a FetchError that stays for the classes in
+    `fail`, and a transient FetchError for the first n calls of a class that `flaky` maps to n."""
 
-    def __init__(self, remaining: dict[int, int | None] | None = None, fail=(), events=None):
+    def __init__(
+        self,
+        remaining: dict[int, int | None] | None = None,
+        fail=(),
+        events=None,
+        flaky: dict[int, int] | None = None,
+    ):
         self.remaining = remaining or {}
         self.fail = set(fail)
+        self.flaky = dict(flaky or {})
         self.calls: list[int] = []
         self.events = events
 
@@ -166,7 +174,14 @@ class FakeApi:
         if self.events is not None:
             self.events.append(("fetch", class_year))
         if class_year in self.fail:
-            raise FetchError(f"CollegeFootballData answered 503 for class {class_year}")
+            raise FetchError(f"CollegeFootballData answered 401 for class {class_year}")
+        if self.flaky.get(class_year, 0) > 0:
+            self.flaky[class_year] -= 1
+            raise FetchError(
+                f"CollegeFootballData could not be reached for class {class_year}: "
+                "The read operation timed out",
+                transient=True,
+            )
         return Answer(
             url=f"http://api.test/recruiting/players?year={class_year}",
             records=[{"id": str(class_year * 10 + n)} for n in range(2)],

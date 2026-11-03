@@ -175,6 +175,7 @@ flowchart TD
     project --> site["publish-site<br/>start the site workflow"]
     site --> download["publish-download<br/>ohfootball-dataset publish-download"]
     download --> dataset["publish-dataset<br/>ohfootball-dataset publish"]
+    dataset --> again["snapshot-recruits<br/>the classes still missing"]
 
     warehouse[("PostgreSQL")]
     cfbd[("CollegeFootballData")]
@@ -184,6 +185,7 @@ flowchart TD
 
     snapshot -. reads three classes .-> cfbd
     snapshot -. writes the private schema .-> warehouse
+    again -. reads the missing classes .-> cfbd
     scrape -. writes .-> warehouse
     transform -. reads and writes .-> warehouse
     rate -. reads and writes .-> warehouse
@@ -196,7 +198,7 @@ flowchart TD
 
 | Target | Runs | Does |
 | --- | --- | --- |
-| `snapshot-recruits` | Python | stores the answer of CollegeFootballData for the three recruiting classes still in high school, in the private schema `ohfootball_private`; three calls |
+| `snapshot-recruits` | Python | stores the answer of CollegeFootballData for the three recruiting classes still in high school, in the private schema `ohfootball_private`; three calls, and up to three for each class when CollegeFootballData is slow; a failure does not stop the run, and the target runs again as the last step |
 | `scrape` | Go | collects the games of the season named by `SCRAPER_SEASON` |
 | `transform` | dbt | rebuilds staging, intermediate, and the marts |
 | `rate` | Python | rates every Ohio team in every season, reads its games against teams from other states too, and stores a pregame prediction for every game of an Ohio team played, except a game against another state without both scores, and for every game of an Ohio team of the season in progress not yet played |
@@ -210,14 +212,21 @@ Each target runs on its own. A run that stops part way is finished by running th
 not run, in the order above.
 
 `snapshot-recruits` goes first. It needs nothing else in the run, and it must store the classes
-before the games of the week, however long the scrape takes. When it fails, the run stops, the
-same as when any other source fails. A run again on the same day calls only for the classes that
-are missing. To finish a run that stopped at this target, run it again, or run the targets after
-it by hand: `cd /app && make scrape transform rate project publish-site publish-download publish-dataset`.
+before the games of the week, however long the scrape takes. CollegeFootballData is sometimes
+slow, so the snapshot sends a slow or failed call again, up to three calls for a class. The rating
+does not read the snapshot, so a failure of this target does not stop the run. The target runs
+again as the last step of the run. A class that is stored is kept and costs no call, so that step
+calls only for the classes that are missing. When a class is still missing, the last step fails,
+and the run ends with a failure after the site and the data are published. To finish the snapshot
+later on the same day, run `cd /app && make snapshot-recruits`.
+
+When a target after the first snapshot step fails, other than `project`, the run stops and the
+last snapshot step does not run. Run `cd /app && make snapshot-recruits` after you finish the
+other targets by hand.
 
 Set `CFBD_API_KEY` on the `pipeline` application before a deploy that adds `snapshot-recruits`
-reaches the host. Without the key, the next weekly run stops at its first target, and no other
-target runs.
+reaches the host. Without the key, both snapshot steps fail. The other targets still run, and the
+run ends with a failure.
 
 `publish-site` sends `POST /repos/StephenODea54/ohfootball.io/actions/workflows/site.yml/dispatches`
 with the body `{"ref":"main"}`. `SITE_REPOSITORY`, `SITE_WORKFLOW`, and `SITE_BRANCH` change the
@@ -378,10 +387,13 @@ connects as the owner of the warehouse, so a grant does not keep them out. The c
 
 **The recruiting key has a monthly limit.** The free key of CollegeFootballData allows 1,000 calls
 a month and stops working when a month goes over. Use this key for nothing else. The weekly run
-makes three calls, and a run again on the same day makes calls only for the classes that are
-missing. The snapshot stops, and the run fails, when the API reports fewer than 100 calls left
-while classes remain. Once the month is near its limit, each run fails at this step until the count
-starts again the next month. Until then, run the targets after `snapshot-recruits` by hand.
+makes three calls when CollegeFootballData answers, and at most 12. The first snapshot step stops
+at the first class that fails three times, and the last step asks only for the classes that are
+missing. A run again on the same day makes calls only for the classes that
+are missing. The snapshot stops when the API reports fewer than 100 calls left while classes
+remain. The other targets still run, and the run ends with a failure. Once the month is near its
+limit, each run ends with this failure until the count starts again the next month. Each of those
+runs still publishes the site and the data.
 
 **The schedule runs in UTC.** Set the time zone of the schedule to `UTC`. 13:00 UTC is 09:00 in
 New York in summer and 08:00 in winter.

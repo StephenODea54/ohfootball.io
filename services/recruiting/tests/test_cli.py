@@ -175,17 +175,36 @@ class TheCommand(unittest.TestCase):
         self.assertEqual(run.code, 1)
         self.assertEqual(
             json.loads(run.stdout.getvalue())["error"],
-            "CollegeFootballData answered 503 for class 2027",
+            "CollegeFootballData answered 401 for class 2027",
         )
         self.assertEqual(
             run.stderr.getvalue(),
             "the recruiting snapshot of 2026-09-29 stopped: "
-            "CollegeFootballData answered 503 for class 2027\n",
+            "CollegeFootballData answered 401 for class 2027\n",
         )
 
+    def test_says_on_standard_error_when_it_sends_a_call_again(self) -> None:
+        with mock.patch("time.sleep") as sleep:
+            run = Run(["snapshot", "--as-of-date", "2026-09-29"], api=FakeApi(flaky={2028: 1}))
+
+        self.assertEqual(run.code, 0)
+        sleep.assert_called_once_with(10)
+        self.assertEqual(
+            run.stderr.getvalue(),
+            "CollegeFootballData could not be reached for class 2028: The read operation timed "
+            "out. The call is sent again in 10 seconds.\n",
+        )
+        self.assertEqual(json.loads(run.stdout.getvalue())["calls_made"], 4)
+
     def test_never_prints_the_key(self) -> None:
-        for api in (FakeApi(), FakeApi(fail={2028}), FakeApi(remaining={2027: 1})):
-            with self.subTest(api=api):
+        apis = (
+            FakeApi(),
+            FakeApi(fail={2028}),
+            FakeApi(remaining={2027: 1}),
+            FakeApi(flaky={2028: 3}),
+        )
+        for api in apis:
+            with self.subTest(api=api), mock.patch("time.sleep"):
                 run = Run(["snapshot", "--as-of-date", "2026-09-29"], api=api)
 
                 self.assertNotIn(KEY, run.output)

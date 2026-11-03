@@ -37,10 +37,18 @@ GET https://api.collegefootballdata.com/recruiting/players?year=2027&classificat
 Authorization: Bearer <CFBD_API_KEY>
 ```
 
-The package never tries a call again, and it does not follow a redirect, because a redirect is a
-second call and it would send the key to the new address. A status that is not 200, an answer that
-is not a list of records and a fault of the network each stop it with a message that names the
-class and the reason. The key goes in a header, so no address holds it, and no message names it.
+CFBD is sometimes slow, and a read that waits more than 30 seconds fails. So the snapshot sends a
+call again after a fault of the network or one of the statuses 408, 500, 502, 503 and 504. It waits
+10 seconds before the second call and 30 seconds before the third. Each wait writes one line to
+standard error. A class costs at most three calls, so a run costs at most nine. The snapshot does
+not open a transaction during a wait. When the third call fails too, the snapshot stops with the
+reason and the words "after 3 calls".
+
+Any other status, 429 included, and an answer that is not a list of records stop the snapshot at
+once with a message that names the class and the reason. CFBD can answer 429 when the calls of the
+month are used up, so another call would not help. The package does not follow a redirect, because
+a redirect is a second call and it would send the key to the new address. The key goes in a header,
+so no address holds it, and no message names it.
 
 Each answer has the header `x-calllimit-remaining`, the number of calls left in the month. The
 snapshot keeps that number. When fewer calls than the floor are left after a class, the snapshot
@@ -79,7 +87,9 @@ CFBD_API_KEY=... ohfootball-recruiting snapshot --as-of-date 2026-09-29
 
 The command prints a summary as JSON. It exits with 0 when every class is stored or kept. The first
 error stops it: it prints the summary of what it did, writes the reason on one line, and exits
-with 1. A wrong setting stops it with the reason on one line before any call. The weekly run must fail when a source fails, so nothing keeps the run going after an error.
+with 1. A wrong setting stops it with the reason on one line before any call. The weekly run goes
+on after this error, because the rating does not read the snapshot. The run calls the command again
+as its last step, and an error there makes the run fail.
 
 ## What it does not do
 

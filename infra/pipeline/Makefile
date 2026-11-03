@@ -14,17 +14,19 @@
 	publish-dataset backfill
 
 # The order matters. The recruiting snapshot goes first, because it needs nothing else in the run
-# and it must be stored before the games of the week, however long the scrape takes. The run stops
-# when the snapshot fails, the same as when any other source fails. The transform reads what the
-# scrape collected, the rating reads the marts the transform built, and the site is drawn from the
-# API after the ratings land.
+# and it must be stored before the games of the week, however long the scrape takes. The rating
+# does not read the snapshot, so a failure of CollegeFootballData does not stop the run there. The
+# snapshot runs again as the last step. A class that is stored is kept and costs no call, so that
+# step calls only for the classes that the first step missed, and it makes the run fail when a
+# class is still missing. The transform reads what the scrape collected, the rating reads the marts
+# the transform built, and the site is drawn from the API after the ratings land.
 #
 # The download and the dataset are published last. Nothing else in the run reads them, so a
 # refusal by R2 or by Kaggle costs that publication and not the publication of the site. The
 # download goes first, because its upload is short and nothing is sent after it that can be
 # refused. The Kaggle publication can wait for 10 minutes and can fail after its upload.
 pipeline:
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) snapshot-recruits
+	-$(MAKE) -f $(firstword $(MAKEFILE_LIST)) snapshot-recruits
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) scrape
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) transform
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) rate
@@ -32,12 +34,15 @@ pipeline:
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-site
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-download
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) publish-dataset
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) snapshot-recruits
 
 # Stores the recruiting classes that are still in high school, with one call to CollegeFootballData
-# for each class. The command reads the key from CFBD_API_KEY in the environment, so the key is not
-# part of a command line. The free key allows 1,000 calls a month, and this target makes three a
-# week. The terms of CollegeFootballData do not allow the records to be published, so they go in a
-# private schema that nothing publishes. The rating does not read them. See
+# for each class that is not stored yet. A slow or failed call is sent again, up to three calls for
+# a class. The command reads the key from CFBD_API_KEY in the environment, so the key is not part
+# of a command line. The free key allows 1,000 calls a month. A week costs three calls when
+# CollegeFootballData answers, and at most 12. The first step stops at the first class that fails
+# three times, and the last step asks only for the classes that are missing. The terms of CollegeFootballData do not allow the records to be published,
+# so they go in a private schema that nothing publishes. The rating does not read them. See
 # services/recruiting/README.md.
 snapshot-recruits:
 	ohfootball-recruiting snapshot

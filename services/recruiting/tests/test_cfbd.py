@@ -3,6 +3,7 @@ import http.server
 import io
 import json
 import os
+import ssl
 import threading
 import traceback
 import unittest
@@ -127,6 +128,35 @@ class TheErrors(unittest.TestCase):
         for error in (urllib.error.URLError("refused"), TimeoutError("slow"), OSError("reset")):
             with self.subTest(error=error):
                 self.assert_fails(Opener(error=error), "could not be reached")
+
+    def test_mark_a_fault_of_the_network_or_the_server_as_transient(self) -> None:
+        errors = [
+            urllib.error.HTTPError("http://api.test", status, "no", Message(), None)
+            for status in (408, 500, 502, 503, 504)
+        ] + [urllib.error.URLError("refused"), TimeoutError("slow"), OSError("reset")]
+        for error in errors:
+            with self.subTest(error=error), self.assertRaises(FetchError) as caught:
+                fetch(Opener(error=error))
+            self.assertTrue(caught.exception.transient)
+
+    def test_mark_a_refusal_or_a_bad_answer_as_lasting(self) -> None:
+        openers = [
+            Opener(error=urllib.error.HTTPError("http://api.test", status, "no", Message(), None))
+            for status in (400, 401, 403, 404, 429)
+        ] + [
+            Opener(
+                error=urllib.error.URLError(
+                    ssl.SSLCertVerificationError("certificate verify failed")
+                )
+            ),
+            Opener(Response(b"", status=204)),
+            Opener(Response(b"<html>")),
+            Opener(Response(b'{"id": 1}')),
+        ]
+        for opener in openers:
+            with self.subTest(opener=opener), self.assertRaises(FetchError) as caught:
+                fetch(opener)
+            self.assertFalse(caught.exception.transient)
 
     def test_name_a_body_that_ends_too_soon(self) -> None:
         answer = Response(b"[")

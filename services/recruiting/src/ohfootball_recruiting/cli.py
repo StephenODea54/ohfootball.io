@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     snapshot = subparsers.add_parser(
         "snapshot",
-        help="store the recruiting classes that are still in high school, one call for each",
+        help="store the recruiting classes that are still in high school, up to three calls for each",
     )
     snapshot.add_argument("--database-url", default=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
     snapshot.add_argument(

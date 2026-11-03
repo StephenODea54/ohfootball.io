@@ -4,13 +4,26 @@ from datetime import date
 
 from fakes import FakeApi, FakeStore
 
-from ohfootball_recruiting.snapshot import ClassResult, SnapshotFailed, Summary, take_snapshot
+from ohfootball_recruiting.cfbd import FetchError
+from ohfootball_recruiting.snapshot import (
+    ATTEMPTS,
+    ClassResult,
+    SnapshotFailed,
+    Summary,
+    take_snapshot,
+)
 
 DAY = date(2026, 9, 29)
 CLASSES = (2027, 2028, 2029)
 
 
-def snapshot(store: FakeStore, api: FakeApi, floor: int = 100) -> Summary:
+def snapshot(
+    store: FakeStore,
+    api: FakeApi,
+    floor: int = 100,
+    sleep=None,
+    warn=None,
+) -> Summary:
     return take_snapshot(
         snapshot_date=DAY,
         season=2026,
@@ -18,6 +31,8 @@ def snapshot(store: FakeStore, api: FakeApi, floor: int = 100) -> Summary:
         fetch=api,
         store=store,
         calls_remaining_floor=floor,
+        sleep=sleep or (lambda seconds: None),
+        warn=warn or (lambda message: None),
     )
 
 
@@ -79,7 +94,7 @@ class TheStops(unittest.TestCase):
         self.assertEqual(api.calls, [2027, 2028])
         self.assertEqual(summary.calls_made, 2)
         self.assertEqual(summary.classes, [ClassResult(2027, "stored", 2)])
-        self.assertEqual(summary.error, "CollegeFootballData answered 503 for class 2028")
+        self.assertEqual(summary.error, "CollegeFootballData answered 401 for class 2028")
         self.assertEqual(str(caught.exception), summary.error)
         self.assertEqual({key[1] for key in store.stored}, {2027})
         self.assertEqual(store.rollbacks, 1)
@@ -156,6 +171,98 @@ class TheStops(unittest.TestCase):
         snapshot(FakeStore(), api)
 
         self.assertEqual(api.calls, list(CLASSES))
+
+
+class TheRetries(unittest.TestCase):
+    def setUp(self) -> None:
+        self.waits: list[float] = []
+        self.warnings: list[str] = []
+
+    def run_snapshot(self, store: FakeStore, api: FakeApi) -> Summary:
+        return snapshot(store, api, sleep=self.waits.append, warn=self.warnings.append)
+
+    def test_send_a_call_again_after_a_transient_fault(self) -> None:
+        store, api = FakeStore(), FakeApi(flaky={2028: 1})
+        summary = self.run_snapshot(store, api)
+
+        self.assertEqual(api.calls, [2027, 2028, 2028, 2029])
+        self.assertEqual(summary.calls_made, 4)
+        self.assertEqual(summary.classes, [ClassResult(year, "stored", 2) for year in CLASSES])
+        self.assertIsNone(summary.error)
+        self.assertEqual(self.waits, [10])
+        self.assertEqual(
+            self.warnings,
+            [
+                "CollegeFootballData could not be reached for class 2028: The read operation "
+                "timed out. The call is sent again in 10 seconds."
+            ],
+        )
+
+    def test_hold_no_session_during_a_wait(self) -> None:
+        store = FakeStore()
+        api = FakeApi(flaky={2027: 1}, events=store.events)
+        snapshot(store, api, sleep=lambda seconds: store.events.append(("sleep", seconds)))
+
+        self.assertEqual(
+            store.events[:7],
+            [
+                ("lock", 2027),
+                ("is_stored", 2027),
+                ("fetch", 2027),
+                ("sleep", 10),
+                ("lock", 2027),
+                ("is_stored", 2027),
+                ("fetch", 2027),
+            ],
+        )
+        self.assertEqual(store.rollbacks, 1)
+
+    def test_keep_a_class_that_another_run_stored_during_the_wait(self) -> None:
+        store, api = FakeStore(), FakeApi(flaky={2027: 1})
+        summary = snapshot(store, api, sleep=lambda seconds: store.stored.add((DAY, 2027)))
+
+        self.assertEqual(api.calls, [2027, 2028, 2029])
+        self.assertEqual(summary.calls_made, 3)
+        self.assertEqual(summary.classes[0], ClassResult(2027, "kept", None))
+
+    def test_stop_after_the_last_attempt(self) -> None:
+        store, api = FakeStore(), FakeApi(flaky={2028: ATTEMPTS})
+        with self.assertRaises(SnapshotFailed) as caught:
+            self.run_snapshot(store, api)
+        summary = caught.exception.summary
+
+        self.assertEqual(api.calls, [2027] + [2028] * ATTEMPTS)
+        self.assertEqual(summary.calls_made, 1 + ATTEMPTS)
+        self.assertEqual(self.waits, [10, 30])
+        self.assertEqual(len(self.warnings), 2)
+        self.assertEqual(
+            summary.error,
+            "CollegeFootballData could not be reached for class 2028: The read operation timed "
+            "out, after 3 calls",
+        )
+        self.assertIsNone(caught.exception.__cause__)
+        stopped = caught.exception.__context__
+        self.assertIsInstance(stopped, FetchError)
+        self.assertIsNone(stopped.__cause__)
+        self.assertIsNone(stopped.__context__)
+        self.assertEqual({key[1] for key in store.stored}, {2027})
+
+    def test_do_not_send_a_call_again_after_a_fault_that_stays(self) -> None:
+        api = FakeApi(fail={2028})
+        with self.assertRaises(SnapshotFailed):
+            self.run_snapshot(FakeStore(), api)
+
+        self.assertEqual(api.calls, [2027, 2028])
+        self.assertEqual(self.waits, [])
+        self.assertEqual(self.warnings, [])
+
+    def test_check_the_floor_after_a_class_that_needed_a_second_call(self) -> None:
+        api = FakeApi(flaky={2027: 1}, remaining={2027: 50})
+        with self.assertRaises(SnapshotFailed) as caught:
+            self.run_snapshot(FakeStore(), api)
+
+        self.assertEqual(api.calls, [2027, 2027])
+        self.assertIn("50 calls left", caught.exception.summary.error)
 
 
 class TheSummary(unittest.TestCase):

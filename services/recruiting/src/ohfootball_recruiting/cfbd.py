@@ -1,8 +1,10 @@
 """Reads one recruiting class of Ohio from the API of CollegeFootballData.
 
 The free key allows 1,000 calls a month, and the key stops working when a month goes over. Thus
-each class costs exactly one request, and no request is tried again. The opener does not follow a
-redirect, because a redirect is a second request and it would send the key to the new address.
+fetch_class sends exactly one request and does not try it again. An error tells whether the same
+request can work later, and the snapshot decides whether to send it again. The opener does not
+follow a redirect, because a redirect is a second request and it would send the key to the new
+address.
 
 The key goes in a header, so the address of a request never holds it. No message of this module
 names it, and an error of this module carries no earlier exception that could hold the request.
@@ -15,6 +17,7 @@ from __future__ import annotations
 import http.client
 import json
 import math
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -32,12 +35,24 @@ USER_AGENT = "ohfootball.io recruiting snapshot (hey@ohfootball.io)"
 # The longest wait for one step of the connection or for one read. It is not a limit on the full
 # request, so a server that sends one byte at a time can hold the request for longer.
 TIMEOUT_SECONDS = 30
+# The statuses of a server that is slow or down for a short time. 429 is not one of them, because
+# the API can give it when the calls of the month are used up.
+TRANSIENT_STATUSES = frozenset({408, 500, 502, 503, 504})
 
 Opener = Callable[..., Any]
 
 
 class FetchError(Exception):
-    """The API did not give a class. The message tells why, and it never holds the key."""
+    """The API did not give a class. The message tells why, and it never holds the key.
+
+    A transient error is a fault of the network or a status of TRANSIENT_STATUSES. The same
+    request can work when it is sent again later. A certificate that fails the check is not
+    transient.
+    """
+
+    def __init__(self, message: str, *, transient: bool = False) -> None:
+        super().__init__(message)
+        self.transient = transient
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -87,6 +102,7 @@ def fetch_class(
     )
     # Each error is raised after its except block, so it carries no earlier exception.
     failure = None
+    transient = False
     try:
         with (opener or default_opener())(request, timeout=TIMEOUT_SECONDS) as response:
             status = response.status
@@ -95,15 +111,18 @@ def fetch_class(
     except urllib.error.HTTPError as error:
         error.close()
         failure = f"CollegeFootballData answered {error.code} for class {class_year}"
+        transient = error.code in TRANSIENT_STATUSES
     except (urllib.error.URLError, http.client.HTTPException, OSError) as error:
         reason = getattr(error, "reason", error)
         failure = f"CollegeFootballData could not be reached for class {class_year}: {reason}"
+        # A certificate that fails the check fails again on the next call.
+        transient = not isinstance(reason, ssl.SSLCertVerificationError)
     if failure is None and status != 200:
         failure = f"CollegeFootballData answered {status} for class {class_year}"
     if failure is None:
         records, failure = _records(body, class_year)
     if failure is not None:
-        raise FetchError(failure)
+        raise FetchError(failure, transient=transient)
     return Answer(url=url, records=records, calls_remaining=remaining)
 
 
