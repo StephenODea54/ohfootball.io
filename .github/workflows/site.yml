@@ -46,13 +46,13 @@ jobs:
       # must be in place, or every pick answers that picks are not available.
       PUBLIC_PICKEM: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The repository root has no package.json. This step reads the pnpm version from the
       # packageManager field of the site instead.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: services/frontend/package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: pnpm
