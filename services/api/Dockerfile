@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS build
+FROM golang:1.27-alpine AS build
 
 WORKDIR /src
 COPY services/api ./services/api
@@ -11,7 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /out/ohfootball-api \
     ./cmd/server
 
-FROM alpine:3.22
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates
 COPY --from=build /out/ohfootball-api /usr/local/bin/ohfootball-api
